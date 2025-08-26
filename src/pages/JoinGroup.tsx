@@ -15,6 +15,7 @@ const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const [memberData, setMemberData] = useState({
     name: "",
+    memberRollNumber: "",
     photo: "",
     vote: "square" as GridTemplate
   });
@@ -103,7 +104,7 @@ const JoinGroup = () => {
   const remainingSpots = group.totalMembers - group.members.length;
 
   return (
-    <div className="min-h-screen max-w-8xl mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
       <div className="container mx-auto max-w-4xl">
         {/* Header */}
         <div className="flex items-center mb-8">
@@ -180,6 +181,17 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="memberRollNumber">Roll No.</Label>
+                    <Input
+                      id="memberRollNumber"
+                      placeholder="Enter your full name"
+                      value={memberData.memberRollNumber}
+                      onChange={(e) => setMemberData({ ...memberData, memberRollNumber: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="photo" className="flex items-center">
                       <Upload className="mr-2 h-4 w-4" />
                       Upload Your Photo
@@ -202,7 +214,7 @@ const JoinGroup = () => {
                     )}
                   </div>
 
-                  <div className="space-y-4">
+                  {/* <div className="space-y-4">
                     <Label>Vote for Grid Template</Label>
                     <RadioGroup
                       value={memberData.vote}
@@ -217,7 +229,7 @@ const JoinGroup = () => {
                         </div>
                       ))}
                     </RadioGroup>
-                  </div>
+                  </div> */}
 
                   <Button 
                     type="submit" 
@@ -250,7 +262,7 @@ const JoinGroup = () => {
                           />
                           <div>
                             <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-gray-600">Voted: {member.vote}</p>
+                            <p className="text-sm text-gray-600">Voted: {member.memberRollNumber}</p>
                           </div>
                         </div>
                       ))}
@@ -269,9 +281,11 @@ const JoinGroup = () => {
                      template={group.gridTemplate}
                      memberCount={group.totalMembers}
                      members={group.members}
+                     centerEmptyDefault
                      activeMember={memberData.photo ? {
                        id: 'preview',
                        name: memberData.name || 'You',
+                       memberRollNumber: memberData.memberRollNumber,
                        photo: memberData.photo,
                        vote: memberData.vote,
                        joinedAt: new Date()

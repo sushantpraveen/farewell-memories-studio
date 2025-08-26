@@ -11,9 +11,10 @@ interface CellImage {
 interface GridBoardProps {
   previewMember?: Member;
   existingMembers?: Member[];
+  centerEmptyDefault?: boolean;
 }
 
-const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = [] }) => {
+const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = [], centerEmptyDefault = false }) => {
   const {
     cellImages,
     setCellImages,
@@ -83,6 +84,55 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     return gridStyle;
   };
 
+  // Reverse mapping: given a linear member index, return the cell keys
+  // used in both preview and download so we can seed GridContext correctly
+  const getKeysForIndex = (index: number): string[] => {
+    const keys: string[] = [];
+    // Top row 0-7
+    if (index >= 0 && index <= 7) {
+      keys.push(cid('top', 0, index));
+      return keys;
+    }
+    // Left side 8-12 (rows 1..5)
+    if (index >= 8 && index <= 12) {
+      keys.push(cid('left', index - 7, 0));
+      return keys;
+    }
+    // Right side 13-17 (rows 1..5)
+    if (index >= 13 && index <= 17) {
+      keys.push(cid('right', index - 12, 7));
+      return keys;
+    }
+    // Bottom row 18-25 (row 9, cols 0..7)
+    if (index >= 18 && index <= 25) {
+      keys.push(cid('bottom', 9, index - 18));
+      return keys;
+    }
+    // Bottom extension 26-33 (centered 8 cells)
+    if (index >= 26 && index <= 33) {
+      const col = index - 26; // 0..7
+      // Preview variant (row 0) and download variant (row -1)
+      keys.push(cid('bottom-extension', 0, col + 2));
+      keys.push(cid('bottom-extension', -1, col + 2));
+      return keys;
+    }
+    // Bottom-most extension 34-36 (3 cells)
+    if (index >= 34 && index <= 36) {
+      const col = index - 34; // 0..2
+      keys.push(cid('bottom-most-extension', 0, col + 2));
+      keys.push(cid('bottom-most-extension', -1, col + 2));
+      return keys;
+    }
+    // Top extension most 37-44 (8 cells)
+    if (index >= 37 && index <= 44) {
+      const col = index - 37; // 0..7
+      keys.push(cid('topExt-most', 0, col + 2));
+      keys.push(cid('topExt-most', -1, col + 2));
+      return keys;
+    }
+    return keys;
+  };
+
   // Helper function to get member index from cell key
   const getCellIndexFromKey = (cellKey: string) => {
     // Extract row and column from cell key
@@ -146,6 +196,27 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       }));
     }
   }, [previewMember?.photo, setCellImages, cid]);
+
+  // Seed GridContext with existingMembers so downloads can see images
+  useEffect(() => {
+    if (!existingMembers || existingMembers.length === 0) return;
+    // Build a single update object to minimize state churn
+    const updates: Record<string, string> = {};
+
+    existingMembers.forEach((m, idx) => {
+      if (!m?.photo) return;
+      const keys = getKeysForIndex(idx);
+      keys.forEach(k => { updates[k] = m.photo as string; });
+      // Optionally map first member into center, unless center should be empty by default
+      if (idx === 0 && !centerEmptyDefault) {
+        updates[cid('center', 0, 0)] = m.photo as string;
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      setCellImages(prev => ({ ...prev, ...updates }));
+    }
+  }, [existingMembers, centerEmptyDefault, setCellImages]);
 
   // Debug existing members and cell images
   useEffect(() => {
@@ -483,7 +554,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               <div
                 className="col-span-6 row-span-5 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
                 style={(() => {
-                  // First priority: previewMember (for JoinGroup preview)
+                  // 1) If user has uploaded a preview photo, show it
                   if (previewMember?.photo) {
                     return {
                       backgroundImage: `url(${previewMember.photo})`,
@@ -492,8 +563,11 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
                       backgroundRepeat: 'no-repeat',
                     } as React.CSSProperties;
                   }
-                  
-                  // Second priority: first existing member (for Editor view)
+                  // 2) If center must stay empty by default (JoinGroup), do not auto-fill from existing members
+                  if (centerEmptyDefault) {
+                    return getCellStyle(cid('center', 0, 0));
+                  }
+                  // 3) Otherwise (Editor), allow auto-fill from first existing member
                   if (existingMembers.length > 0 && existingMembers[0]?.photo) {
                     return {
                       backgroundImage: `url(${existingMembers[0].photo})`,
@@ -502,15 +576,18 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
                       backgroundRepeat: 'no-repeat',
                     } as React.CSSProperties;
                   }
-                  
-                  // Fallback: use GridContext styling
+                  // 4) Fallback: GridContext styling
                   return getCellStyle(cid('center', 0, 0));
                 })()}
                 onClick={() => handleCellClick(cid('center', 0, 0))}
                 role="button"
                 tabIndex={0}
               >
-                {!previewMember?.photo && !existingMembers[0]?.photo && !cellImages[cid('center', 0, 0)] && (
+                {(!previewMember?.photo && (
+                    centerEmptyDefault
+                      ? !cellImages[cid('center', 0, 0)] // JoinGroup: show placeholder if no uploaded center
+                      : (!existingMembers[0]?.photo && !cellImages[cid('center', 0, 0)])
+                  )) && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span>CENTER</span>
                   </div>

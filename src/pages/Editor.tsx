@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Users, Eye, Share } from "lucide-react";
+import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
 import { GridPreview } from "@/components/GridPreview";
 import { toast } from "sonner";
 import { GridTemplate } from "@/context/CollageContext";
 import { useCollage } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
+import { GridProvider } from "@/components/square/context/GridContext";
 
 
 const Editor = () => {
@@ -63,18 +64,21 @@ const Editor = () => {
     return Object.entries(votes).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0] as 'hexagonal' | 'square' | 'circle';
   };
 
-  const handleDownload = () => {
-    toast.success("Collage downloaded successfully! (Demo)");
-  };
-
   const handleShare = () => {
     const shareLink = `${window.location.origin}/join/${group.id}`;
     navigator.clipboard.writeText(shareLink);
     toast.success("Share link copied to clipboard!");
   };
 
+  const handleCheckout = () => {
+    // Navigate to a dedicated checkout page for this group
+    // Adjust the path to match your routing setup
+    navigate(`/checkout/${group.id}`);
+  };
+
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
+  const isGridComplete = group.members.length === group.totalMembers;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-4">
@@ -94,12 +98,20 @@ const Editor = () => {
             </div>
           </div>
           <div className="flex space-x-2">
+            <Button 
+              className={`${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              onClick={handleCheckout}
+              disabled={!isGridComplete}
+              title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              {isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}
+            </Button>
             <Button variant="outline" onClick={handleShare}>
               <Share className="h-4 w-4 mr-2" />
               Share
             </Button>
-            <Button onClick={handleDownload} className="bg-purple-600 hover:bg-purple-700">
-              <Download className="h-4 w-4 mr-2" />
+            <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
               Download
             </Button>
           </div>
@@ -197,7 +209,7 @@ const Editor = () => {
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.name}</p>
-                          <p className="text-sm text-gray-500">Voted: {member.vote}</p>
+                          <p className="text-sm text-gray-500">Roll No. {member.memberRollNumber}</p>
                         </div>
                       </div>
                     ))}
@@ -247,13 +259,21 @@ const Editor = () => {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <Button 
+                  className={`w-full ${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                  onClick={handleCheckout}
+                  disabled={!isGridComplete}
+                  title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  {isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}
+                </Button>
                 <Button variant="outline" className="w-full" onClick={handleShare}>
                   <Share className="h-4 w-4 mr-2" />
                   Share Group Link
                 </Button>
-                <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Design
+                <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
+                  Download
                 </Button>
               </CardContent>
             </Card>

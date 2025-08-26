@@ -191,7 +191,7 @@ const GridBoard = () => {
 const isValidForm = formData.name && formData.yearOfPassing && formData.totalMembers && parseInt(formData.totalMembers) > 0;
 
   return (
-    <div className="min-h-screen max-w-8xl mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
       <div className="grid gap-4 lg:grid lg:grid-flow-col lg:auto-cols-max lg:justify-center lg:items-start">
       {/* Preview Controller */}
       <Card className="w-full max-w-md sm:max-w-lg lg:max-w-xl lg:h-[75vh] mx-auto">
@@ -244,7 +244,7 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
             {/* <div className="text-xs text-slate-500 sm:self-center">
               Enter a number to load a file named <code className="px-1 py-0.5 rounded bg-slate-100">{`{n}`}.tsx</code> from <code className="px-1 py-0.5 rounded bg-slate-100">src/components</code>.
             </div> */}
-            <Button type="submit" className="sm:justify-self-end">Load</Button>
+            {/* <Button type="submit" className="sm:justify-self-end">Load</Button> */}
 
             <Button
                   onClick={handleSubmit} 
@@ -278,9 +278,9 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
       </Card>
 
       {/* Preview Area */}
-      <div className="w-full max-w-3xl mt-4 lg:mt-0 mx-auto">
+      <div className="mt-4 lg:mt-0 mx-auto inline-block">
         {PreviewComp ? (
-          <Card className="-ml-4 sm:ml-0 ">
+          <Card className="inline-block">
             <CardContent className="p-0">
               {/* Preview actions */}
               <div className="flex justify-end p-2">
@@ -296,8 +296,8 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardContent className="w-full max-w-3xl mt-4 lg:mt-0 mx-auto text-slate-500 text-center">
+          <Card className="inline-block">
+            <CardContent className="mt-4 lg:mt-0 text-slate-500 text-center">
               Enter a number to preview a component (e.g. 33 or 37) from src/components/square.
             </CardContent>
           </Card>

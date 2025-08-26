@@ -13,14 +13,41 @@ interface GridPreviewProps {
   members?: Member[];
   size?: 'small' | 'medium' | 'large' | 'xlarge';
   activeMember?: Member;
+  centerEmptyDefault?: boolean;
 }
+
+const AnimatedPreloader = () => {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 space-y-4">
+      <div className="relative">
+        {/* Outer rotating ring */}
+        <div className="w-16 h-16 border-4 border-purple-200 rounded-full animate-spin border-t-purple-600"></div>
+        {/* Inner pulsing circle */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-purple-600 rounded-full animate-pulse"></div>
+      </div>
+      
+      {/* Animated dots */}
+      <div className="flex space-x-1">
+        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+      </div>
+      
+      <div className="text-center">
+        <p className="text-sm font-medium text-gray-700 animate-pulse">Processing photos</p>
+        <p className="text-xs text-gray-500 mt-1">Optimizing for best quality...</p>
+      </div>
+    </div>
+  );
+};
 
 export const GridPreview: React.FC<GridPreviewProps> = ({ 
   template, 
   memberCount, 
   members = [], 
   size = 'medium',
-  activeMember 
+  activeMember,
+  centerEmptyDefault = false,
 }) => {
   const [PreviewComp, setPreviewComp] = useState<React.LazyExoticComponent<React.ComponentType> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -151,15 +178,17 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     const GridComponent = PreviewComp as React.ComponentType<{
       previewMember?: Member;
       existingMembers?: Member[];
+      centerEmptyDefault?: boolean;
     }>;
     
     // Show loading if members are still being processed
     if (members.length > 0 && processedMembers.length === 0) {
-      return (
-        <div className="p-6 text-sm text-slate-600 text-center">
-          Processing member photos...
-        </div>
-      );
+      // return (
+      //   <div className="p-6 text-sm text-slate-600 text-center">
+      //     Processing member photos...
+      //   </div>
+      // );
+      return <AnimatedPreloader />;
     }
     
     return (
@@ -169,6 +198,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
           <GridComponent 
             previewMember={processedActiveMember}
             existingMembers={processedMembers}
+            centerEmptyDefault={centerEmptyDefault}
           />
         </Suspense>
       </GridProvider>

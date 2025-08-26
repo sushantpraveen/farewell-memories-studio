@@ -10,6 +10,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 // import CreateGroup from "./pages/CreateGroup";
+import AdminOrders from "./pages/AdminOrders";
 import GridBoard from "./components/GridBoard";
 import JoinGroup from "./pages/JoinGroup";
 import Dashboard from "./pages/Dashboard";
@@ -55,11 +56,16 @@ const App = () => (
                   <Editor />
                 </ProtectedRoute>
               } />
-              <Route path="/checkout" element={
+              <Route path="/checkout/:groupId" element={
                 
                   <Checkout />
                 
               } />
+               <Route path="/admin/order" element={
+                
+                <AdminOrders />
+              
+            } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

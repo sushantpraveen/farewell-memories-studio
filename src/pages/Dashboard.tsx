@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [group, setGroup] = useState<any>(null);
 
+  
   // Update group data whenever user's groupId or groups change
   useEffect(() => {
     console.log('Dashboard useEffect - user.groupId:', user?.groupId);
@@ -268,7 +269,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{member.name}</p>
-                        <p className="text-xs text-gray-600">Voted: {member.vote}</p>
+                        <p className="text-xs text-gray-600">Roll No. {member.memberRollNumber}</p>
                       </div>
                       <Badge variant="outline" className="text-xs">#{index + 1}</Badge>
                     </div>

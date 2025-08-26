@@ -10,6 +10,7 @@ export interface Member {
   photo: string;
   vote: GridTemplate;
   joinedAt: Date;
+  memberRollNumber: string;
 }
 
 export interface Group {

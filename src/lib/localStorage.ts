@@ -84,7 +84,7 @@ export class LocalStorageService {
     return photoData;
   }
 
-  private static resizeImageData(dataUrl: string, maxWidth: number, maxHeight: number): string {
+  private static resizeImageData(dataUrl: string, maxWidth: number, maxHeight: number): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
