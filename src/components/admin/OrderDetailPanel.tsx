@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Edit3, Save, Download, Package, User, CreditCard } from 'lucide-react';
+import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -101,62 +102,82 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel - Order Info */}
-        <div className="space-y-6">
-          {/* Customer & Shipping */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="h-4 w-4" />
-                <span>Customer Details</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium">{order.shipping.name}</h4>
-                <p className="text-sm text-muted-foreground">{order.shipping.email}</p>
-                <p className="text-sm text-muted-foreground">{order.shipping.phone}</p>
-              </div>
-              <div>
-                <h5 className="font-medium mb-1">Shipping Address</h5>
-                <address className="text-sm not-italic text-muted-foreground">
-                  {order.shipping.line1}<br />
-                  {order.shipping.line2 && <>{order.shipping.line2}<br /></>}
-                  {order.shipping.city}, {order.shipping.state} {order.shipping.postalCode}<br />
-                  {order.shipping.country}
-                </address>
-              </div>
-            </CardContent>
-          </Card>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center space-x-2">
+            <User className="h-4 w-4" />
+            <span>Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="members" className="flex items-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span>Members ({order.members.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="preview" className="flex items-center space-x-2">
+            <Eye className="h-4 w-4" />
+            <span>Preview</span>
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center space-x-2">
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Payment Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <CreditCard className="h-4 w-4" />
-                <span>Payment Details</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Payment ID:</span>
-                  <span className="font-mono text-sm">{order.paymentId || 'N/A'}</span>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Customer & Shipping */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <User className="h-4 w-4" />
+                  <span>Customer Details</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-medium">{order.shipping.name}</h4>
+                  <p className="text-sm text-muted-foreground">{order.shipping.email}</p>
+                  <p className="text-sm text-muted-foreground">{order.shipping.phone}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span>Paid At:</span>
-                  <span>{order.paidAt ? format(new Date(order.paidAt), 'PPp') : 'N/A'}</span>
+                <div>
+                  <h5 className="font-medium mb-1">Shipping Address</h5>
+                  <address className="text-sm not-italic text-muted-foreground">
+                    {order.shipping.line1}<br />
+                    {order.shipping.line2 && <>{order.shipping.line2}<br /></>}
+                    {order.shipping.city}, {order.shipping.state} {order.shipping.postalCode}<br />
+                    {order.shipping.country}
+                  </address>
                 </div>
-                <div className="flex justify-between">
-                  <span>Status:</span>
-                  <Badge variant={order.paid ? 'default' : 'destructive'}>
-                    {order.paid ? 'Paid' : 'Unpaid'}
-                  </Badge>
+              </CardContent>
+            </Card>
+
+            {/* Payment Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <CreditCard className="h-4 w-4" />
+                  <span>Payment Details</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Payment ID:</span>
+                    <span className="font-mono text-sm">{order.paymentId || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Paid At:</span>
+                    <span>{order.paidAt ? format(new Date(order.paidAt), 'PPp') : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status:</span>
+                    <Badge variant={order.paid ? 'default' : 'destructive'}>
+                      {order.paid ? 'Paid' : 'Unpaid'}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Order Description */}
           <Card>
@@ -203,33 +224,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Editor Controls */}
-          <EditorControls 
-            order={order} 
-            onSettingsChange={(settings) => updateOrderSettings(order.id, settings)} 
-          />
-        </div>
-
-        {/* Right Panel - Grid Preview and Members */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Grid Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Grid Preview ({order.gridTemplate})</span>
-                <Button onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrderGridPreview order={order} />
-            </CardContent>
-          </Card>
-
-          {/* Members Table */}
+        <TabsContent value="members" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Members ({order.members.length})</CardTitle>
@@ -241,6 +238,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                     <TableHead>Photo</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Roll No</TableHead>
+                    <TableHead>Size</TableHead>
                     <TableHead>Vote</TableHead>
                     <TableHead>Joined</TableHead>
                   </TableRow>
@@ -257,6 +255,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       </TableCell>
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.memberRollNumber}</TableCell>
+                      <TableCell className="uppercase">{member.size ? member.size : '-'}</TableCell>
                       <TableCell>
                         {member.vote && (
                           <Badge variant="outline">{member.vote}</Badge>
@@ -271,8 +270,32 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
               </Table>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="preview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Grid Preview ({order.gridTemplate})</span>
+                <Button onClick={handleDownload}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrderGridPreview order={order} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <EditorControls 
+            order={order} 
+            onSettingsChange={(settings) => updateOrderSettings(order.id, settings)} 
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -78,6 +78,7 @@ const Checkout = () => {
           photo: m.photo,
           vote: m.vote,
           joinedAt: m.joinedAt.toISOString(),
+          size: m.size,
         }));
 
         const newOrder: Order = {

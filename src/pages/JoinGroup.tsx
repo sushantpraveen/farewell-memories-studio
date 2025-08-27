@@ -10,6 +10,7 @@ import { useCollage, GridTemplate } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { GridPreview } from "@/components/GridPreview";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -17,7 +18,8 @@ const JoinGroup = () => {
     name: "",
     memberRollNumber: "",
     photo: "",
-    vote: "square" as GridTemplate
+    vote: "square" as GridTemplate,
+    size: undefined as undefined | 's' | 'm' | 'l' | 'xl' | 'xxl'
   });
   const [previewTemplate, setPreviewTemplate] = useState<GridTemplate>("square");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -192,6 +194,25 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="size">T‑Shirt Size</Label>
+                    <Select
+                      value={memberData.size}
+                      onValueChange={(val) => setMemberData({ ...memberData, size: val as 's' | 'm' | 'l' | 'xl' | 'xxl' })}
+                    >
+                      <SelectTrigger id="size">
+                        <SelectValue placeholder="Select your size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="s">S</SelectItem>
+                        <SelectItem value="m">M</SelectItem>
+                        <SelectItem value="l">L</SelectItem>
+                        <SelectItem value="xl">XL</SelectItem>
+                        <SelectItem value="xxl">XXL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="photo" className="flex items-center">
                       <Upload className="mr-2 h-4 w-4" />
                       Upload Your Photo
@@ -234,7 +255,7 @@ const JoinGroup = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-purple-600 hover:bg-purple-700"
-                    disabled={!memberData.name || !memberData.photo || isSubmitting}
+                    disabled={!memberData.name || !memberData.photo || !memberData.size || isSubmitting}
                   >
                     {isSubmitting ? "Joining Group..." : "Join Group"}
                   </Button>

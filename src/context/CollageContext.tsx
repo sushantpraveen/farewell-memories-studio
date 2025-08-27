@@ -11,6 +11,7 @@ export interface Member {
   vote: GridTemplate;
   joinedAt: Date;
   memberRollNumber: string;
+  size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
 }
 
 export interface Group {

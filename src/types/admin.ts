@@ -5,6 +5,7 @@ export interface AdminMember {
     photo: string; // data URL or remote URL
     vote?: 'square' | 'hexagonal' | 'circle';
     joinedAt: string;
+    size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
   }
   
   export interface Shipping {
@@ -17,6 +18,7 @@ export interface AdminMember {
     state: string;
     postalCode: string;
     country: string;
+    size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
   }
   
   export interface OrderSettings {
