@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings } from 'lucide-react';
+import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings, Grid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -19,7 +21,9 @@ import { Order } from '@/types/admin';
 import { mockAdminApi } from '@/services/mockAdminApi';
 import { OrderGridPreview } from './OrderGridPreview';
 import { EditorControls } from './EditorControls';
+import { CenterVariantsModal } from './CenterVariantsModal';
 import { useAdminOrders } from './AdminOrdersContext';
+import { canGenerateVariants } from '@/utils/gridCenterUtils';
 import { toast } from 'sonner';
 
 interface OrderDetailPanelProps {
@@ -31,6 +35,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   const [loading, setLoading] = useState(true);
   const [editingDescription, setEditingDescription] = useState(false);
   const [description, setDescription] = useState('');
+  const [showVariantsModal, setShowVariantsModal] = useState(false);
   const { updateOrderSettings } = useAdminOrders();
 
   useEffect(() => {
@@ -68,6 +73,18 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
     window.dispatchEvent(new CustomEvent('grid-template-download'));
   };
 
+  const handleGenerateVariants = () => {
+    if (!order) return;
+    
+    const { canGenerate, reason } = canGenerateVariants(order);
+    if (!canGenerate) {
+      toast.error(reason || 'Cannot generate variants');
+      return;
+    }
+    
+    setShowVariantsModal(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -83,6 +100,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
       </div>
     );
   }
+
+  const variantGenerationStatus = canGenerateVariants(order);
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
@@ -277,10 +296,34 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Grid Preview ({order.gridTemplate})</span>
-                <Button onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant="outline"
+                            onClick={handleGenerateVariants}
+                            disabled={!variantGenerationStatus.canGenerate}
+                            className="flex items-center space-x-2"
+                          >
+                            <Grid className="h-4 w-4" />
+                            <span>Generate Center Variants</span>
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {!variantGenerationStatus.canGenerate && (
+                        <TooltipContent>
+                          <p>{variantGenerationStatus.reason}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -296,6 +339,13 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
           />
         </TabsContent>
       </Tabs>
+
+      {/* Center Variants Modal */}
+      <CenterVariantsModal
+        open={showVariantsModal}
+        onOpenChange={setShowVariantsModal}
+        order={order}
+      />
     </div>
   );
 };
