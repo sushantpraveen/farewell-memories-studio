@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,19 +37,31 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     setIsGenerating(true);
     setProgress(0);
     setError(null);
+    setRenderedImages({});
+    setCurrentRenderIndex(0);
     
     try {
+      console.log('Generating variants for order:', order.id);
       const generatedVariants = await generateGridVariants(order);
+      console.log('Generated variants:', generatedVariants.length);
       setVariants(generatedVariants);
       setCurrentRenderIndex(0);
+      
+      if (generatedVariants.length === 0) {
+        setIsGenerating(false);
+        setError('No variants could be generated');
+        toast.error('No variants could be generated');
+      }
     } catch (error) {
       console.error('Error generating variants:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate variants');
       toast.error('Failed to generate variants');
+      setIsGenerating(false);
     }
   };
 
   const handleVariantRendered = (variantId: string, dataUrl: string) => {
+    console.log('Variant rendered:', variantId);
     setRenderedImages(prev => ({ ...prev, [variantId]: dataUrl }));
     
     setCurrentRenderIndex(prevIndex => {
@@ -58,9 +69,12 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       const progressPercentage = Math.min((newIndex / variants.length) * 100, 100);
       setProgress(progressPercentage);
       
+      console.log(`Progress: ${newIndex}/${variants.length} (${progressPercentage.toFixed(1)}%)`);
+      
       if (newIndex >= variants.length) {
         setIsGenerating(false);
         toast.success(`Generated ${variants.length} center variants successfully`);
+        console.log('All variants rendered successfully');
       }
       
       return newIndex;
@@ -165,6 +179,11 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
             <p className="text-sm text-muted-foreground">
               Rendered {currentRenderIndex} of {variants.length} variants
             </p>
+            {variants.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Currently rendering: {variants[currentRenderIndex]?.centerMember?.name || 'Unknown'}
+              </p>
+            )}
           </div>
         ) : variants.length > 0 ? (
           <CenterVariantsGallery

@@ -21,9 +21,14 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
 
   useEffect(() => {
     const renderVariant = async () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current) {
+        console.warn('Container ref not available for variant', variant.id);
+        return;
+      }
 
       try {
+        console.log('Starting render for variant:', variant.id);
+        
         // Convert admin members to collage members format
         const convertedMembers: Member[] = variant.members.map(member => ({
           id: member.id,
@@ -34,23 +39,47 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           memberRollNumber: member.memberRollNumber
         }));
 
-        // Wait for the component to render
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait longer for the component to render completely
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Find the canvas in the rendered component and extract the image
-        const canvas = containerRef.current?.querySelector('canvas');
+        // Try to find canvas multiple times with delays
+        let canvas: HTMLCanvasElement | null = null;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (!canvas && attempts < maxAttempts) {
+          canvas = containerRef.current?.querySelector('canvas');
+          if (!canvas) {
+            console.log(`Attempt ${attempts + 1}: No canvas found for variant ${variant.id}, waiting...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            attempts++;
+          }
+        }
+
         if (canvas) {
-          const dataUrl = canvas.toDataURL('image/png');
-          onRendered(variant.id, dataUrl);
+          console.log('Canvas found for variant:', variant.id);
+          
+          // Wait a bit more to ensure canvas is fully rendered
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          try {
+            const dataUrl = canvas.toDataURL('image/png');
+            console.log('Generated image for variant:', variant.id);
+            onRendered(variant.id, dataUrl);
+          } catch (canvasError) {
+            console.error(`Error extracting canvas data for variant ${variant.id}:`, canvasError);
+          }
         } else {
-          console.warn(`No canvas found for variant ${variant.id}`);
+          console.error(`No canvas found for variant ${variant.id} after ${maxAttempts} attempts`);
         }
       } catch (error) {
         console.error(`Error rendering variant ${variant.id}:`, error);
       }
     };
 
-    renderVariant();
+    // Start rendering after a short delay to ensure component is mounted
+    const timer = setTimeout(renderVariant, 100);
+    return () => clearTimeout(timer);
   }, [variant, onRendered]);
 
   // Convert admin members to collage members format
@@ -64,7 +93,11 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
   }));
 
   return (
-    <div ref={containerRef} className="absolute -top-[9999px] -left-[9999px] w-64 h-64">
+    <div 
+      ref={containerRef} 
+      className="absolute -top-[9999px] -left-[9999px] pointer-events-none"
+      style={{ width: '400px', height: '400px' }}
+    >
       <GridProvider>
         <GridPreview
           template={order.gridTemplate}
