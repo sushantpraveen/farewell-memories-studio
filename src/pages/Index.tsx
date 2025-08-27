@@ -34,9 +34,9 @@ const Index = () => {
                 Create Group
               </Button>
             </Link>
-            <Button onClick={createTestGroup} variant="outline">
+            {/* <Button onClick={createTestGroup} variant="outline">
               Create Test Group
-            </Button>
+            </Button> */}
           </div>
         </div>
       </header>

@@ -81,23 +81,32 @@ const Editor = () => {
   const isGridComplete = group.members.length === group.totalMembers;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-4">
-      <div className="container mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm" className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
-              <p className="text-gray-600">Class of {group.yearOfPassing} • {winningTemplate} grid</p>
-            </div>
-          </div>
-          <div className="flex space-x-2">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+
+       {/* Navigation Header */}
+       <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2"
+            >
+              {/* <ArrowLeft className="h-4 w-4" /> */}
+              <Link to="/">Back to Home</Link>
+            </Button>
+            {/* <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
+              <span className="font-semibold text-gray-900">Checkout</span>
+            </div> */}
+            {/* <div className="w-[100px]" /> */}
+             <div className="flex items-center space-x-4">
+            {/* <span className="text-sm text-gray-600">Welcome, {user?.name}</span> */}
+            {/* <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button> */}
+            <div className="flex space-x-2">
             <Button 
               className={`${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
               onClick={handleCheckout}
@@ -115,6 +124,44 @@ const Editor = () => {
               Download
             </Button>
           </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          {/* <div className="flex items-center">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm" className="mr-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
+              <p className="text-gray-600">Class of {group.yearOfPassing} • {winningTemplate} grid</p>
+            </div>
+          </div> */}
+          {/* <div className="flex space-x-2">
+            <Button 
+              className={`${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              onClick={handleCheckout}
+              disabled={!isGridComplete}
+              title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              {isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}
+            </Button>
+            <Button variant="outline" onClick={handleShare}>
+              <Share className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
+              Download
+            </Button>
+          </div> */}
         </div>
 
         {/* Progress */}
@@ -259,8 +306,14 @@ const Editor = () => {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                
+                <Button variant="outline" className="w-full" onClick={handleShare}>
+                  <Share className="h-4 w-4 mr-2" />
+                  Share Group Link
+                </Button>
+
                 <Button 
-                  className={`w-full ${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                  className={`w-full ${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'}`}
                   onClick={handleCheckout}
                   disabled={!isGridComplete}
                   title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
@@ -268,10 +321,7 @@ const Editor = () => {
                   <CreditCard className="h-4 w-4 mr-2" />
                   {isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}
                 </Button>
-                <Button variant="outline" className="w-full" onClick={handleShare}>
-                  <Share className="h-4 w-4 mr-2" />
-                  Share Group Link
-                </Button>
+      
                 <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
                   Download
                 </Button>

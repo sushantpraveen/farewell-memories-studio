@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Award, TrendingUp, Users, Share, Eye, LogOut } from 'lucide-react';
+import { Award, TrendingUp, Users, Share, Eye, LogOut, ArrowLeft, Home, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCollage, Member } from '@/context/CollageContext';
 import { MemberDetailsModal } from '@/components/MemberDetailsModal';
@@ -96,7 +96,35 @@ const Dashboard = () => {
   const totalVotes = Object.values(group.votes as { hexagonal: number; square: number; circle: number }).reduce((a: number, b: number) => a + b, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 ">
+      {/* Navigation Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2"
+            >
+              {/* <ArrowLeft className="h-4 w-4" /> */}
+              <Link to="/">Back to Home</Link>
+            </Button>
+            {/* <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
+              <span className="font-semibold text-gray-900">Checkout</span>
+            </div> */}
+            {/* <div className="w-[100px]" /> */}
+             <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -104,13 +132,13 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
             <p className="text-gray-600">Class of {group.yearOfPassing} • Dashboard</p>
           </div>
-          <div className="flex items-center space-x-4">
+          {/* <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Stats */}
