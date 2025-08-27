@@ -53,9 +53,9 @@ export const OrdersTable: React.FC = () => {
 
   const handleSelectOrder = (orderId: string, checked: boolean) => {
     if (checked) {
-      setSelectedOrders(prev => [...prev, orderId]);
+      setSelectedOrders([...selectedOrders, orderId]);
     } else {
-      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+      setSelectedOrders(selectedOrders.filter(id => id !== orderId));
     }
   };
 
