@@ -282,7 +282,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         cols: 8,
         rows: 11, // Increased to include both top extension rows and both bottom extension rows
         // Target physical size for print within requested ranges
-        targetWidthIn: 8.5,
+        targetWidthIn: 8,
         targetHeightIn: 12.5,
         dpi: 300,
         desiredGapPx: 4,

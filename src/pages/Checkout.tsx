@@ -122,11 +122,11 @@ const Checkout = () => {
       }
 
       // Redirect sooner to Admin Orders; keep success toast visible briefly
-      setTimeout(() => {
-        setShowSuccess(false);
-        navigate('/admin/order');
-      }, 1200);
-    }, 2000);
+      // (() => {
+      //   setShowSuccess(false);
+      //   navigate('/admin/order');
+      // }, 3200);
+    }, 2000);setTimeout
   };
 
   const isFormValid = Object.values(shippingForm).every(value => value.trim() !== '');
@@ -176,15 +176,16 @@ const Checkout = () => {
 
   if (showSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center">
         <Card className="max-w-md w-full mx-4 text-center shadow-lg border-0">
           <CardContent className="pt-8 pb-6">
             <div className="mb-6">
-              <div className="w-24 h-24 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="text-4xl">🎉</div>
-              </div>
-              <h2 className="text-2xl font-bold text-green-800 mb-2">Payment Successful!</h2>
-              <p className="text-green-600">Your order has been placed successfully. You will receive a confirmation email shortly.</p>
+              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
+                {/* <div className="text-4xl">🎉</div> */}
+              <img src="/congrats.gif" alt="success" width={400} />
+            </div>
+              {/* <h2 className="text-2xl font-bold text-green-800 mb-2">Payment Successful!</h2>
+              <p className="text-green-600">Your order has been placed successfully. You will receive a confirmation email shortly.</p> */}
             </div>
             <div className="bg-green-50 rounded-lg p-4 mb-4">
               <p className="text-sm text-green-700">Order ID: #RZP{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>

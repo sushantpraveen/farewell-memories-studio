@@ -2,17 +2,21 @@
 import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
+import * as faceapi from 'face-api.js';
+import { enumerate45 } from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
   variant: GridVariant;
   onRendered: (variantId: string, dataUrl: string) => void;
+  templateKey?: string; // e.g., '45' (future: support others via registry)
 }
 
 export const VariantRenderer: React.FC<VariantRendererProps> = ({
   order,
   variant,
   onRendered,
+  templateKey = '45',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -20,78 +24,55 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
     const generateVariantImage = async () => {
       try {
         console.log('Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
-        
-        const memberCount = order.members.length;
-        
-        // Calculate grid dimensions - use the same logic as the original components
-        let cols = 0, rows = 0;
-        
-        if (memberCount <= 4) {
-          cols = rows = 2;
-        } else if (memberCount <= 9) {
-          cols = rows = 3;
-        } else if (memberCount <= 16) {
-          cols = rows = 4;
-        } else if (memberCount <= 25) {
-          cols = rows = 5;
-        } else if (memberCount <= 36) {
-          cols = rows = 6;
-        } else {
-          cols = rows = Math.ceil(Math.sqrt(memberCount));
-        }
 
-        console.log('Grid layout:', cols, 'x', rows, 'for', memberCount, 'members');
+        // 0) Ensure face-api models are loaded (once per session)
+        await ensureModelsLoaded();
 
-        // Create canvas
+        // Create canvas at print-equivalent pixels: 8in x 12.5in @ 300 DPI => 2400 x 3750
         const canvas = document.createElement('canvas');
-        const size = 400;
-        canvas.width = size;
-        canvas.height = size;
+        const DPI = 300;
+        const TARGET_W_IN = 8;
+        const TARGET_H_IN = 12.5;
+        const COLS = 8;
+        const ROWS = 11; // includes top-ext-most and bottom-most rows
+        const gap = 4; // align with desiredGapPx used in 45.tsx download
+        canvas.width = Math.round(TARGET_W_IN * DPI);
+        canvas.height = Math.round(TARGET_H_IN * DPI);
         const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          throw new Error('Canvas context not available');
-        }
+        if (!ctx) throw new Error('Canvas context not available');
+        // Improve resampling quality for clearer faces
+        (ctx as any).imageSmoothingEnabled = true;
+        (ctx as any).imageSmoothingQuality = 'high';
 
-        // Fill background
+        // Background
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Calculate cell dimensions
-        const cellSize = size / Math.max(cols, rows);
-        const gap = 2;
-        const actualCellSize = cellSize - gap;
+        // Match 45.tsx structure: 8 columns, 11 virtual rows
+        // Compute cell sizes to fully occupy the fixed canvas with gaps
+        const cellW = (canvas.width - (COLS + 1) * gap) / COLS;
+        const cellH = (canvas.height - (ROWS + 1) * gap) / ROWS;
 
-        // Helper function to load and draw image
-        const loadAndDrawImage = async (src: string, x: number, y: number, width: number, height: number) => {
+        const rect = (c: number, r: number, cspan = 1, rspan = 1) => ({
+          x: gap + c * (cellW + gap),
+          y: gap + r * (cellH + gap),
+          w: cspan * cellW + (cspan - 1) * gap,
+          h: rspan * cellH + (rspan - 1) * gap,
+        });
+
+        const drawCover = async (src: string, c: number, r: number, cspan = 1, rspan = 1) => {
+          const { x, y, w, h } = rect(c, r, cspan, rspan);
           return new Promise<void>((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.onload = () => {
+            img.onload = async () => {
               try {
-                // Draw image with cover behavior
-                const imgRatio = img.width / img.height;
-                const cellRatio = width / height;
-                
-                let drawWidth = width;
-                let drawHeight = height;
-                let offsetX = 0;
-                let offsetY = 0;
-                
-                if (imgRatio > cellRatio) {
-                  // Image is wider - fit height and center horizontally
-                  drawWidth = height * imgRatio;
-                  offsetX = (width - drawWidth) / 2;
-                } else {
-                  // Image is taller - fit width and center vertically
-                  drawHeight = width / imgRatio;
-                  offsetY = (height - drawHeight) / 2;
-                }
-                
-                ctx.drawImage(img, x + offsetX, y + offsetY, drawWidth, drawHeight);
+                // Try face-aware crop first (await detection)
+                const { sx, sy, sw, sh } = await getFaceAwareCropAsync(img, w, h);
+                ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
                 resolve();
-              } catch (err) {
-                reject(err);
+              } catch (e) {
+                reject(e);
               }
             };
             img.onerror = () => reject(new Error('Failed to load image'));
@@ -99,46 +80,33 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           });
         };
 
-        // Draw grid cells
-        let cellIndex = 0;
-        for (let row = 0; row < rows; row++) {
-          for (let col = 0; col < cols; col++) {
-            if (cellIndex >= variant.members.length) break;
-            
-            const member = variant.members[cellIndex];
-            if (member && member.photo) {
-              const x = col * cellSize + gap / 2;
-              const y = row * cellSize + gap / 2;
-              
-              try {
-                await loadAndDrawImage(member.photo, x, y, actualCellSize, actualCellSize);
-              } catch (error) {
-                console.warn('Failed to load image for member:', member.name, error);
-                // Draw placeholder
+        // Helper: safe getter that ignores center index when needed
+        const memberAt = (idx: number) => variant.members[idx];
+
+        // Draw using shared enumerator for the selected template
+        if (templateKey === '45') {
+          await enumerate45(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
-                ctx.fillRect(x, y, actualCellSize, actualCellSize);
-                ctx.fillStyle = '#6b7280';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(member.name.split(' ')[0], x + actualCellSize / 2, y + actualCellSize / 2);
+                ctx.fillRect(x, y, w, h);
               }
-            } else {
-              // Draw empty cell
-              const x = col * cellSize + gap / 2;
-              const y = row * cellSize + gap / 2;
-              ctx.fillStyle = '#f9fafb';
-              ctx.fillRect(x, y, actualCellSize, actualCellSize);
+              return;
             }
-            
-            cellIndex++;
-          }
-          if (cellIndex >= variant.members.length) break;
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } else {
+          // Fallback: do nothing for unknown template (future templates will be added here)
         }
 
-        // Get the data URL
+        // Export
         const dataUrl = canvas.toDataURL('image/png', 0.9);
-        
-        console.log('Successfully generated variant image for:', variant.id);
         onRendered(variant.id, dataUrl);
 
       } catch (error) {
@@ -159,3 +127,73 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
     </div>
   );
 };
+
+// -------- face-api helpers --------
+let faceModelsLoaded = false;
+async function ensureModelsLoaded() {
+  if (faceModelsLoaded) return;
+  const MODEL_URL = '/weights';
+  await Promise.all([
+    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+  ]);
+  faceModelsLoaded = true;
+}
+
+async function getFaceAwareCropAsync(img: HTMLImageElement, targetW: number, targetH: number) {
+  const dRatio = targetW / targetH;
+
+  const coverFallback = () => {
+    const sRatio = img.width / img.height;
+    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (sRatio > dRatio) {
+      sh = img.height;
+      sw = sh * dRatio;
+      sx = (img.width - sw) / 2;
+    } else {
+      sw = img.width;
+      sh = sw / dRatio;
+      sy = (img.height - sh) / 2;
+    }
+    return { sx, sy, sw, sh };
+  };
+
+  try {
+    const det = await faceapi
+      .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+      .withFaceLandmarks();
+    if (!det) return coverFallback();
+
+    const box = det.detection.box; // { x, y, width, height }
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const PADDING = 0.35; // expand to include a bit of hair/shoulders
+
+    // size so that face box fits inside target aspect with padding
+    let sw = box.width * (1 + PADDING);
+    let sh = sw / dRatio;
+    const neededH = box.height * (1 + PADDING);
+    if (sh < neededH) {
+      sh = neededH;
+      sw = sh * dRatio;
+    }
+
+    // center on face
+    let sx = cx - sw / 2;
+    let sy = cy - sh / 2;
+
+    // clamp to image bounds
+    if (sx < 0) sx = 0;
+    if (sy < 0) sy = 0;
+    if (sx + sw > img.width) sx = Math.max(0, img.width - sw);
+    if (sy + sh > img.height) sy = Math.max(0, img.height - sh);
+
+    // final safety: ensure sw/sh within bounds
+    sw = Math.min(sw, img.width);
+    sh = Math.min(sh, img.height);
+
+    return { sx, sy, sw, sh };
+  } catch {
+    return coverFallback();
+  }
+}

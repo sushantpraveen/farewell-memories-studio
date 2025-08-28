@@ -106,8 +106,8 @@ const JoinGroup = () => {
   const remainingSpots = group.totalMembers - group.members.length;
 
   return (
-    <div className="min-h-screen mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
-      <div className="container mx-auto max-w-4xl">
+    <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6">
+      <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center mb-8">
           <Link to="/">
@@ -160,7 +160,35 @@ const JoinGroup = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="space-y-6">
+            {/* Current Members */}
+            <Card className="shadow-xl border-0">
+                <CardHeader>
+                  <CardTitle>Current Members</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {group.members.length === 0 ? (
+                    <p className="text-gray-600 text-center py-4">No members yet. Be the first to join!</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {group.members.map((member) => (
+                        <div key={member.id} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
+                          <img
+                            src={member.photo}
+                            alt={member.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{member.name}</p>
+                            <p className="text-sm text-gray-600">Voted: {member.memberRollNumber}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             {/* Join Form */}
             <Card className="shadow-xl border-0">
               <CardHeader>
@@ -184,13 +212,13 @@ const JoinGroup = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="memberRollNumber">Roll No.</Label>
-                    <Input
-                      id="memberRollNumber"
-                      placeholder="Enter your full name"
-                      value={memberData.memberRollNumber}
-                      onChange={(e) => setMemberData({ ...memberData, memberRollNumber: e.target.value })}
-                      required
-                    />
+                      <Input
+                        id="memberRollNumber"
+                        placeholder="Enter your roll number"
+                        value={memberData.memberRollNumber}
+                        onChange={(e) => setMemberData({ ...memberData, memberRollNumber: e.target.value })}
+                        required
+                      />
                   </div>
 
                   <div className="space-y-2">
@@ -262,35 +290,10 @@ const JoinGroup = () => {
                 </form>
               </CardContent>
             </Card>
+            </div>
 
-            {/* Current Members & Preview */}
-            <div className="space-y-6">
-              <Card className="shadow-xl border-0">
-                <CardHeader>
-                  <CardTitle>Current Members</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {group.members.length === 0 ? (
-                    <p className="text-gray-600 text-center py-4">No members yet. Be the first to join!</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.members.map((member) => (
-                        <div key={member.id} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                          <img
-                            src={member.photo}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          <div>
-                            <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-gray-600">Voted: {member.memberRollNumber}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Grid Preview - 2/3 width */}
+            <div className="lg:col-span-2">
 
               <Card className="shadow-xl border-0 relative">
                  <CardHeader>
@@ -311,7 +314,7 @@ const JoinGroup = () => {
                        vote: memberData.vote,
                        joinedAt: new Date()
                      } : undefined}
-                     size="xlarge"
+                     size="large"
                    />
                  </CardContent>
                </Card>

@@ -78,7 +78,7 @@ const Editor = () => {
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
-  const isGridComplete = group.members.length === group.totalMembers;
+  const isGridComplete = group.members.length !== group.totalMembers;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
@@ -108,7 +108,7 @@ const Editor = () => {
             </Button> */}
             <div className="flex space-x-2">
             <Button 
-              className={`${isGridComplete ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              className={`${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'}`}
               onClick={handleCheckout}
               disabled={!isGridComplete}
               title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}

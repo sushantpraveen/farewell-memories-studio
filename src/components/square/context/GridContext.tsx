@@ -246,7 +246,14 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
   const downloadImage = useCallback(async (filename: string, opts: RenderOptions) => {
     setIsDownloading(true);
     try {
-      const canvas = await renderToCanvas(opts);
+      // Enforce default print size for all template downloads unless explicitly overridden
+      const finalOpts: RenderOptions = {
+        ...opts,
+        targetWidthIn: opts.targetWidthIn ?? 8,
+        targetHeightIn: opts.targetHeightIn ?? 12.5,
+        dpi: opts.dpi ?? 300,
+      };
+      const canvas = await renderToCanvas(finalOpts);
       const rawBlob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!rawBlob) throw new Error('Failed to encode PNG');
 
