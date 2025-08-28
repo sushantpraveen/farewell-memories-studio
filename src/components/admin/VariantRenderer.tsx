@@ -27,7 +27,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
       }
 
       try {
-        console.log('Starting render for variant:', variant.id);
+        console.log('Starting render for variant:', variant.id, 'Center member:', variant.centerMember.name);
         
         // Convert admin members to collage members format
         const convertedMembers: Member[] = variant.members.map(member => ({
@@ -39,38 +39,50 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           memberRollNumber: member.memberRollNumber
         }));
 
-        // Wait longer for the component to render completely
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Converted members for variant:', variant.id, convertedMembers.length);
 
-        // Try to find canvas multiple times with delays
+        // Wait for the component to render completely
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Look for canvas in multiple ways
         let canvas: HTMLCanvasElement | null = null;
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 15;
 
         while (!canvas && attempts < maxAttempts) {
-          canvas = containerRef.current?.querySelector('canvas');
+          // Try different selectors
+          canvas = containerRef.current?.querySelector('canvas') ||
+                   document.querySelector(`#variant-${variant.id} canvas`) ||
+                   containerRef.current?.querySelector('div canvas');
+          
           if (!canvas) {
-            console.log(`Attempt ${attempts + 1}: No canvas found for variant ${variant.id}, waiting...`);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log(`Attempt ${attempts + 1}: No canvas found for variant ${variant.id}`);
+            console.log('Container HTML:', containerRef.current?.innerHTML?.substring(0, 200));
+            await new Promise(resolve => setTimeout(resolve, 300));
             attempts++;
+          } else {
+            console.log('Canvas found for variant:', variant.id, 'Canvas dimensions:', canvas.width, 'x', canvas.height);
           }
         }
 
-        if (canvas) {
-          console.log('Canvas found for variant:', variant.id);
-          
+        if (canvas && canvas.width > 0 && canvas.height > 0) {
           // Wait a bit more to ensure canvas is fully rendered
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
           
           try {
             const dataUrl = canvas.toDataURL('image/png');
-            console.log('Generated image for variant:', variant.id);
-            onRendered(variant.id, dataUrl);
+            if (dataUrl && dataUrl !== 'data:,') {
+              console.log('Successfully generated image for variant:', variant.id);
+              onRendered(variant.id, dataUrl);
+            } else {
+              console.error('Canvas produced empty data URL for variant:', variant.id);
+            }
           } catch (canvasError) {
             console.error(`Error extracting canvas data for variant ${variant.id}:`, canvasError);
           }
         } else {
-          console.error(`No canvas found for variant ${variant.id} after ${maxAttempts} attempts`);
+          console.error(`No valid canvas found for variant ${variant.id} after ${maxAttempts} attempts`);
+          console.log('Final container contents:', containerRef.current?.innerHTML);
         }
       } catch (error) {
         console.error(`Error rendering variant ${variant.id}:`, error);
@@ -78,7 +90,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
     };
 
     // Start rendering after a short delay to ensure component is mounted
-    const timer = setTimeout(renderVariant, 100);
+    const timer = setTimeout(renderVariant, 200);
     return () => clearTimeout(timer);
   }, [variant, onRendered]);
 
@@ -95,8 +107,9 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
   return (
     <div 
       ref={containerRef} 
+      id={`variant-${variant.id}`}
       className="absolute -top-[9999px] -left-[9999px] pointer-events-none"
-      style={{ width: '400px', height: '400px' }}
+      style={{ width: '500px', height: '500px' }}
     >
       <GridProvider>
         <GridPreview

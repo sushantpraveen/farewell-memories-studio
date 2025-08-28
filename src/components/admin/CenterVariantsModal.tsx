@@ -41,9 +41,9 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     setCurrentRenderIndex(0);
     
     try {
-      console.log('Generating variants for order:', order.id);
+      console.log('Generating variants for order:', order.id, 'Members:', order.members.length);
       const generatedVariants = await generateGridVariants(order);
-      console.log('Generated variants:', generatedVariants.length);
+      console.log('Generated variants:', generatedVariants.length, generatedVariants.map(v => v.centerMember.name));
       setVariants(generatedVariants);
       setCurrentRenderIndex(0);
       
@@ -51,6 +51,8 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         setIsGenerating(false);
         setError('No variants could be generated');
         toast.error('No variants could be generated');
+      } else {
+        console.log('Starting to render variants...');
       }
     } catch (error) {
       console.error('Error generating variants:', error);
@@ -61,7 +63,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   };
 
   const handleVariantRendered = (variantId: string, dataUrl: string) => {
-    console.log('Variant rendered:', variantId);
+    console.log('Variant rendered successfully:', variantId);
     setRenderedImages(prev => ({ ...prev, [variantId]: dataUrl }));
     
     setCurrentRenderIndex(prevIndex => {
@@ -72,14 +74,41 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       console.log(`Progress: ${newIndex}/${variants.length} (${progressPercentage.toFixed(1)}%)`);
       
       if (newIndex >= variants.length) {
+        console.log('All variants rendered successfully!');
         setIsGenerating(false);
         toast.success(`Generated ${variants.length} center variants successfully`);
-        console.log('All variants rendered successfully');
       }
       
       return newIndex;
     });
   };
+
+  // Add timeout to handle stuck rendering
+  useEffect(() => {
+    if (isGenerating && variants.length > 0) {
+      const timeout = setTimeout(() => {
+        if (currentRenderIndex < variants.length) {
+          console.log('Rendering timeout, moving to next variant or finishing');
+          setCurrentRenderIndex(prev => {
+            const newIndex = prev + 1;
+            if (newIndex >= variants.length) {
+              setIsGenerating(false);
+              const renderedCount = Object.keys(renderedImages).length;
+              if (renderedCount > 0) {
+                toast.success(`Generated ${renderedCount} of ${variants.length} center variants`);
+              } else {
+                setError('Failed to render any variants');
+                toast.error('Failed to render variants');
+              }
+            }
+            return newIndex;
+          });
+        }
+      }, 10000); // 10 second timeout per variant
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isGenerating, currentRenderIndex, variants.length, renderedImages]);
 
   const handleDownloadSelected = async (variantIds: string[]) => {
     if (variantIds.length === 0) {
@@ -177,9 +206,9 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
             <h3 className="text-lg font-medium">Generating Center Variants...</h3>
             <Progress value={progress} className="max-w-md mx-auto" />
             <p className="text-sm text-muted-foreground">
-              Rendered {currentRenderIndex} of {variants.length} variants
+              Rendered {Object.keys(renderedImages).length} of {variants.length} variants
             </p>
-            {variants.length > 0 && (
+            {variants.length > 0 && currentRenderIndex < variants.length && (
               <p className="text-xs text-muted-foreground">
                 Currently rendering: {variants[currentRenderIndex]?.centerMember?.name || 'Unknown'}
               </p>
