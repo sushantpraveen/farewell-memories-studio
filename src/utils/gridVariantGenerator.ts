@@ -1,6 +1,5 @@
 
 import { Order, AdminMember } from '@/types/admin';
-import { getCenterCellIndex } from './gridCenterUtils';
 
 export interface GridVariant {
   id: string;
@@ -19,10 +18,11 @@ export async function generateGridVariants(order: Order): Promise<GridVariant[]>
   
   console.log('Generating variants for', membersWithPhotos.length, 'members with photos');
   
-  // Calculate grid dimensions
+  // Calculate grid dimensions - use the exact same logic as the original templates
   const memberCount = order.members.length;
   let cols = 0, rows = 0;
   
+  // This matches the logic used in the square grid components
   if (memberCount <= 4) {
     cols = rows = 2;
   } else if (memberCount <= 9) {
@@ -38,42 +38,51 @@ export async function generateGridVariants(order: Order): Promise<GridVariant[]>
   }
 
   const totalCells = cols * rows;
-  const centerIndex = Math.floor(totalCells / 2); // True center for most cases
   
-  console.log('Grid layout:', cols, 'x', rows, 'center at index:', centerIndex);
+  console.log('Grid layout:', cols, 'x', rows, 'for', memberCount, 'members');
   
-  // Create variants - one for each member that can be in center
-  for (let i = 0; i < membersWithPhotos.length; i++) {
-    const centerMember = membersWithPhotos[i];
+  // For each member that can be in the center, create a variant
+  for (let centerMemberIndex = 0; centerMemberIndex < membersWithPhotos.length; centerMemberIndex++) {
+    const centerMember = membersWithPhotos[centerMemberIndex];
     
-    // Create a proper arrangement with the selected member at center
-    const variantMembers: AdminMember[] = [];
+    // Calculate the actual center position in the grid
+    const centerRow = Math.floor(rows / 2);
+    const centerCol = Math.floor(cols / 2);
+    const centerIndex = centerRow * cols + centerCol;
     
-    // Fill all positions, placing center member at center index
-    let memberIndex = 0;
+    // Create a new arrangement with the selected member at the center
+    const variantMembers: AdminMember[] = new Array(memberCount);
     
-    for (let pos = 0; pos < Math.min(totalCells, order.members.length); pos++) {
-      if (pos === centerIndex) {
-        // Place the center member
-        variantMembers[pos] = centerMember;
-      } else {
-        // Fill with other members, skipping the center member
-        while (memberIndex < order.members.length && 
-               order.members[memberIndex].id === centerMember.id) {
-          memberIndex++;
-        }
-        
-        if (memberIndex < order.members.length) {
-          variantMembers[pos] = order.members[memberIndex];
-          memberIndex++;
-        }
+    // First, place the center member
+    const centerMemberOriginalIndex = order.members.findIndex(m => m.id === centerMember.id);
+    if (centerMemberOriginalIndex !== -1) {
+      variantMembers[centerIndex] = centerMember;
+    }
+    
+    // Then fill the rest of the positions with other members
+    let sourceIndex = 0;
+    for (let i = 0; i < memberCount; i++) {
+      if (i === centerIndex) {
+        continue; // Skip the center position as it's already filled
+      }
+      
+      // Skip the center member when filling other positions
+      while (sourceIndex < order.members.length && 
+             order.members[sourceIndex].id === centerMember.id) {
+        sourceIndex++;
+      }
+      
+      if (sourceIndex < order.members.length) {
+        variantMembers[i] = order.members[sourceIndex];
+        sourceIndex++;
       }
     }
     
-    // Ensure we have a complete array with no gaps
-    const finalMembers = variantMembers.filter(m => m !== undefined);
+    // Filter out any undefined entries and ensure we have the right number of members
+    const finalMembers = variantMembers.filter(m => m !== undefined).slice(0, memberCount);
     
-    console.log(`Variant ${i + 1}: ${centerMember.name} at center (${finalMembers.length} total members)`);
+    console.log(`Variant ${centerMemberIndex + 1}: ${centerMember.name} at center position ${centerIndex}`);
+    console.log('Members arrangement:', finalMembers.map(m => m.name));
     
     variants.push({
       id: `variant-${centerMember.id}`,
@@ -82,7 +91,7 @@ export async function generateGridVariants(order: Order): Promise<GridVariant[]>
       centerIndex,
     });
     
-    // Yield to event loop to prevent blocking
+    // Yield to prevent blocking
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   
