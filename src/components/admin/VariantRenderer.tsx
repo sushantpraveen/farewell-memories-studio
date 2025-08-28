@@ -15,109 +15,131 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
   onRendered,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const generateVariantImage = async () => {
       try {
         console.log('Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
         
-        // Import the appropriate grid component dynamically
-        let GridComponent;
         const memberCount = order.members.length;
         
-        if (order.gridTemplate === 'square') {
-          // Use the specific square grid component based on member count
-          const gridModule = await import(`@/components/square/${memberCount}.tsx`);
-          GridComponent = gridModule.default;
+        // Calculate grid dimensions - use the same logic as the original components
+        let cols = 0, rows = 0;
+        
+        if (memberCount <= 4) {
+          cols = rows = 2;
+        } else if (memberCount <= 9) {
+          cols = rows = 3;
+        } else if (memberCount <= 16) {
+          cols = rows = 4;
+        } else if (memberCount <= 25) {
+          cols = rows = 5;
+        } else if (memberCount <= 36) {
+          cols = rows = 6;
         } else {
-          // Fallback for other templates
-          const { SquareGrid } = await import('@/components/grids/SquareGrid');
-          GridComponent = SquareGrid;
+          cols = rows = Math.ceil(Math.sqrt(memberCount));
         }
 
-        if (!GridComponent) {
-          console.error('No grid component found for', memberCount, 'members');
-          onRendered(variant.id, '');
-          return;
-        }
+        console.log('Grid layout:', cols, 'x', rows, 'for', memberCount, 'members');
 
-        // Create a temporary container for rendering
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute';
-        tempContainer.style.top = '-10000px';
-        tempContainer.style.left = '-10000px';
-        tempContainer.style.width = '400px';
-        tempContainer.style.height = '400px';
-        document.body.appendChild(tempContainer);
-
-        // Create React root and render the grid
-        const { createRoot } = await import('react-dom/client');
-        const root = createRoot(tempContainer);
-
-        // Prepare members with the variant arrangement
-        const variantMembers = variant.members.map(member => ({
-          ...member,
-          photo: member.photo || ''
-        }));
-
-        // Render the grid component
-        await new Promise<void>((resolve) => {
-          root.render(
-            React.createElement(GridComponent, {
-              members: variantMembers,
-              onImageLoad: () => {
-                // Wait a bit for all images to load
-                setTimeout(() => {
-                  resolve();
-                }, 500);
-              }
-            })
-          );
-        });
-
-        // Wait for images to load
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Create canvas from the rendered grid
+        // Create canvas
         const canvas = document.createElement('canvas');
-        canvas.width = 400;
-        canvas.height = 400;
+        const size = 400;
+        canvas.width = size;
+        canvas.height = size;
         const ctx = canvas.getContext('2d');
         
         if (!ctx) {
           throw new Error('Canvas context not available');
         }
 
-        // Find the grid container in the temporary container
-        const gridElement = tempContainer.querySelector('[class*="grid"]') || tempContainer.firstElementChild;
-        
-        if (gridElement) {
-          // Use html2canvas to capture the grid
-          const html2canvas = await import('html2canvas');
-          const canvasResult = await html2canvas.default(gridElement as HTMLElement, {
-            width: 400,
-            height: 400,
-            backgroundColor: '#ffffff',
-            scale: 1,
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
-          });
+        // Fill background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
 
-          // Get the data URL
-          const dataUrl = canvasResult.toDataURL('image/png', 0.9);
-          
-          console.log('Successfully generated variant image for:', variant.id);
-          onRendered(variant.id, dataUrl);
-        } else {
-          console.error('No grid element found in rendered component');
-          onRendered(variant.id, '');
+        // Calculate cell dimensions
+        const cellSize = size / Math.max(cols, rows);
+        const gap = 2;
+        const actualCellSize = cellSize - gap;
+
+        // Helper function to load and draw image
+        const loadAndDrawImage = async (src: string, x: number, y: number, width: number, height: number) => {
+          return new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              try {
+                // Draw image with cover behavior
+                const imgRatio = img.width / img.height;
+                const cellRatio = width / height;
+                
+                let drawWidth = width;
+                let drawHeight = height;
+                let offsetX = 0;
+                let offsetY = 0;
+                
+                if (imgRatio > cellRatio) {
+                  // Image is wider - fit height and center horizontally
+                  drawWidth = height * imgRatio;
+                  offsetX = (width - drawWidth) / 2;
+                } else {
+                  // Image is taller - fit width and center vertically
+                  drawHeight = width / imgRatio;
+                  offsetY = (height - drawHeight) / 2;
+                }
+                
+                ctx.drawImage(img, x + offsetX, y + offsetY, drawWidth, drawHeight);
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            };
+            img.onerror = () => reject(new Error('Failed to load image'));
+            img.src = src;
+          });
+        };
+
+        // Draw grid cells
+        let cellIndex = 0;
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            if (cellIndex >= variant.members.length) break;
+            
+            const member = variant.members[cellIndex];
+            if (member && member.photo) {
+              const x = col * cellSize + gap / 2;
+              const y = row * cellSize + gap / 2;
+              
+              try {
+                await loadAndDrawImage(member.photo, x, y, actualCellSize, actualCellSize);
+              } catch (error) {
+                console.warn('Failed to load image for member:', member.name, error);
+                // Draw placeholder
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, actualCellSize, actualCellSize);
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(member.name.split(' ')[0], x + actualCellSize / 2, y + actualCellSize / 2);
+              }
+            } else {
+              // Draw empty cell
+              const x = col * cellSize + gap / 2;
+              const y = row * cellSize + gap / 2;
+              ctx.fillStyle = '#f9fafb';
+              ctx.fillRect(x, y, actualCellSize, actualCellSize);
+            }
+            
+            cellIndex++;
+          }
+          if (cellIndex >= variant.members.length) break;
         }
 
-        // Cleanup
-        root.unmount();
-        document.body.removeChild(tempContainer);
+        // Get the data URL
+        const dataUrl = canvas.toDataURL('image/png', 0.9);
+        
+        console.log('Successfully generated variant image for:', variant.id);
+        onRendered(variant.id, dataUrl);
 
       } catch (error) {
         console.error('Error generating variant image:', error);
@@ -126,13 +148,13 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
     };
 
     // Start generation with a delay to ensure component is ready
-    const timer = setTimeout(generateVariantImage, 300);
+    const timer = setTimeout(generateVariantImage, 100);
     return () => clearTimeout(timer);
   }, [variant, onRendered, order]);
 
   // Hidden canvas for any additional processing if needed
   return (
-    <div ref={containerRef} className="hidden">
+    <div className="hidden">
       <canvas ref={canvasRef} />
     </div>
   );
