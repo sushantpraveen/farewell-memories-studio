@@ -18,41 +18,18 @@ const VariantCanvas: React.FC<{
   variant: GridVariant;
   onRendered: (variantId: string, dataUrl: string) => void;
 }> = ({ order, variant, onRendered }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { renderToCanvas, setCellImages } = useGrid();
 
   useEffect(() => {
     const generateVariantCanvas = async () => {
       try {
         console.log('Starting canvas generation for variant:', variant.id);
+        console.log('Variant members:', variant.members.map(m => ({ name: m.name, hasPhoto: !!m.photo })));
         
-        // Convert admin members to collage members format
-        const convertedMembers: Member[] = variant.members.map(member => ({
-          id: member.id,
-          name: member.name,
-          photo: member.photo,
-          vote: (member.vote || 'square') as Member['vote'],
-          joinedAt: new Date(member.joinedAt),
-          memberRollNumber: member.memberRollNumber
-        }));
-
-        // Set up cell images directly in the grid context
-        const cellImages: Record<string, string> = {};
-        convertedMembers.forEach((member, index) => {
-          if (member.photo) {
-            cellImages[`cell-${index}`] = member.photo;
-          }
-        });
-        setCellImages(cellImages);
-
-        // Wait a moment for images to be set
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Determine grid dimensions based on member count
+        // Calculate grid dimensions based on member count
         const memberCount = order.members.length;
         let cols = 0, rows = 0;
         
-        // Calculate grid dimensions (this is a simplified version)
         if (memberCount <= 4) {
           cols = rows = 2;
         } else if (memberCount <= 9) {
@@ -69,54 +46,77 @@ const VariantCanvas: React.FC<{
 
         console.log('Grid dimensions:', cols, 'x', rows, 'for', memberCount, 'members');
 
-        // Render to canvas
+        // Set up cell images with proper mapping
+        const cellImages: Record<string, string> = {};
+        
+        // Map variant members (which are arranged with center member in correct position) to cell positions
+        for (let i = 0; i < Math.min(variant.members.length, cols * rows); i++) {
+          const member = variant.members[i];
+          if (member?.photo) {
+            cellImages[`cell-${i}`] = member.photo;
+            console.log(`Mapped cell-${i} to member:`, member.name);
+          }
+        }
+
+        console.log('Cell images mapped:', Object.keys(cellImages).length, 'cells');
+        setCellImages(cellImages);
+
+        // Wait for images to be set in context
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Render to canvas with proper grid layout
         const canvas = await renderToCanvas({
           cols,
           rows,
-          base: 100,
+          base: 120, // Larger base size for better quality
           desiredGapPx: 4,
           background: '#ffffff',
           draw: async ({ drawKey }) => {
-            // Draw each cell
+            console.log('Drawing grid cells...');
+            let drawnCells = 0;
+            
+            // Draw each cell in row-major order
             for (let r = 0; r < rows; r++) {
               for (let c = 0; c < cols; c++) {
                 const index = r * cols + c;
-                if (index < convertedMembers.length) {
-                  await drawKey(`cell-${index}`, r, c);
+                const cellKey = `cell-${index}`;
+                
+                if (cellImages[cellKey]) {
+                  await drawKey(cellKey, r, c);
+                  drawnCells++;
+                  console.log(`Drew cell at row ${r}, col ${c} (index ${index})`);
                 }
               }
             }
+            
+            console.log(`Total cells drawn: ${drawnCells}`);
           }
         });
 
         console.log('Canvas generated:', canvas.width, 'x', canvas.height);
 
         // Convert to data URL
-        const dataUrl = canvas.toDataURL('image/png');
-        if (dataUrl && dataUrl !== 'data:,') {
-          console.log('Successfully generated image for variant:', variant.id);
+        const dataUrl = canvas.toDataURL('image/png', 0.9);
+        if (dataUrl && dataUrl !== 'data:,' && dataUrl.length > 100) {
+          console.log('Successfully generated image for variant:', variant.id, 'Size:', dataUrl.length);
           onRendered(variant.id, dataUrl);
         } else {
-          console.error('Canvas produced empty data URL for variant:', variant.id);
+          console.error('Canvas produced invalid data URL for variant:', variant.id);
+          throw new Error('Invalid canvas output');
         }
       } catch (error) {
         console.error(`Error generating canvas for variant ${variant.id}:`, error);
+        // Still call onRendered to advance progress, but with empty data
+        onRendered(variant.id, '');
       }
     };
 
-    // Start generation after a short delay
-    const timer = setTimeout(generateVariantCanvas, 200);
+    // Start generation with a delay to ensure component is mounted
+    const timer = setTimeout(generateVariantCanvas, 300);
     return () => clearTimeout(timer);
   }, [variant, onRendered, renderToCanvas, setCellImages, order.members.length]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="hidden"
-      width={500}
-      height={500}
-    />
-  );
+  return null; // No visual component needed
 };
 
 export const VariantRenderer: React.FC<VariantRendererProps> = ({
@@ -125,11 +125,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
   onRendered,
 }) => {
   return (
-    <div 
-      id={`variant-${variant.id}`}
-      className="absolute -top-[9999px] -left-[9999px] pointer-events-none"
-      style={{ width: '500px', height: '500px' }}
-    >
+    <div className="hidden">
       <GridProvider>
         <VariantCanvas
           order={order}
