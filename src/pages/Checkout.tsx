@@ -122,10 +122,10 @@ const Checkout = () => {
       }
 
       // Redirect sooner to Admin Orders; keep success toast visible briefly
-      // (() => {
-      //   setShowSuccess(false);
-      //   navigate('/admin/order');
-      // }, 3200);
+      setTimeout(() => {
+        setShowSuccess(false);
+        navigate('/admin/order');
+      }, 3200);
     }, 2000);setTimeout
   };
 

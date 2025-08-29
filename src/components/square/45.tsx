@@ -280,10 +280,10 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     try {
       await downloadImage('template-45.png', {
         cols: 8,
-        rows: 11, // Increased to include both top extension rows and both bottom extension rows
+        rows: 10, // Increased to include both top extension rows and both bottom extension rows
         // Target physical size for print within requested ranges
         targetWidthIn: 8,
-        targetHeightIn: 12.5,
+        targetHeightIn: 13.5,
         dpi: 300,
         desiredGapPx: 4,
         draw: async ({ drawKey, ctx, width, height }) => {
@@ -299,7 +299,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
             drawKey(
               cid('topExt-most', -1, i + 2),
-              1,  // First row
+              0,  // First row
               0 + i,
               1,
               1
@@ -319,24 +319,24 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
 
           // 3. Draw main top row (8 cells)
           for (let c = 0; c < 8; c++) {
-            await drawKey(cid('top', 0, c), 2, c);
+            await drawKey(cid('top', 0, c), 1, c);
           }
 
           // 4. Draw left side (5 cells)
           for (let r = 1; r <= 5; r++) {
-            await drawKey(cid('left', r, 0), r + 2, 0);
+            await drawKey(cid('left', r, 0), r + 1, 0);
           }
 
           // 5. Draw center cell (spans 6x5)
-          await drawKey(cid('center', 0, 0), 3, 1, 5, 6);
+          await drawKey(cid('center', 0, 0), 2, 1, 5, 6);
 
           // 6. Draw right side (5 cells)
           for (let r = 1; r <= 5; r++) {
-            await drawKey(cid('right', r, 7), r + 2, 7);
+            await drawKey(cid('right', r, 7), r + 1, 7);
           }
 
           // 7. Draw bottom row (8 cells)
-          const bottomRow = 8;
+          const bottomRow = 7;
           for (let c = 0; c < 8; c++) {
             await drawKey(cid('bottom', 9, c), bottomRow, c, 1, 1);
           }
@@ -345,7 +345,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
             drawKey(
               cid('bottom-extension', -1, i + 2),
-              9,  // First bottom extension row
+              8,  // First bottom extension row
               i,
               1,
               1
@@ -356,7 +356,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           await Promise.all(Array.from({ length: 3 }, (_, i) => 
             drawKey(
               cid('bottom-most-extension', -1, i + 2),
-              10,  // Second bottom extension row
+              9,  // Second bottom extension row
               2.5 + i,  // More centered for 3 cells
               1,
               1

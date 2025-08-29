@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Order } from '@/types/admin';
-import { generateGridVariants, GridVariant } from '@/utils/gridVariantGenerator';
+import { generateGridVariants, GridVariant, getTemplateLayout } from '@/utils/gridVariantGenerator';
 import { VariantRenderer } from './VariantRenderer';
 import { CenterVariantsGallery } from './CenterVariantsGallery';
 import { toast } from 'sonner';
@@ -225,16 +225,29 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         ) : null}
 
         {/* Hidden renderers for generating images */}
-        {variants.map((variant, index) => (
-          index === currentRenderIndex && (
-            <VariantRenderer
-              key={variant.id}
-              order={order}
-              variant={variant}
-              onRendered={handleVariantRendered}
-            />
-          )
-        ))}
+        {(() => {
+          const layout = getTemplateLayout(order.gridTemplate, order.members.length);
+          // Map known layouts to our template keys used by VariantRenderer
+          // 33 template (34/35 total cells including center) => '33'
+          // 45 template (75 total cells including center)   => '45'
+          const templateKey = layout && (layout.totalCells === 34 || layout.totalCells === 35)
+            ? '33'
+            : layout && layout.totalCells === 75
+            ? '45'
+            : '45';
+
+          return variants.map((variant, index) => (
+            index === currentRenderIndex && (
+              <VariantRenderer
+                key={variant.id}
+                order={order}
+                variant={variant}
+                onRendered={handleVariantRendered}
+                templateKey={templateKey}
+              />
+            )
+          ));
+        })()}
       </DialogContent>
     </Dialog>
   );
