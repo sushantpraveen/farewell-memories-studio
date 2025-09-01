@@ -57,14 +57,10 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/checkout/:groupId" element={
-                
                   <Checkout />
-                
               } />
                <Route path="/admin/order" element={
-                
                 <AdminOrders />
-              
             } />
               <Route path="*" element={<NotFound />} />
             </Routes>
