@@ -248,12 +248,11 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
 
             <Button
                   onClick={handleSubmit} 
-                  // type="submit" 
+                  type="submit" 
                   className="w-full bg-purple-600 hover:bg-purple-700"
-                  // disabled={!isValidForm || isSubmitting}
+                  disabled={isSubmitting}
                 >
-                  {/* {isSubmitting ? "Creating Group..." : "Create Group"} */}
-                sss
+                  {isSubmitting ? "Creating Group..." : "Create Group"}
                 </Button>
             </div>
           </form>

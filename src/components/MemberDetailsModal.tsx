@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Member } from '@/context/CollageContext';
 import { Calendar, User, Vote } from 'lucide-react';
 import { format } from 'date-fns';
+import { LazyImage } from './LazyImage';
 
 interface MemberDetailsModalProps {
   member: Member | null;
@@ -35,10 +36,10 @@ export const MemberDetailsModal: React.FC<MemberDetailsModalProps> = ({
         </DialogHeader>
         <div className="space-y-6">
           <div className="text-center">
-            <img
+            <LazyImage
               src={member.photo}
               alt={member.name}
-              className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-purple-100 shadow-lg"
+              className="w-24 h-24 rounded-full mx-auto border-4 border-purple-100 shadow-lg"
             />
             <h3 className="text-xl font-semibold mt-4 text-gray-900">{member.name}</h3>
           </div>

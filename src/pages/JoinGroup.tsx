@@ -1,90 +1,62 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Upload, Users, Calendar, Vote } from "lucide-react";
-import { useCollage, GridTemplate } from "@/context/CollageContext";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { GridPreview } from "@/components/GridPreview";
+import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle } from "lucide-react";
+import { GridTemplate } from "@/context/CollageContext";
+import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LazyImage } from "@/components/LazyImage";
+import { useJoinGroup } from "@/hooks/useJoinGroup";
+
+// Fix the import to use named export
+const GridPreview = lazy(() => 
+  import("@/components/GridPreview").then(module => ({ 
+    default: module.GridPreview 
+  }))
+);
 
 const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
-  const [memberData, setMemberData] = useState({
-    name: "",
-    memberRollNumber: "",
-    photo: "",
-    vote: "square" as GridTemplate,
-    size: undefined as undefined | 's' | 'm' | 'l' | 'xl' | 'xxl'
-  });
-  const [previewTemplate, setPreviewTemplate] = useState<GridTemplate>("square");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { getGroup, joinGroup, updateGroupTemplate, isLoading } = useCollage();
-  const { updateUser } = useAuth();
-  const navigate = useNavigate();
+  const {
+    memberData,
+    errors,
+    group,
+    previewTemplate,
+    isSubmitting,
+    loadingGroup,
+    isLoading,
+    formTouched,
+    handleInputChange,
+    handlePhotoUpload,
+    handleSubmit
+  } = useJoinGroup(groupId);
 
-  const group = groupId ? getGroup(groupId) : undefined;
 
-  useEffect(() => {
-    if (groupId && group) {
-      updateGroupTemplate(groupId);
-      // Set preview template to match group's template
-      setPreviewTemplate(group.gridTemplate);
-    }
-  }, [group?.votes, groupId, updateGroupTemplate]);
 
-  // Show loading state while context is initializing
-  if (isLoading) {
+
+
+  // Show loading state while context is initializing or group is loading
+  if (isLoading || loadingGroup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4 animate-fadeIn">
+        <Card className="w-full max-w-md text-center animate-slideUp">
           <CardContent className="pt-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h1>
-            <p className="text-gray-600">Initializing application...</p>
+            {/* <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
+            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p> */}
+            <img src="/congrats.gif" alt="success" width={400} />
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setMemberData({ ...memberData, photo: event.target?.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupId) return;
 
-    setIsSubmitting(true);
 
-    try {
-      const success = joinGroup(groupId, memberData);
-      if (success) {
-        // Update user data to set groupId
-        updateUser({ groupId });
-        
-        toast.success("Successfully joined the group!");
-        navigate(`/`);
-      } else {
-        toast.error("Unable to join group. It might be full or not exist.");
-      }
-    } catch (error) {
-      toast.error("Failed to join group. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (!group) {
     return (
@@ -106,39 +78,39 @@ const JoinGroup = () => {
   const remainingSpots = group.totalMembers - group.members.length;
 
   return (
-    <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6 animate-fadeIn" key="main-container">
+      <div className="container mx-auto max-w-6xl animate-slideUp opacity-0" style={{ animationDelay: '150ms', animationFillMode: 'forwards' }} key="content-container">
         {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link to="/">
+        <div className="flex items-center mb-8" key="header">
+          <Link to="/" key="back-link">
             <Button variant="ghost" size="sm" className="mr-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Button>
           </Link>
-          <div>
+          <div key="group-info">
             <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
             <p className="text-gray-600">Class of {group.yearOfPassing}</p>
           </div>
         </div>
 
         {/* Group Info */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="text-center">
+        <div className="grid md:grid-cols-3 gap-6 mb-8" key="group-info-cards">
+          <Card className="text-center" key="members-card">
             <CardContent className="pt-6">
               <Users className="h-8 w-8 mx-auto text-purple-600 mb-2" />
               <p className="text-2xl font-bold">{group.members.length}/{group.totalMembers}</p>
               <p className="text-sm text-gray-600">Members Joined</p>
             </CardContent>
           </Card>
-          <Card className="text-center">
+          <Card className="text-center" key="year-card">
             <CardContent className="pt-6">
               <Calendar className="h-8 w-8 mx-auto text-pink-600 mb-2" />
               <p className="text-2xl font-bold">{group.yearOfPassing}</p>
               <p className="text-sm text-gray-600">Graduation Year</p>
             </CardContent>
           </Card>
-          <Card className="text-center">
+          <Card className="text-center" key="template-card">
             <CardContent className="pt-6">
               <Vote className="h-8 w-8 mx-auto text-yellow-600 mb-2" />
               <p className="text-2xl font-bold capitalize">{group.gridTemplate}</p>
@@ -162,33 +134,7 @@ const JoinGroup = () => {
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="space-y-6">
-            {/* Current Members */}
-            <Card className="shadow-xl border-0">
-                <CardHeader>
-                  <CardTitle>Current Members</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {group.members.length === 0 ? (
-                    <p className="text-gray-600 text-center py-4">No members yet. Be the first to join!</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.members.map((member) => (
-                        <div key={member.id} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                          <img
-                            src={member.photo}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          <div>
-                            <p className="font-medium">{member.name}</p>
-                            <p className="text-sm text-gray-600">Voted: {member.memberRollNumber}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+          
             {/* Join Form */}
             <Card className="shadow-xl border-0">
               <CardHeader>
@@ -200,67 +146,89 @@ const JoinGroup = () => {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="memberName">Your Name</Label>
+                    <Label htmlFor="memberName" className="flex items-center justify-between">
+                      <span>Your Name</span>
+                      {errors.name && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.name}</span>}
+                      {formTouched && memberData.name && !errors.name && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                    </Label>
                     <Input
                       id="memberName"
                       placeholder="Enter your full name"
                       value={memberData.name}
-                      onChange={(e) => setMemberData({ ...memberData, name: e.target.value })}
-                      required
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      className={errors.name ? "border-red-300 focus:border-red-500" : ""}
+                      aria-invalid={!!errors.name}
+                      aria-describedby={errors.name ? "name-error" : undefined}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="memberRollNumber">Roll No.</Label>
-                      <Input
-                        id="memberRollNumber"
-                        placeholder="Enter your roll number"
-                        value={memberData.memberRollNumber}
-                        onChange={(e) => setMemberData({ ...memberData, memberRollNumber: e.target.value })}
-                        required
-                      />
+                    <Label htmlFor="memberRollNumber" className="flex items-center justify-between">
+                      <span>Roll No.</span>
+                      {errors.memberRollNumber && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.memberRollNumber}</span>}
+                      {formTouched && memberData.memberRollNumber && !errors.memberRollNumber && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                    </Label>
+                    <Input
+                      id="memberRollNumber"
+                      placeholder="Enter your roll number"
+                      value={memberData.memberRollNumber}
+                      onChange={(e) => handleInputChange('memberRollNumber', e.target.value)}
+                      className={errors.memberRollNumber ? "border-red-300 focus:border-red-500" : ""}
+                      aria-invalid={!!errors.memberRollNumber}
+                      aria-describedby={errors.memberRollNumber ? "roll-error" : undefined}
+                    />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="size">T‑Shirt Size</Label>
+                    <Label htmlFor="size" className="flex items-center justify-between">
+                      <span>T‑Shirt Size</span>
+                      {errors.size && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.size}</span>}
+                      {formTouched && memberData.size && !errors.size && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Selected</span>}
+                    </Label>
                     <Select
                       value={memberData.size}
-                      onValueChange={(val) => setMemberData({ ...memberData, size: val as 's' | 'm' | 'l' | 'xl' | 'xxl' })}
+                      onValueChange={(val) => handleInputChange('size', val as 's' | 'm' | 'l' | 'xl' | 'xxl')}
                     >
-                      <SelectTrigger id="size">
+                      <SelectTrigger id="size" className={errors.size ? "border-red-300" : ""}>
                         <SelectValue placeholder="Select your size" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="s">S</SelectItem>
-                        <SelectItem value="m">M</SelectItem>
-                        <SelectItem value="l">L</SelectItem>
-                        <SelectItem value="xl">XL</SelectItem>
-                        <SelectItem value="xxl">XXL</SelectItem>
+                        <SelectItem key="size-s" value="s">S</SelectItem>
+                        <SelectItem key="size-m" value="m">M</SelectItem>
+                        <SelectItem key="size-l" value="l">L</SelectItem>
+                        <SelectItem key="size-xl" value="xl">XL</SelectItem>
+                        <SelectItem key="size-xxl" value="xxl">XXL</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="photo" className="flex items-center">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Your Photo
+                    <Label htmlFor="photo" className="flex items-center justify-between">
+                      <span className="flex items-center">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Your Photo
+                      </span>
+                      {errors.photo && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.photo}</span>}
+                      {formTouched && memberData.photo && !errors.photo && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Uploaded</span>}
                     </Label>
                     <Input
                       id="photo"
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoUpload}
-                      required
+                      className={errors.photo ? "border-red-300 focus:border-red-500" : ""}
+                      aria-invalid={!!errors.photo}
                     />
-                    {memberData.photo && (
-                      <div className="mt-4">
-                        <img
+                    {/* {memberData.photo && (
+                      <div className="mt-4 flex justify-center">
+                        <LazyImage
                           src={memberData.photo}
                           alt="Preview"
-                          className="w-32 h-32 object-cover rounded-lg border"
+                          className="w-32 h-32 rounded-lg border"
+                          placeholderSrc="/placeholder.svg"
                         />
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   {/* <div className="space-y-4">
@@ -283,9 +251,21 @@ const JoinGroup = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-purple-600 hover:bg-purple-700"
-                    disabled={!memberData.name || !memberData.photo || !memberData.size || isSubmitting}
+                    disabled={
+                      !memberData.name || 
+                      !memberData.memberRollNumber || 
+                      !memberData.photo || 
+                      !memberData.size || 
+                      isSubmitting || 
+                      Object.values(errors).some(error => error)
+                    }
                   >
-                    {isSubmitting ? "Joining Group..." : "Join Group"}
+                    {isSubmitting ? (
+                      <span className="flex items-center">
+                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+                        Joining Group...
+                      </span>
+                    ) : "Join Group"}
                   </Button>
                 </form>
               </CardContent>
@@ -301,21 +281,35 @@ const JoinGroup = () => {
                    <CardDescription>{group.gridTemplate}</CardDescription>
                  </CardHeader>
                  <CardContent className="flex justify-center">
-                   <GridPreview 
-                     template={group.gridTemplate}
-                     memberCount={group.totalMembers}
-                     members={group.members}
-                     centerEmptyDefault
-                     activeMember={memberData.photo ? {
-                       id: 'preview',
-                       name: memberData.name || 'You',
-                       memberRollNumber: memberData.memberRollNumber,
-                       photo: memberData.photo,
-                       vote: memberData.vote,
-                       joinedAt: new Date()
-                     } : undefined}
-                     size="large"
-                   />
+                   <Suspense fallback={
+                     <div className="p-8 text-center">
+                       <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+                       <p className="text-gray-600">Loading preview...</p>
+                     </div>
+                   }>
+                     {/* Only render GridPreview when photo is uploaded to avoid unnecessary processing */}
+                     {memberData.photo ? (
+                       <GridPreview 
+                         template={group.gridTemplate}
+                         memberCount={group.totalMembers}
+                         members={[]} // Don't pass any members since we don't need them for preview
+                         centerEmptyDefault
+                         activeMember={{
+                           id: 'preview',
+                           name: memberData.name || 'You',
+                           memberRollNumber: memberData.memberRollNumber,
+                           photo: memberData.photo,
+                           vote: memberData.vote,
+                           joinedAt: new Date()
+                         }}
+                         size="large"
+                       />
+                     ) : (
+                       <div className="p-8 text-center">
+                         <p className="text-gray-600">Upload your photo to see preview</p>
+                       </div>
+                     )}
+                   </Suspense>
                  </CardContent>
                </Card>
             </div>

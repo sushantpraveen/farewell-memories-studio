@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
 import { GridPreview } from "@/components/GridPreview";
 import { toast } from "sonner";
-import { GridTemplate } from "@/context/CollageContext";
+import { GridTemplate, Member, Group as CollageGroup } from "@/context/CollageContext";
 import { useCollage } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
 import { GridProvider } from "@/components/square/context/GridContext";
@@ -16,32 +16,48 @@ const Editor = () => {
   const { getGroup, isLoading, groups } = useCollage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [group, setGroup] = useState<any>(null);
+  const [group, setGroup] = useState<CollageGroup | null>(null);
+  const [loadingGroup, setLoadingGroup] = useState(true);
 
   // Update group data whenever groupId, user's groupId, or groups change
   useEffect(() => {
-    const targetGroupId = groupId || user?.groupId;
-    
-    if (targetGroupId) {
-      const userGroup = getGroup(targetGroupId);
-      if (userGroup) {
-        setGroup(userGroup);
-      } else {
+    const fetchGroup = async () => {
+      const targetGroupId = groupId || user?.groupId;
+      
+      if (!targetGroupId) {
         navigate('/dashboard');
+        return;
       }
-    } else {
-      navigate('/dashboard');
-    }
-  }, [groupId, user?.groupId, getGroup, navigate, groups]); // Add groups as a dependency
 
-  // Show loading state while context is initializing
-  if (isLoading) {
+      try {
+        setLoadingGroup(true);
+        const userGroup = await getGroup(targetGroupId);
+        if (userGroup) {
+          setGroup(userGroup);
+        } else {
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Error fetching group:', error);
+        toast.error('Failed to load group data');
+        navigate('/dashboard');
+      } finally {
+        setLoadingGroup(false);
+      }
+    };
+
+    fetchGroup();
+  }, [groupId, user?.groupId, getGroup, navigate]);
+
+  // Show loading state while context is initializing or group is loading
+  if (isLoading || loadingGroup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4 animate-fadeIn">
+        <Card className="w-full max-w-md text-center animate-slideUp">
           <CardContent className="pt-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h1>
-            <p className="text-gray-600">Initializing application...</p>
+            <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
+            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p>
           </CardContent>
         </Card>
       </div>
@@ -50,10 +66,15 @@ const Editor = () => {
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4 animate-fadeIn">
+        <Card className="w-full max-w-md text-center animate-slideUp">
           <CardContent className="pt-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h1>
+            <div className="w-12 h-12 border-4 border-t-red-600 border-red-200 rounded-full animate-spin mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Group Not Found</h1>
+            <p className="text-gray-600 mb-4">The group you're looking for doesn't exist or has been removed.</p>
+            <Button onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </Button>
           </CardContent>
         </Card>
       </div>

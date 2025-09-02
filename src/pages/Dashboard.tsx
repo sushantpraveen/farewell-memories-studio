@@ -10,6 +10,7 @@ import { useCollage, Member } from '@/context/CollageContext';
 import { MemberDetailsModal } from '@/components/MemberDetailsModal';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { LazyImage } from '@/components/LazyImage';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -20,21 +21,38 @@ const Dashboard = () => {
   const [group, setGroup] = useState<any>(null);
 
   
-  // Update group data whenever user's groupId or groups change
+  // Update group data whenever user's groupId changes
   useEffect(() => {
     console.log('Dashboard useEffect - user.groupId:', user?.groupId);
-    console.log('Dashboard useEffect - groups:', groups);
     
-    if (user?.groupId) {
-      const userGroup = getGroup(user.groupId);
-      console.log('Dashboard useEffect - userGroup:', userGroup);
-      if (userGroup) {
-        setGroup(userGroup);
-      } else {
-        console.log('No group found for groupId:', user.groupId);
+    const fetchGroup = async () => {
+      if (user?.groupId) {
+        try {
+          const userGroup = await getGroup(user.groupId);
+          console.log('Dashboard useEffect - userGroup:', userGroup);
+          if (userGroup) {
+            setGroup(userGroup);
+          } else {
+            console.log('No group found for groupId:', user.groupId);
+          }
+        } catch (error) {
+          console.error('Error fetching group:', error);
+        }
       }
-    }
-  }, [user?.groupId, getGroup, groups]); // Add groups as a dependency to re-run when any group updates
+    };
+    
+    fetchGroup();
+    
+    // Set up polling at a reasonable interval (every 30 seconds)
+    const intervalId = setInterval(() => {
+      if (user?.groupId) {
+        fetchGroup();
+      }
+    }, 30000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [user?.groupId, getGroup]); // Remove groups dependency to prevent excessive re-fetching
   
   // Show loading state while context is initializing
   if (isLoading) {
@@ -50,7 +68,8 @@ const Dashboard = () => {
     );
   }
 
-  const getWinningTemplate = (votes: { hexagonal: number; square: number; circle: number }) => {
+  const getWinningTemplate = (votes: { hexagonal: number; square: number; circle: number } | undefined) => {
+    if (!votes) return 'square'; // Default template if votes is undefined
     return Object.entries(votes).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0];
   };
 
@@ -91,9 +110,9 @@ const Dashboard = () => {
     );
   }
 
-  const winningTemplate = getWinningTemplate(group.votes);
-  const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
-  const totalVotes = Object.values(group.votes as { hexagonal: number; square: number; circle: number }).reduce((a: number, b: number) => a + b, 0);
+  const winningTemplate = getWinningTemplate(group?.votes);
+  const completionPercentage = Math.round(((group?.members?.length || 0) / (group?.totalMembers || 1)) * 100);
+  const totalVotes = group?.votes ? Object.values(group.votes as { hexagonal: number; square: number; circle: number }).reduce((a: number, b: number) => a + b, 0) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 ">
@@ -224,7 +243,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(group.votes).map(([template, count]) => (
+                {Object.entries(group.votes || {}).map(([template, count]) => (
                   <div key={template} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="capitalize font-medium">{template}</span>
@@ -259,50 +278,34 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {group.members.map((member: Member, index: number) => {
-                  console.log(`Member ${member.name} photo:`, {
-                    hasPhoto: !!member.photo,
-                    photoLength: member.photo?.length || 0,
-                    photoStart: member.photo?.substring(0, 50) || 'none',
-                    photoEnd: member.photo?.substring(-50) || 'none'
-                  });
-                  
-                  return (
-                    <div key={member.id} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                        {member.photo ? (
-                          <img
-                            src={member.photo}
-                            alt={member.name}
-                            className="w-full h-full object-cover cursor-pointer"
-                            onClick={() => handleMemberClick(member)}
-                            onError={(e) => {
-                              console.error(`Failed to load image for ${member.name}:`, e);
-                              // Hide the broken image and show fallback
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              const fallback = (e.target as HTMLImageElement).nextElementSibling;
-                              if (fallback) {
-                                (fallback as HTMLElement).style.display = 'flex';
-                              }
-                            }}
-                          />
-                        ) : null}
-                        {/* Fallback avatar */}
-                        <div 
-                          className={`w-full h-full flex items-center justify-center text-gray-600 text-xs font-medium ${member.photo ? 'hidden' : 'flex'}`}
-                          onClick={() => handleMemberClick(member)}
-                        >
+                {group.members.map((member: Member, index: number) => (
+                  <div key={member.memberRollNumber || member.id || index} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
+                    <div 
+                      className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center cursor-pointer"
+                      onClick={() => handleMemberClick(member)}
+                    >
+                      {member.photo ? (
+                        <LazyImage
+                          src={member.photo}
+                          alt={member.name}
+                          className="w-8 h-8 rounded-full"
+                          onError={() => {
+                            console.error(`Failed to load image for ${member.name}`);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs font-medium">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{member.name}</p>
-                        <p className="text-xs text-gray-600">Roll No. {member.memberRollNumber}</p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">#{index + 1}</Badge>
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{member.name}</p>
+                      <p className="text-xs text-gray-600">Roll No. {member.memberRollNumber}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">#{index + 1}</Badge>
+                  </div>
+                ))}
                 {group.members.length === 0 && (
                   <p className="text-gray-500 text-center py-4">No members have joined yet</p>
                 )}

@@ -1,73 +1,119 @@
-# Welcome to your Lovable project
+# Signature Day App
 
-## Project info
+A full-stack MERN application for creating and managing signature day collages.
 
-**URL**: https://lovable.dev/projects/dca2cd2b-84d7-477e-bf67-54261f08ec58
+## Features
 
-## How can I edit this code?
+- User authentication (register, login, profile management)
+- Group creation and management
+- Member joining with photo uploads
+- Different grid templates (square, hexagonal, circle)
+- Template voting system
+- Admin dashboard for group management
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+### Frontend
+- React with TypeScript
+- Vite for build tooling
+- React Router for navigation
+- Tailwind CSS with shadcn/ui components
+- Context API for state management
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/dca2cd2b-84d7-477e-bf67-54261f08ec58) and start prompting.
+### Backend
+- Express.js
+- MongoDB with Mongoose
+- JWT authentication
+- RESTful API design
 
-Changes made via Lovable will be committed automatically to this repo.
+## Project Structure
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+signatureday/
+├── backend/             # Express backend
+│   ├── config/          # Database configuration
+│   ├── controllers/     # API controllers
+│   ├── middleware/      # Auth middleware
+│   ├── models/          # Mongoose models
+│   ├── routes/          # API routes
+│   ├── utils/           # Utility functions
+│   └── server.js        # Entry point
+├── public/              # Static assets
+├── src/                 # React frontend
+│   ├── components/      # UI components
+│   ├── context/         # Context providers
+│   ├── hooks/           # Custom hooks
+│   ├── lib/             # Utility functions
+│   ├── pages/           # Page components
+│   ├── services/        # API services
+│   └── types/           # TypeScript types
+└── README.md            # This file
 ```
 
-**Edit a file directly in GitHub**
+## Getting Started
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Prerequisites
 
-**Use GitHub Codespaces**
+- Node.js (v14+)
+- MongoDB (local or Atlas)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Installation
 
-## What technologies are used for this project?
+1. Clone the repository
+2. Install frontend dependencies:
+   ```
+   npm install
+   ```
+3. Install backend dependencies:
+   ```
+   cd backend
+   npm install
+   ```
 
-This project is built with:
+### Configuration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Create a `.env` file in the backend directory with:
+   ```
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/signatureday
+   JWT_SECRET=your_jwt_secret_key_change_in_production
+   NODE_ENV=development
+   ```
 
-## How can I deploy this project?
+### Running the Application
 
-Simply open [Lovable](https://lovable.dev/projects/dca2cd2b-84d7-477e-bf67-54261f08ec58) and click on Share -> Publish.
+#### Development Mode
 
-## Can I connect a custom domain to my Lovable project?
+1. Start the backend server:
+   ```
+   cd backend
+   npm run dev
+   ```
+2. In a separate terminal, start the frontend:
+   ```
+   npm run dev
+   ```
 
-Yes, you can!
+#### Production Build
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+1. Build the frontend:
+   ```
+   npm run build
+   ```
+2. Start the backend server:
+   ```
+   cd backend
+   npm start
+   ```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Fallback to localStorage
+
+The application is designed to work even when the backend is not available. It will fallback to using localStorage for data persistence in such cases, ensuring a seamless user experience.
+
+## API Integration
+
+The frontend communicates with the backend through a dedicated API service that handles all HTTP requests. In case of API failures, the application gracefully falls back to localStorage.
+
+## Original Project
+
+This project was created with [Lovable](https://lovable.dev/projects/dca2cd2b-84d7-477e-bf67-54261f08ec58).
