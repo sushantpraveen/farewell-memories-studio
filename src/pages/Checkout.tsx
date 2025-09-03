@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus } from 'lucide-react';
 import { useCollage } from '@/context/CollageContext';
+import type { Group } from '@/context/CollageContext';
 import { mockAdminApi } from '@/services/mockAdminApi';
 import type { Order, AdminMember } from '@/types/admin';
 
@@ -17,16 +18,39 @@ const Checkout = () => {
   const { groupId } = useParams<{ groupId?: string }>();
   const { getGroup } = useCollage();
   
-  // Get group data
-  const group = groupId ? getGroup(groupId) : null;
+  // Load group data (getGroup is async)
+  const [group, setGroup] = useState<Group | null>(null);
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      if (!groupId) {
+        if (isMounted) setGroup(null);
+        return;
+      }
+      try {
+        const g = await getGroup(groupId);
+        if (isMounted) setGroup(g ?? null);
+      } catch (e) {
+        console.error('Failed to load group in Checkout:', e);
+        if (isMounted) setGroup(null);
+      }
+    };
+    load();
+    return () => { isMounted = false; };
+  }, [groupId, getGroup]);
   
   // Calculate winning template
-  const winningTemplate = group ? 
-    (Object.keys(group.votes) as Array<keyof typeof group.votes>).reduce((a, b) => 
+  const winningTemplate = group ?
+    (Object.keys(group.votes) as Array<keyof typeof group.votes>).reduce((a, b) =>
       group.votes[a] > group.votes[b] ? a : b
     ) : 'square';
 
-  const [quantity, setQuantity] = useState(group?.members.length || 1);
+  const [quantity, setQuantity] = useState(1);
+  useEffect(() => {
+    if (group) {
+      setQuantity(group.members.length || 1);
+    }
+  }, [group]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
@@ -124,7 +148,7 @@ const Checkout = () => {
       // Redirect sooner to Admin Orders; keep success toast visible briefly
       setTimeout(() => {
         setShowSuccess(false);
-        navigate('/admin/order');
+        navigate('/');
       }, 3200);
     }, 2000);setTimeout
   };
@@ -180,12 +204,9 @@ const Checkout = () => {
         <Card className="max-w-md w-full mx-4 text-center shadow-lg border-0">
           <CardContent className="pt-8 pb-6">
             <div className="mb-6">
-              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
-                {/* <div className="text-4xl">🎉</div> */}
+             <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
               <img src="/congrats.gif" alt="success" width={400} />
-            </div>
-              {/* <h2 className="text-2xl font-bold text-green-800 mb-2">Payment Successful!</h2>
-              <p className="text-green-600">Your order has been placed successfully. You will receive a confirmation email shortly.</p> */}
+             </div>
             </div>
             <div className="bg-green-50 rounded-lg p-4 mb-4">
               <p className="text-sm text-green-700">Order ID: #RZP{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>

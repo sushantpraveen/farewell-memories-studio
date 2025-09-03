@@ -47,7 +47,7 @@ const GridBoard = () => {
     setIsSubmitting(true);
 
     try {
-      const groupId = createGroup({
+      const groupId = await createGroup({
         name: formData.name,
         yearOfPassing: formData.yearOfPassing,
         totalMembers: parseInt(formData.totalMembers),

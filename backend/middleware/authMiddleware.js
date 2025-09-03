@@ -7,22 +7,14 @@ import User from '../models/userModel.js';
 export const protect = async (req, res, next) => {
   let token;
   
-  // Check for token in headers
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      // Get token from header
       token = req.headers.authorization.split(' ')[1];
-      
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production');
-      
-      // Get user from the token (exclude password)
       req.user = await User.findById(decoded.id).select('-password');
-      
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, user not found' });
       }
-      
       next();
     } catch (error) {
       console.error(error);
@@ -47,6 +39,17 @@ export const isLeader = (req, res, next) => {
 };
 
 /**
+ * Check if user is an admin
+ */
+export const isAdmin = (req, res, next) => {
+  if (req.user && req.user.isAdmin) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as an admin' });
+  }
+};
+
+/**
  * Check if user belongs to the specified group
  */
 export const belongsToGroup = (req, res, next) => {
@@ -56,3 +59,5 @@ export const belongsToGroup = (req, res, next) => {
     res.status(403).json({ message: 'Not authorized to access this group' });
   }
 };
+
+

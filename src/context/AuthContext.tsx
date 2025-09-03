@@ -7,6 +7,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  isAdmin?: boolean;
   isLeader: boolean;
   groupId?: string;
   createdAt: Date;
@@ -272,6 +273,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const isAuthenticated = !!user;
   const isLeader = user?.isLeader || false;
+  const isAdmin = user?.isAdmin || false;
 
   return (
     <AuthContext.Provider value={{

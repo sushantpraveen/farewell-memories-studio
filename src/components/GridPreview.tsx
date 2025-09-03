@@ -41,6 +41,22 @@ const AnimatedPreloader = () => {
   );
 };
 
+// Helpers: detect and transform Cloudinary URLs for server-side face cropping
+const isCloudinaryUrl = (url: string): boolean => {
+  return typeof url === 'string' && url.includes('/image/upload');
+};
+
+// Insert transformation segment into Cloudinary delivery URL
+// Example: https://res.cloudinary.com/<cloud>/image/upload/v123/abc.jpg
+//   -> https://res.cloudinary.com/<cloud>/image/upload/c_fill,g_face,w_256,h_256,q_auto,f_auto/v123/abc.jpg
+const withCloudinaryTransform = (url: string, transform: string): string => {
+  try {
+    return url.replace('/image/upload/', `/image/upload/${transform}/`);
+  } catch {
+    return url;
+  }
+};
+
 export const GridPreview: React.FC<GridPreviewProps> = ({ 
   template, 
   memberCount, 
@@ -66,6 +82,23 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
   // Map of all TSX components in this folder
   const componentModules = import.meta.glob('./square/*.tsx');
 
+  // Map size to target pixel dimension for Cloudinary transforms
+  const targetPx = React.useMemo(() => {
+    switch (size) {
+      case 'small': return 160;
+      case 'medium': return 224;
+      case 'xlarge': return 352;
+      case 'large':
+      default: return 288;
+    }
+  }, [size]);
+
+  // Face-aware gravity with gentler zoom to avoid over-cropping
+  const cloudTransform = React.useMemo(
+    () => `c_thumb,g_auto:face,z_0.7,ar_1:1,w_${targetPx},h_${targetPx},q_auto,f_auto,dpr_auto`,
+    [targetPx]
+  );
+
   // Process active member photo with face cropping
   useEffect(() => {
     const processActiveMember = async () => {
@@ -75,6 +108,12 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       }
 
       try {
+        // If Cloudinary URL, use server-side subject-aware crop
+        if (!activeMember.photo.startsWith('data:') && isCloudinaryUrl(activeMember.photo)) {
+          const transformed = withCloudinaryTransform(activeMember.photo, cloudTransform);
+          setProcessedActiveMember({ ...activeMember, photo: transformed });
+          return;
+        }
         // Check if the photo is a valid data URL
         if (!activeMember.photo.startsWith('data:') || activeMember.photo.length < 100) {
           console.warn(`Invalid photo data for active member, skipping face crop`);
@@ -146,6 +185,12 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
         }
 
         try {
+          // If Cloudinary URL, use server-side subject-aware crop
+          if (!member.photo.startsWith('data:') && isCloudinaryUrl(member.photo)) {
+            const transformed = withCloudinaryTransform(member.photo, cloudTransform);
+            processed.push({ ...member, photo: transformed });
+            continue;
+          }
           // Check if the photo is a valid data URL
           if (!member.photo.startsWith('data:') || member.photo.length < 100) {
             console.warn(`Invalid photo data for member ${member.name}, skipping face crop`);

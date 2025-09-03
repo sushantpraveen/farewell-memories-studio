@@ -42,14 +42,20 @@ const JoinGroup = () => {
   if (isLoading || loadingGroup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4 animate-fadeIn">
+        { isSubmitting ?  <div className="mb-6">
+              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
+                <img src="/congrats.gif" alt="success" width={400} />
+              </div>
+            </div>
+          : 
         <Card className="w-full max-w-md text-center animate-slideUp">
           <CardContent className="pt-6">
-            {/* <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
-            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p> */}
-            <img src="/congrats.gif" alt="success" width={400} />
+            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p>
           </CardContent>
         </Card>
+        }
       </div>
     );
   }
@@ -76,6 +82,7 @@ const JoinGroup = () => {
 
   const isGroupFull = group.members.length >= group.totalMembers;
   const remainingSpots = group.totalMembers - group.members.length;
+  const isCloudinaryPhoto = typeof memberData.photo === 'string' && memberData.photo.includes('/image/upload');
 
   return (
     <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6 animate-fadeIn" key="main-container">
@@ -274,44 +281,46 @@ const JoinGroup = () => {
 
             {/* Grid Preview - 2/3 width */}
             <div className="lg:col-span-2">
-
-              <Card className="shadow-xl border-0 relative">
+              <Card className="shadow-xl border-0 relative h-full">
                  <CardHeader>
                    <CardTitle>Grid Preview</CardTitle>
                    <CardDescription>{group.gridTemplate}</CardDescription>
                  </CardHeader>
-                 <CardContent className="flex justify-center">
+                 <CardContent className="flex justify-center items-center p-0 overflow-hidden">
                    <Suspense fallback={
                      <div className="p-8 text-center">
                        <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
                        <p className="text-gray-600">Loading preview...</p>
                      </div>
                    }>
-                     {/* Only render GridPreview when photo is uploaded to avoid unnecessary processing */}
-                     {memberData.photo ? (
-                       <GridPreview 
-                         template={group.gridTemplate}
-                         memberCount={group.totalMembers}
-                         members={[]} // Don't pass any members since we don't need them for preview
-                         centerEmptyDefault
-                         activeMember={{
-                           id: 'preview',
-                           name: memberData.name || 'You',
-                           memberRollNumber: memberData.memberRollNumber,
-                           photo: memberData.photo,
-                           vote: memberData.vote,
-                           joinedAt: new Date()
-                         }}
-                         size="large"
-                       />
-                     ) : (
-                       <div className="p-8 text-center">
-                         <p className="text-gray-600">Upload your photo to see preview</p>
-                       </div>
-                     )}
+                     <div className="w-full h-full flex items-center justify-center p-4">
+                       {isCloudinaryPhoto ? (
+                        <div className="max-w-full max-h-full w-auto h-auto">
+                          <GridPreview 
+                            template={group.gridTemplate}
+                            memberCount={group.totalMembers}
+                            members={[]} // Don't pass any members since we don't need them for preview
+                            centerEmptyDefault
+                            activeMember={{
+                              id: 'preview',
+                              name: memberData.name || 'You',
+                              memberRollNumber: memberData.memberRollNumber,
+                              photo: memberData.photo,
+                              vote: memberData.vote,
+                              joinedAt: new Date()
+                            }}
+                            size="large"
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center">
+                          <p className="text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
+                        </div>
+                      )}
+                     </div>
                    </Suspense>
                  </CardContent>
-               </Card>
+              </Card>
             </div>
           </div>
         )}

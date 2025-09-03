@@ -100,3 +100,4 @@ The API uses standard HTTP status codes and returns JSON responses with appropri
 - `vote` - Member's vote for grid template
 - `size` - Size preference (s, m, l, xl, xxl)
 - `joinedAt` - Timestamp when member joined
+

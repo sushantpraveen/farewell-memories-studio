@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
+import { LocalStorageService } from '@/lib/localStorage';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,7 +30,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
       const success = await login(formData.email, formData.password);
       if (success) {
         toast.success('Login successful!');
-        navigate('/dashboard');
+        const storedUser = LocalStorageService.loadUserData();
+        if (storedUser?.isAdmin) {
+          navigate('/admin/order');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         toast.error('Invalid credentials');
       }

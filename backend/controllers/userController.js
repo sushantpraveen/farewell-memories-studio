@@ -36,6 +36,7 @@ export const registerUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
         isLeader: user.isLeader,
         groupId: user.groupId,
         createdAt: user.createdAt,
@@ -68,6 +69,7 @@ export const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
         isLeader: user.isLeader,
         groupId: user.groupId,
         createdAt: user.createdAt,
@@ -96,6 +98,7 @@ export const getUserProfile = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
         isLeader: user.isLeader,
         groupId: user.groupId,
         createdAt: user.createdAt
@@ -142,6 +145,7 @@ export const updateUserProfile = async (req, res) => {
         id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
+        isAdmin: updatedUser.isAdmin,
         isLeader: updatedUser.isLeader,
         groupId: updatedUser.groupId,
         createdAt: updatedUser.createdAt,
@@ -170,3 +174,4 @@ export const getUsers = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+

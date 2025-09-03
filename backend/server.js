@@ -8,6 +8,7 @@ import compression from 'compression';
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
+import User from './models/userModel.js';
 
 // Load environment variables
 dotenv.config();
@@ -44,7 +45,37 @@ app.use(morgan('dev'));
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/signatureday')
-  .then(() => console.log('MongoDB connected successfully'))
+  .then(async () => {
+    console.log('MongoDB connected successfully');
+    // Ensure an admin user exists
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      const adminName = process.env.ADMIN_NAME || 'Administrator';
+
+      if (adminEmail && adminPassword) {
+        let admin = await User.findOne({ email: adminEmail });
+        if (!admin) {
+          admin = await User.create({
+            name: adminName,
+            email: adminEmail,
+            password: adminPassword,
+            isAdmin: true,
+            isLeader: true
+          });
+          console.log(`Admin user created: ${adminEmail}`);
+        } else if (!admin.isAdmin) {
+          admin.isAdmin = true;
+          await admin.save();
+          console.log(`Existing user promoted to admin: ${adminEmail}`);
+        }
+      } else {
+        console.warn('ADMIN_EMAIL and/or ADMIN_PASSWORD not set. Skipping admin seeding.');
+      }
+    } catch (seedErr) {
+      console.error('Failed to ensure admin user:', seedErr);
+    }
+  })
   .catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);

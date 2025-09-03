@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isAdmin: {
+      type: Boolean,
+      default: false
+    },
     groupId: {
       type: String,
       default: null
@@ -36,7 +40,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // Add indexes for frequently queried fields
-userSchema.index({ email: 1 }); // For login and user lookup
 userSchema.index({ groupId: 1 }); // For finding users by group
 userSchema.index({ isLeader: 1 }); // For finding leaders
 

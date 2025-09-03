@@ -60,7 +60,9 @@ const App = () => (
                   <Checkout />
               } />
                <Route path="/admin/order" element={
-                <AdminOrders />
+                <ProtectedRoute requiresAdmin>
+                  <AdminOrders />
+                </ProtectedRoute>
             } />
               <Route path="*" element={<NotFound />} />
             </Routes>

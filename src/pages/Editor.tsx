@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
 import { GridPreview } from "@/components/GridPreview";
+import { Suspense } from "react";
 import { toast } from "sonner";
 import { GridTemplate, Member, Group as CollageGroup } from "@/context/CollageContext";
 import { useCollage } from "@/context/CollageContext";
@@ -99,7 +100,7 @@ const Editor = () => {
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
-  const isGridComplete = group.members.length === group.totalMembers;
+  const isGridComplete = group.members.length !== group.totalMembers;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">

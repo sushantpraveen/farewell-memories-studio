@@ -7,7 +7,7 @@ import {
   updateUserProfile,
   getUsers
 } from '../controllers/userController.js';
-import { protect, isLeader } from '../middleware/authMiddleware.js';
+import { protect, isLeader, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -32,7 +32,8 @@ router.post('/login', loginValidation, loginUser);
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
 
-// Admin/Leader routes
-router.get('/', protect, isLeader, getUsers);
+// Admin routes
+router.get('/', protect, isAdmin, getUsers);
 
 export default router;
+

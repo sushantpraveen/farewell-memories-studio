@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollage, GridTemplate, Group } from '@/context/CollageContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { debounce } from 'lodash';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface MemberData {
   name: string;
@@ -49,6 +50,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formTouched, setFormTouched] = useState(false);
   const [loadingGroup, setLoadingGroup] = useState<boolean>(true);
+  // Holds the Cloudinary URL to send to backend on submit (original-quality upload)
+  const [submitPhotoUrl, setSubmitPhotoUrl] = useState<string>("");
+  // Track the latest preview object URL to revoke it safely later
+  const lastObjectUrlRef = useRef<string | null>(null);
 
   // Validation
   const validateForm = useCallback((data: MemberData) => {
@@ -97,55 +102,43 @@ export const useJoinGroup = (groupId: string | undefined) => {
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image is too large. Please select an image under 5MB.");
       return;
     }
-    
-    const toastId = toast.loading("Processing image...");
-    
+
+    // 1) Instant preview with object URL (no local face cropping)
+    const objectUrl = URL.createObjectURL(file);
+    // Revoke any previous object URL before assigning a new one
+    if (lastObjectUrlRef.current && lastObjectUrlRef.current !== objectUrl) {
+      URL.revokeObjectURL(lastObjectUrlRef.current);
+    }
+    lastObjectUrlRef.current = objectUrl;
+    setMemberData(prev => ({ ...prev, photo: objectUrl }));
+
+    // 2) Upload original to Cloudinary in the background
+    console.debug('[JoinGroup] Starting Cloudinary upload for original file', { name: file.name, size: file.size, type: file.type });
+    const uploadToast = toast.loading('Uploading photo...');
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const quickPreview = event.target?.result as string;
-        setMemberData(prev => ({ ...prev, photo: quickPreview }));
-        
-        try {
-          toast.loading("Optimizing image...", { id: toastId });
-          
-          const [compressionModule, faceDetectionModule] = await Promise.all([
-            import('@/utils/imageCompression'),
-            import('@/utils/faceDetectionService')
-          ]);
-          
-          const compressedImage = await compressionModule.compressToTargetSize(file, 150);
-          toast.loading("Detecting face...", { id: toastId });
-          
-          try {
-            await faceDetectionModule.initFaceDetectionWorker();
-            const response = await fetch(compressedImage);
-            const blob = await response.blob();
-            const processedFile = new File([blob], 'processed.jpg', { type: 'image/jpeg' });
-            const finalImage = await faceDetectionModule.cropFace(processedFile, 100, 100);
-            
-            setMemberData(prev => ({ ...prev, photo: finalImage }));
-            toast.success("Image processed successfully", { id: toastId });
-          } catch (faceError) {
-            console.warn("Face detection failed, using compressed image:", faceError);
-            setMemberData(prev => ({ ...prev, photo: compressedImage }));
-            toast.success("Image compressed successfully", { id: toastId });
-          }
-        } catch (processingError) {
-          console.error("Image processing failed:", processingError);
-          toast.error("Optimization failed, using original image", { id: toastId });
-        }
-      };
-      
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Image upload failed:", error);
-      toast.error("Failed to process image", { id: toastId });
+      const result = await uploadToCloudinary(file, 'groups');
+      setSubmitPhotoUrl(result.secure_url);
+      // Update preview to Cloudinary URL so GridPreview applies server-side face crop
+      setMemberData(prev => ({ ...prev, photo: result.secure_url }));
+      // Now that Cloudinary URL is used, revoke the temporary object URL
+      if (lastObjectUrlRef.current) {
+        URL.revokeObjectURL(lastObjectUrlRef.current);
+        lastObjectUrlRef.current = null;
+      }
+      console.debug('[JoinGroup] Cloudinary upload success', { public_id: result.public_id, secure_url_sample: result.secure_url.slice(0, 60) + '...' });
+      toast.success('Upload complete', { id: uploadToast });
+    } catch (uploadErr) {
+      console.error('[JoinGroup] Cloudinary upload failed', uploadErr);
+      toast.error('Photo upload failed. You can still submit, but it may be slower.', { id: uploadToast });
+      setSubmitPhotoUrl('');
+    } finally {
+      // If upload failed, keep the object URL alive so other components don't break.
+      // We'll clean it up on unmount or on next successful upload.
     }
   }, []);
 
@@ -164,7 +157,16 @@ export const useJoinGroup = (groupId: string | undefined) => {
     setIsSubmitting(true);
 
     try {
-      const success = await joinGroup(groupId, memberData);
+      // Prefer Cloudinary URL if available to keep payload small and preserve original quality
+      const payload = {
+        ...memberData,
+        photo: submitPhotoUrl || memberData.photo,
+      };
+      console.debug('[JoinGroup] Submitting join payload', {
+        usesCloudinary: Boolean(submitPhotoUrl),
+        photoPreviewType: memberData.photo?.slice(0, 15),
+      });
+      const success = await joinGroup(groupId, payload);
       if (success) {
         await updateUser({ groupId });
         toast.success("Successfully joined the group!");
@@ -178,7 +180,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [groupId, memberData, validateForm, joinGroup, updateUser, navigate]);
+  }, [groupId, memberData, submitPhotoUrl, validateForm, joinGroup, updateUser, navigate]);
 
   // Effects
   // Memoize validation effect to prevent unnecessary reruns
@@ -249,6 +251,16 @@ export const useJoinGroup = (groupId: string | undefined) => {
       clearTimeout(loadingTimeout);
     };
   }, [groupId, getGroup]);
+
+  // Cleanup on unmount: revoke any lingering object URL
+  useEffect(() => {
+    return () => {
+      if (lastObjectUrlRef.current) {
+        URL.revokeObjectURL(lastObjectUrlRef.current);
+        lastObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     memberData,
