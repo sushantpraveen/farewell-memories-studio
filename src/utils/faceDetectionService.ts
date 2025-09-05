@@ -296,3 +296,5 @@ const fileToImageData = async (file: File): Promise<{ data: ImageData; width: nu
   });
 };
 
+
+

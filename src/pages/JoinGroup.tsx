@@ -314,6 +314,7 @@ const JoinGroup = () => {
                         </div>
                       ) : (
                         <div className="p-8 text-center">
+                          
                           <p className="text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
                         </div>
                       )}

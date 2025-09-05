@@ -13,12 +13,14 @@ interface CenterVariantsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   order: Order;
+  preloadedVariants?: GridVariant[];
 }
 
 export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   open,
   onOpenChange,
   order,
+  preloadedVariants = [],
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -27,11 +29,55 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Load cached images on mount
   useEffect(() => {
-    if (open && variants.length === 0) {
-      generateVariants();
+    if (open) {
+      const cachedImages: Record<string, string> = {};
+      let hasCache = false;
+      
+      // If we have preloaded variants, check for cached images
+      if (preloadedVariants.length > 0) {
+        console.log('Using preloaded variants:', preloadedVariants.length);
+        
+        // Try to load cached images
+        for (const variant of preloadedVariants) {
+          try {
+            const cachedImage = localStorage.getItem(`variant-image-${variant.id}`);
+            if (cachedImage) {
+              cachedImages[variant.id] = cachedImage;
+              hasCache = true;
+            }
+          } catch (e) {}
+        }
+        
+        // Set variants from preloaded data
+        setVariants(preloadedVariants);
+        
+        // If we have cached images, use them
+        if (hasCache) {
+          console.log('Using cached images for', Object.keys(cachedImages).length, 'variants');
+          setRenderedImages(cachedImages);
+          setProgress(Object.keys(cachedImages).length / preloadedVariants.length * 100);
+          
+          // If all images are cached, we're done
+          if (Object.keys(cachedImages).length === preloadedVariants.length) {
+            setIsGenerating(false);
+            toast.success(`Loaded ${preloadedVariants.length} center variants from cache`);
+          } else {
+            // Start rendering from the first non-cached variant
+            setCurrentRenderIndex(Object.keys(cachedImages).length);
+            setIsGenerating(true);
+          }
+        } else {
+          // No cached images, start rendering from the beginning
+          setCurrentRenderIndex(0);
+          setIsGenerating(true);
+        }
+      } else if (variants.length === 0) {
+        generateVariants();
+      }
     }
-  }, [open]);
+  }, [open, preloadedVariants]);
 
   const generateVariants = async () => {
     setIsGenerating(true);
@@ -42,7 +88,15 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     
     try {
       console.log('Generating variants for order:', order.id, 'Members:', order.members.length);
-      const generatedVariants = await generateGridVariants(order);
+      
+      // Use preloaded variants if available
+      let generatedVariants = preloadedVariants;
+      
+      // Generate variants if none were preloaded
+      if (generatedVariants.length === 0) {
+        generatedVariants = await generateGridVariants(order);
+      }
+      
       console.log('Generated variants:', generatedVariants.length, generatedVariants.map(v => v.centerMember.name));
       setVariants(generatedVariants);
       setCurrentRenderIndex(0);
@@ -63,6 +117,12 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   };
 
   const handleVariantRendered = (variantId: string, dataUrl: string) => {
+    // Cache rendered images in localStorage for future use
+    try {
+      localStorage.setItem(`variant-image-${variantId}`, dataUrl);
+    } catch (e) {
+      console.warn('Failed to cache variant image in localStorage:', e);
+    }
     console.log('Variant rendered successfully:', variantId);
     setRenderedImages(prev => ({ ...prev, [variantId]: dataUrl }));
     
@@ -171,6 +231,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     setVariants([]);
     setRenderedImages({});
     setCurrentRenderIndex(0);
+    setProgress(0);
     generateVariants();
   };
 
@@ -190,9 +251,9 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Generate Center Variants</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={handleClose}>
+            {/* <Button variant="ghost" size="sm" onClick={handleClose}>
               <X className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
         </DialogHeader>
 

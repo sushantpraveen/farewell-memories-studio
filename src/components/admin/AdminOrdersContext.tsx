@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AdminOrdersContextType, Order, OrderFilters } from '@/types/admin';
-import { mockAdminApi } from '@/services/mockAdminApi';
+import { ordersApi } from '@/lib/api';
 
 const AdminOrdersContext = createContext<AdminOrdersContextType | null>(null);
 
@@ -26,8 +26,13 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
   const refreshOrders = async () => {
     setLoading(true);
     try {
-      const result = await mockAdminApi.getOrders(filters, currentPage, pageSize);
-      setOrders(result.orders);
+      const result = await ordersApi.getOrders({
+        ...filters,
+        page: currentPage,
+        limit: pageSize,
+      });
+      // Cast server shape to Order[] as needed
+      setOrders(result.orders as unknown as Order[]);
     } catch (error) {
       console.error('Failed to load orders:', error);
     } finally {
@@ -35,9 +40,27 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await ordersApi.deleteOrder(orderId);
+      // Optimistically remove from local state
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      // Also remove from selections and open tabs if present
+      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+      setOpenTabs(prev => prev.filter(id => id !== orderId));
+      if (activeTab === orderId) {
+        setActiveTab(undefined);
+      }
+    } catch (error) {
+      console.error('Failed to delete order:', error);
+      // Fallback to refresh
+      await refreshOrders();
+    }
+  };
+
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
-      await mockAdminApi.updateOrder(orderId, { status });
+      await ordersApi.updateOrder(orderId, { status });
       await refreshOrders();
     } catch (error) {
       console.error('Failed to update order status:', error);
@@ -49,7 +72,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
       const order = orders.find(o => o.id === orderId);
       if (order) {
         const updatedSettings = { ...order.settings, ...settings };
-        await mockAdminApi.updateOrder(orderId, { settings: updatedSettings });
+        await ordersApi.updateOrder(orderId, { settings: updatedSettings });
         
         // Update local state immediately for better UX
         setOrders(prev => prev.map(o => 
@@ -93,6 +116,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
     setSelectedOrders,
     updateOrderStatus,
     updateOrderSettings,
+    deleteOrder,
     openOrderTab,
     closeOrderTab,
     setActiveTab,

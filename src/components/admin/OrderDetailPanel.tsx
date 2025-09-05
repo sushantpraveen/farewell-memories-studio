@@ -19,12 +19,13 @@ import {
 } from '@/components/ui/table';
 import { CanvasElement } from '@/types/canvas';
 import { Order } from '@/types/admin';
-import { mockAdminApi } from '@/services/mockAdminApi';
+import { ordersApi } from '@/lib/api';
 import { OrderGridPreview } from './OrderGridPreview';
 import { EditorControls } from './EditorControls';
 import { CenterVariantsModal } from './CenterVariantsModal';
 import { useAdminOrders } from './AdminOrdersContext';
 import { canGenerateVariants } from '@/utils/gridCenterUtils';
+import { generateGridVariants } from '@/utils/gridVariantGenerator';
 import { toast } from 'sonner';
 import { CollageEditor } from './CollageEditor';
 interface OrderDetailPanelProps {
@@ -37,7 +38,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   const [editingDescription, setEditingDescription] = useState(false);
   const [description, setDescription] = useState('');
   const [showVariantsModal, setShowVariantsModal] = useState(false);
-  const { updateOrderSettings } = useAdminOrders();
+  const [preloadedVariants, setPreloadedVariants] = useState<any[]>([]);
+  const [isPreloading, setIsPreloading] = useState(false);
+  const { updateOrderSettings, orders, refreshOrders } = useAdminOrders();
   const [activeSection, setActiveSection] = useState('text');
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
   const [selectedElements, setSelectedElements] = useState<string[]>([]);
@@ -334,26 +337,55 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   }, [resizing]);
 
   useEffect(() => {
-    const loadOrder = async () => {
-      setLoading(true);
-      try {
-        const orderData = await mockAdminApi.getOrder(orderId);
-        setOrder(orderData);
-        setDescription(orderData?.description || '');
-      } catch (error) {
-        console.error('Failed to load order:', error);
-      } finally {
+    setLoading(true);
+    const existing = orders.find(o => o.id === orderId) || null;
+    if (existing) {
+      setOrder(existing);
+      setDescription(existing.description || '');
+      setLoading(false);
+      
+      // Preload variants when order is loaded
+      preloadVariants(existing);
+    } else {
+      // Ensure orders are fetched; OrderDetailPanel relies on the shared context list
+      Promise.resolve(refreshOrders()).finally(() => {
+        const updated = orders.find(o => o.id === orderId) || null;
+        if (updated) {
+          setOrder(updated);
+          setDescription(updated.description || '');
+          
+          // Preload variants when order is loaded
+          preloadVariants(updated);
+        }
         setLoading(false);
-      }
-    };
-
-    loadOrder();
-  }, [orderId]);
+      });
+    }
+  }, [orderId, orders]);
+  
+  // Preload variants in the background
+  const preloadVariants = async (orderData: Order) => {
+    if (!orderData || isPreloading) return;
+    
+    const { canGenerate } = canGenerateVariants(orderData);
+    if (!canGenerate) return;
+    
+    try {
+      setIsPreloading(true);
+      console.log('Preloading variants for order:', orderData.id);
+      const variants = await generateGridVariants(orderData);
+      setPreloadedVariants(variants);
+      console.log('Successfully preloaded', variants.length, 'variants');
+    } catch (error) {
+      console.error('Failed to preload variants:', error);
+    } finally {
+      setIsPreloading(false);
+    }
+  };
 
   const handleSaveDescription = async () => {
     if (order) {
       try {
-        await mockAdminApi.updateOrder(order.id, { description });
+        await ordersApi.updateOrder(order.id, { description });
         setOrder({ ...order, description });
         setEditingDescription(false);
         toast.success('Description updated successfully');
@@ -1793,6 +1825,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
         open={showVariantsModal}
         onOpenChange={setShowVariantsModal}
         order={order}
+        preloadedVariants={preloadedVariants}
       />
     </div>
   );

@@ -21,6 +21,14 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters long']
     },
+    googleId: {
+      type: String,
+      sparse: true,
+      index: true
+    },
+    profileImage: {
+      type: String
+    },
     isLeader: {
       type: Boolean,
       default: false
@@ -32,6 +40,14 @@ const userSchema = new mongoose.Schema(
     groupId: {
       type: String,
       default: null
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null
     }
   },
   {
@@ -42,6 +58,8 @@ const userSchema = new mongoose.Schema(
 // Add indexes for frequently queried fields
 userSchema.index({ groupId: 1 }); // For finding users by group
 userSchema.index({ isLeader: 1 }); // For finding leaders
+// Optional TTL-like usage with manual cleanup; helpful for queries
+userSchema.index({ resetPasswordExpires: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

@@ -72,4 +72,5 @@ export interface AdminMember {
     closeOrderTab: (orderId: string) => void;
     setActiveTab: (orderId: string) => void;
     refreshOrders: () => void;
+    deleteOrder: (orderId: string) => Promise<void>;
   }

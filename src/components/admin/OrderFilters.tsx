@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useAdminOrders } from './AdminOrdersContext';
-import { mockAdminApi } from '@/services/mockAdminApi';
+import { ordersApi } from '@/lib/api';
 import { toast } from 'sonner';
 
 export const OrderFilters: React.FC = () => {
@@ -52,7 +52,7 @@ export const OrderFilters: React.FC = () => {
     }
 
     try {
-      const blob = await mockAdminApi.exportOrders(selectedOrders);
+      const blob = await ordersApi.exportOrders(selectedOrders);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { Eye, Edit3, Download, Check, X } from 'lucide-react';
+import { Eye, Edit3, Download, Check, X, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,6 +22,17 @@ import {
 } from '@/components/ui/select';
 import { useAdminOrders } from './AdminOrdersContext';
 import { Order } from '@/types/admin';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const getStatusColor = (status: Order['status']) => {
   switch (status) {
@@ -40,7 +51,8 @@ export const OrdersTable: React.FC = () => {
     setSelectedOrders,
     updateOrderStatus,
     openOrderTab,
-    loading
+    loading,
+    deleteOrder,
   } = useAdminOrders();
 
   const handleSelectAll = (checked: boolean) => {
@@ -150,6 +162,30 @@ export const OrdersTable: React.FC = () => {
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete order {order.id}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the order and remove its data.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700"
+                          onClick={() => deleteOrder(order.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </TableCell>
             </TableRow>

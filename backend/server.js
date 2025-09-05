@@ -4,10 +4,17 @@ import dotenv from 'dotenv';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import compression from 'compression';
+import passport from 'passport';
 
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+
+// Passport config
+import { configurePassport } from './config/passport.js';
 import User from './models/userModel.js';
 
 // Load environment variables
@@ -17,12 +24,23 @@ const app = express();
 const PORT = process.env.PORT || 4000; // Changed to 4000 to avoid conflict
 
 // Middleware
+// CORS configuration
+const frontendUrl = process.env.APP_BASE_URL || 'http://localhost:8080';
+console.log(`Setting up CORS for frontend URL: ${frontendUrl}`);
+
 app.use(cors({
-  origin: 'http://localhost:8080', // Your frontend origin
+  origin: frontendUrl,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Allow preflight requests
+app.options('*', cors());
+
+// Initialize Passport
+configurePassport();
+app.use(passport.initialize());
 
 // Increase Node.js memory limits for handling large payloads
 const maxRequestSize = '10mb'; // Reduced from 50mb to avoid memory issues
@@ -84,6 +102,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/signature
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

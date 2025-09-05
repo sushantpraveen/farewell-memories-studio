@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus } from 'lucide-react';
 import { useCollage } from '@/context/CollageContext';
 import type { Group } from '@/context/CollageContext';
-import { mockAdminApi } from '@/services/mockAdminApi';
+import { ordersApi, paymentsApi } from '@/lib/api';
 import type { Order, AdminMember } from '@/types/admin';
 
 const Checkout = () => {
@@ -83,74 +83,126 @@ const Checkout = () => {
     setShippingForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (document.getElementById('razorpay-sdk')) return resolve(true);
+      const script = document.createElement('script');
+      script.id = 'razorpay-sdk';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleRazorpayPayment = async () => {
+    if (!group) return;
     setIsProcessing(true);
-    
-    // Simulate Razorpay payment process
-    setTimeout(async () => {
+
+    try {
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error('Failed to load Razorpay');
+
+      // 1) Create a Razorpay order (amount in paise)
+      const amountPaise = finalTotal * 100;
+      const rpOrder = await paymentsApi.createOrder(amountPaise, `grp_${group.id}`);
+
+      // 2) Get public key
+      const { keyId } = await paymentsApi.getKey();
+
+      // 3) Open Razorpay Checkout
+      const options: any = {
+        key: keyId,
+        amount: rpOrder.amount,
+        currency: 'INR',
+        name: group.name,
+        description: `${group.name} • ${group.yearOfPassing}`,
+        order_id: rpOrder.id,
+        prefill: {
+          name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
+          email: shippingForm.email,
+          contact: shippingForm.phone,
+        },
+        notes: { groupId: group.id },
+        handler: async (response: any) => {
+          try {
+            // 4) Verify payment signature on backend and send email confirmation
+            const verify = await paymentsApi.verify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              clientOrderId: `ORD-${Date.now()}`,
+              email: shippingForm.email,
+              name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
+              amount: finalTotal * 100,
+            });
+            if (!verify.valid) throw new Error('Payment verification failed');
+
+            // 5) Create app Order after successful payment
+            const members: AdminMember[] = group.members.map(m => ({
+              id: m.id,
+              name: m.name,
+              memberRollNumber: m.memberRollNumber,
+              photo: m.photo,
+              vote: m.vote,
+              joinedAt: m.joinedAt.toISOString(),
+              size: m.size,
+            }));
+            const newOrder: Order = {
+              id: `ORD-${Date.now()}`,
+              status: 'new',
+              paid: true,
+              paymentId: response.razorpay_payment_id,
+              paidAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              description: `${group.name} • ${group.yearOfPassing}`,
+              gridTemplate: winningTemplate as Order['gridTemplate'],
+              members,
+              shipping: {
+                name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
+                phone: shippingForm.phone,
+                email: shippingForm.email,
+                line1: shippingForm.address,
+                line2: '',
+                city: shippingForm.city,
+                state: '',
+                postalCode: shippingForm.zipCode,
+                country: 'India',
+              },
+              settings: {
+                widthPx: 2550,
+                heightPx: 3300,
+                keepAspect: true,
+                gapPx: 4,
+                cellScale: 1.0,
+                dpi: 300,
+              },
+            };
+
+            await ordersApi.createOrder(newOrder);
+            setShowSuccess(true);
+            setTimeout(() => { setShowSuccess(false); navigate('/'); }, 3200);
+          } catch (err) {
+            console.error('Payment finalize error:', err);
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          }
+        },
+        theme: { color: '#6d28d9' },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Razorpay error:', err);
       setIsProcessing(false);
-      setShowSuccess(true);
-
-      // Build order payload from group + form
-      if (group) {
-        const orderId = `ORD-${Date.now()}`;
-        const paymentId = `pay_${Math.random().toString(36).substr(2, 9)}`;
-        const members: AdminMember[] = group.members.map(m => ({
-          id: m.id,
-          name: m.name,
-          memberRollNumber: m.memberRollNumber,
-          photo: m.photo,
-          vote: m.vote,
-          joinedAt: m.joinedAt.toISOString(),
-          size: m.size,
-        }));
-
-        const newOrder: Order = {
-          id: orderId,
-          status: 'new',
-          paid: true,
-          paymentId,
-          paidAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          description: `${group.name} • ${group.yearOfPassing}`,
-          gridTemplate: winningTemplate as Order['gridTemplate'],
-          members,
-          shipping: {
-            name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
-            phone: shippingForm.phone,
-            email: shippingForm.email,
-            line1: shippingForm.address,
-            line2: '',
-            city: shippingForm.city,
-            state: '',
-            postalCode: shippingForm.zipCode,
-            country: 'India',
-          },
-          settings: {
-            widthPx: 2550,
-            heightPx: 3300,
-            keepAspect: true,
-            gapPx: 4,
-            cellScale: 1.0,
-            dpi: 300,
-          },
-        };
-
-        try {
-          await mockAdminApi.createOrder(newOrder);
-        } catch (e) {
-          // If mock persistence fails, continue navigation; the admin page will still load mock data
-          console.error('Failed to create order:', e);
-        }
-      }
-
-      // Redirect sooner to Admin Orders; keep success toast visible briefly
-      setTimeout(() => {
-        setShowSuccess(false);
-        navigate('/');
-      }, 3200);
-    }, 2000);setTimeout
+    }
   };
 
   const isFormValid = Object.values(shippingForm).every(value => value.trim() !== '');

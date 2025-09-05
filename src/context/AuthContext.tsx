@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { LocalStorageService } from '@/lib/localStorage';
-import { authApi, ApiError, useFallbackStorage } from '@/lib/api';
+import { authApi, ApiError } from '@/lib/api';
 
 interface User {
   id: string;
@@ -16,6 +16,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: (token: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -38,7 +39,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [users, setUsers] = useState<Record<string, User>>({});
+  // Note: We no longer maintain a local users store; authentication relies on backend only
 
   // Load user data from token on mount
   useEffect(() => {
@@ -77,126 +78,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadUserData();
   }, []);
 
-  // Initialize users from localStorage on mount (fallback)
-  useEffect(() => {
-    const savedUsers = LocalStorageService.loadUsers();
-    setUsers(savedUsers);
-  }, []);
+  // Removed local users fallback initialization to ensure auth only via backend
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      
-      // Try API login
-      try {
-        const userData = await authApi.login(email, password);
-        
-        // Convert createdAt string to Date object
-        const user = {
-          ...userData,
-          createdAt: new Date(userData.createdAt)
-        };
-        
-        // Save token and user data
-        LocalStorageService.saveAuthToken(userData.token);
-        LocalStorageService.saveUserData(user);
-        
-        // Update state
-        setUser(user);
-        return true;
-      } catch (error) {
-        console.warn('API login failed, trying localStorage fallback:', error);
-        
-        // Fallback to localStorage
-        const existingUser = Object.values(users).find(u => u.email === email);
-        
-        if (existingUser) {
-          const mockToken = 'mock-jwt-token-' + Date.now();
-          
-          LocalStorageService.saveAuthToken(mockToken);
-          LocalStorageService.saveUserData(existingUser);
-          setUser(existingUser);
-          
-          return true;
-        } else {
-          // Create new user if not found (for demo purposes)
-          const newUser: User = {
-            id: Math.random().toString(36).substr(2, 9),
-            email,
-            name: email.split('@')[0], // Use email prefix as name for demo
-            isLeader: false,
-            groupId: undefined,
-            createdAt: new Date()
-          };
-
-          const mockToken = 'mock-jwt-token-' + Date.now();
-          
-          setUsers(prev => ({ ...prev, [newUser.id]: newUser }));
-          LocalStorageService.saveAuthToken(mockToken);
-          LocalStorageService.saveUserData(newUser);
-          setUser(newUser);
-          
-          return true;
-        }
-      }
+      const userData = await authApi.login(email, password);
+      const user = {
+        ...userData,
+        createdAt: new Date(userData.createdAt)
+      };
+      LocalStorageService.saveAuthToken(userData.token);
+      LocalStorageService.saveUserData(user);
+      setUser(user);
+      return true;
     } catch (error) {
+      // Do NOT fallback to local creation; only registered users may log in
       console.error('Login failed:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      
-      // Try API registration
-      try {
-        const userData = await authApi.register(name, email, password);
-        
-        // Convert createdAt string to Date object
-        const user = {
-          ...userData,
-          createdAt: new Date(userData.createdAt)
-        };
-        
-        // Save token and user data
-        LocalStorageService.saveAuthToken(userData.token);
-        LocalStorageService.saveUserData(user);
-        
-        // Update state
-        setUser(user);
-        return true;
-      } catch (error) {
-        console.warn('API registration failed, trying localStorage fallback:', error);
-        
-        // Fallback to localStorage
-        // Check if user already exists
-        const existingUser = Object.values(users).find(u => u.email === email);
-        if (existingUser) {
-          return false; // User already exists
-        }
-
-        const newUser: User = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          name,
-          isLeader: false,
-          groupId: undefined,
-          createdAt: new Date()
-        };
-
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        setUsers(prev => ({ ...prev, [newUser.id]: newUser }));
-        LocalStorageService.saveAuthToken(mockToken);
-        LocalStorageService.saveUserData(newUser);
-        setUser(newUser);
-        
-        return true;
-      }
+      const userData = await authApi.register(name, email, password);
+      const user = {
+        ...userData,
+        createdAt: new Date(userData.createdAt)
+      };
+      LocalStorageService.saveAuthToken(userData.token);
+      LocalStorageService.saveUserData(user);
+      setUser(user);
+      return true;
     } catch (error) {
+      // Do NOT fallback to local registration; require backend registration
       console.error('Registration failed:', error);
       return false;
     } finally {
@@ -232,16 +151,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(updatedUser);
         return true;
       } catch (error) {
-        console.warn('API update failed, using localStorage fallback:', error);
-        
-        // Fallback to localStorage
-        const updatedUser = { ...user, ...updates };
-        setUser(updatedUser);
-        setUsers(prev => ({ ...prev, [user.id]: updatedUser }));
-        
-        // Update localStorage
-        LocalStorageService.saveUserData(updatedUser);
-        return true;
+        console.error('API update failed:', error);
+        return false;
       }
     } catch (error) {
       console.error('Update user failed:', error);
@@ -251,20 +162,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginWithGoogle = async (token: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      
+      // Save the token
+      LocalStorageService.saveAuthToken(token);
+      
+      // Get user profile with the token
+      const userData = await authApi.getProfile();
+      const user = {
+        ...userData,
+        createdAt: new Date(userData.createdAt)
+      };
+      
+      // Save user data
+      LocalStorageService.saveUserData(user);
+      setUser(user);
+      return true;
+    } catch (error) {
+      console.error('Google login failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getAllUsers = async (): Promise<User[]> => {
     try {
-      // Try API first
-      try {
-        const apiUsers = await authApi.getUsers();
-        return apiUsers.map(user => ({
-          ...user,
-          createdAt: new Date(user.createdAt)
-        }));
-      } catch (error) {
-        console.warn('API get users failed, using localStorage fallback:', error);
-        // Fallback to localStorage
-        return Object.values(users);
-      }
+      const apiUsers = await authApi.getUsers();
+      return apiUsers.map(user => ({
+        ...user,
+        createdAt: new Date(user.createdAt)
+      }));
     } catch (error) {
       console.error('Get all users failed:', error);
       return [];
@@ -279,6 +209,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider value={{
       user,
       login,
+      loginWithGoogle,
       register,
       logout,
       isAuthenticated,

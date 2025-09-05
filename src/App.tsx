@@ -9,6 +9,8 @@ import { CollageProvider } from "./context/CollageContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 // import CreateGroup from "./pages/CreateGroup";
 import AdminOrders from "./pages/AdminOrders";
 import GridBoard from "./components/GridBoard";
@@ -17,6 +19,7 @@ import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import { GoogleAuthCallback } from "./pages/GoogleAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +34,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/auth/google/success" element={<GoogleAuthCallback />} />
               <Route path="/create-group" element={
                 <ProtectedRoute>
                   <GridBoard />

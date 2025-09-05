@@ -28,9 +28,22 @@ This is the backend for the Signature Day application, built with Express.js and
 4. Create a `.env` file in the root of the backend directory with the following content:
    ```
    PORT=4000
-   MONGODB_URI=mongodb://localhost:27017/signatureday
-   JWT_SECRET=your_jwt_secret_key_change_in_production
    NODE_ENV=development
+   
+   # Mongo
+   MONGODB_URI=mongodb://localhost:27017/signatureday
+   
+   # Auth
+   JWT_SECRET=your_jwt_secret_key_change_in_production
+   
+   # Optional admin seed
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD=supersecret
+   ADMIN_NAME=Administrator
+   
+   # Razorpay
+   RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
+   RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxx
    ```
 
 ## Running the Server
