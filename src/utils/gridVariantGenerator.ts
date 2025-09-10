@@ -90,7 +90,8 @@ export function getTemplateLayout(template: string, memberCount: number): Templa
         gridDimensions: { cols: 8, rows: 10 },
         description: '8x10 grid with 6x6 center cell, top/bottom rows, left/right sides, bottom extension'
       };
-    } else if (memberCount === 35) {
+    }
+    else if (memberCount === 35) {
       return {
         centerIndex: 8,
         totalCells: 35,

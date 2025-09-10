@@ -90,8 +90,9 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
             const apiGroups = await groupApi.getGroups();
             const formattedGroups: Record<string, Group> = {};
             
-            apiGroups.forEach(group => {
-              formattedGroups[group._id || group.id] = convertDates(group);
+            apiGroups.data.forEach((group: any) => {
+              const id = group._id || group.id;
+              formattedGroups[id] = convertDates(group);
             });
             
             setGroups(formattedGroups);
@@ -374,7 +375,7 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Try API first
       try {
         const apiGroups = await groupApi.getGroups();
-        const formattedGroups = apiGroups.map(group => convertDates(group));
+        const formattedGroups = apiGroups.data.map((group: any) => convertDates(group));
         
         // Update local cache
         const groupsMap: Record<string, Group> = {};

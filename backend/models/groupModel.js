@@ -80,10 +80,10 @@ const groupSchema = new mongoose.Schema(
   }
 );
 
-// Add indexes for frequently queried fields
-groupSchema.index({ createdAt: -1 }); // For sorting by creation date
-groupSchema.index({ yearOfPassing: 1 }); // For filtering by year
-groupSchema.index({ 'members.memberRollNumber': 1 }); // For finding members by roll number
+// Indexes for performance
+groupSchema.index({ createdAt: -1 });
+groupSchema.index({ yearOfPassing: 1 });
+groupSchema.index({ 'members.memberRollNumber': 1 });
 
 // Virtual for calculating current member count
 groupSchema.virtual('currentMemberCount').get(function() {
@@ -100,10 +100,10 @@ groupSchema.methods.addMember = function(memberData) {
   if (this.isFull()) {
     throw new Error('Group is already full');
   }
-  
+
   this.members.push(memberData);
   this.votes[memberData.vote]++;
-  
+
   return this;
 };
 
@@ -112,14 +112,14 @@ groupSchema.methods.updateGridTemplate = function() {
   const votes = this.votes;
   let maxVotes = 0;
   let winningTemplate = this.gridTemplate;
-  
+
   for (const [template, count] of Object.entries(votes)) {
     if (count > maxVotes) {
       maxVotes = count;
       winningTemplate = template;
     }
   }
-  
+
   this.gridTemplate = winningTemplate;
   return this;
 };
@@ -127,3 +127,5 @@ groupSchema.methods.updateGridTemplate = function() {
 const Group = mongoose.model('Group', groupSchema);
 
 export default Group;
+
+

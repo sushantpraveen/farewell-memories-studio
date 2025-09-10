@@ -93,3 +93,37 @@ export async function enumerate33(cb: EnumerateCallback) {
   }
 }
 
+
+// 34 template: 8 columns x 10 rows (virtual), center spans 6x6
+// Indices mapping:
+// 0..7   -> top row (8)
+// 8..13  -> left border (6)
+// 14..19 -> right border (6)
+// 20..27 -> bottom row (8)
+// 28..33 -> bottom extension (6 centered)
+export async function enumerate34(cb: EnumerateCallback) {
+  // 1) Top row (8 cells) – row 0
+  for (let c = 0; c < 8; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 6; r++) {
+    await cb({ kind: 'left', index: 8 + r, r: 1 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 6, cspan: 6 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 6; r++) {
+    await cb({ kind: 'right', index: 14 + r, r: 1 + r, c: 7 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 8; c++) {
+    await cb({ kind: 'bottom', index: 20 + c, r: 7, c });
+  }
+  // 6) Bottom extension (6 cells, centered) – row 8, cols 1...6
+  for (let i = 0; i < 6; i++) {
+    await cb({ kind: 'bottomExt', index: 28 + i, r: 8, c: 1 + i });
+  }
+}
+
+

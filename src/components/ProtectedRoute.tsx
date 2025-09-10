@@ -9,12 +9,21 @@ interface ProtectedRouteProps {
   requiresAdmin?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
   requiresLeader = false,
-  requiresAdmin = false
+  requiresAdmin = false,
 }) => {
-  const { isAuthenticated, isLeader, user } = useAuth();
+  const { isAuthenticated, isLeader, user, isLoading } = useAuth();
+
+  // While auth state is loading, avoid redirecting prematurely
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm text-gray-500">Loading…</div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;

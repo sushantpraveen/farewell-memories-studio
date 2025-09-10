@@ -1818,6 +1818,11 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             </div>
           </div>
         </TabsContent>
+        
+        <TabsContent value="settings">
+          
+        </TabsContent>
+
       </Tabs>
 
       {/* Center Variants Modal */}

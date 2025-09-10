@@ -4,13 +4,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Award, TrendingUp, Users, Share, Eye, LogOut, ArrowLeft, Home, ShoppingCart } from 'lucide-react';
+import { Award, TrendingUp, Users, Share, Eye, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useCollage, Member } from '@/context/CollageContext';
+import { useCollage, Member } from '@/context/CollageContext'
 import { MemberDetailsModal } from '@/components/MemberDetailsModal';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { LazyImage } from '@/components/LazyImage';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -19,6 +21,7 @@ const Dashboard = () => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [group, setGroup] = useState<any>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   
   // Update group data whenever user's groupId changes
@@ -54,6 +57,11 @@ const Dashboard = () => {
     return () => clearInterval(intervalId);
   }, [user?.groupId, getGroup]); // Remove groups dependency to prevent excessive re-fetching
   
+  // Open the share/suggestions modal when user lands on dashboard
+  useEffect(() => {
+    setIsShareModalOpen(true);
+  }, []);
+  
   // Show loading state while context is initializing
   if (isLoading) {
     return (
@@ -81,6 +89,10 @@ const Dashboard = () => {
     }
   };
 
+  const openShare = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -91,6 +103,7 @@ const Dashboard = () => {
     setSelectedMember(member);
     setIsModalOpen(true);
   };
+
 
   if (!group) {
     return (
@@ -113,6 +126,7 @@ const Dashboard = () => {
   const winningTemplate = getWinningTemplate(group?.votes);
   const completionPercentage = Math.round(((group?.members?.length || 0) / (group?.totalMembers || 1)) * 100);
   const totalVotes = group?.votes ? Object.values(group.votes as { hexagonal: number; square: number; circle: number }).reduce((a: number, b: number) => a + b, 0) : 0;
+  const shareLink = `${window.location.origin}/join/${group.id}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 ">
@@ -339,6 +353,66 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Share with Your Class</DialogTitle>
+            <DialogDescription>
+              Invite your classmates to join the group and contribute their photos. Here are some quick actions and recommendations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Share link</p>
+              <code className="text-xs bg-gray-50 p-2 rounded block break-all border">{shareLink}</code>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <Button variant="outline" onClick={handleShare}>
+                  <Share className="h-4 w-4 mr-2" /> Copy Link
+                </Button>
+              </div>
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-2">Share via</p>
+                <div className="relative">
+                  <Carousel className="w-full" opts={{ align: 'start' }}>
+                    <CarouselContent>
+                      <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+                        <div onClick={() => openShare(`https://wa.me/?text=${encodeURIComponent(`Join our ${group.name} group! ${shareLink}`)}`)} className="cursor-pointer p-4 rounded-lg bg-white border hover:shadow flex flex-col items-center gap-2">
+                          <img src="/icons/whatsapp.svg" alt="WhatsApp" className="h-8 w-8" />
+                          <span className="text-xs">WhatsApp</span>
+                        </div>
+                      </CarouselItem>
+                      <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+                        <div onClick={() => openShare(`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Join our ${group.name} group!`)}`)} className="cursor-pointer p-4 rounded-lg bg-white border hover:shadow flex flex-col items-center gap-2">
+                          <img src="/icons/telegram.svg" alt="Telegram" className="h-8 w-8" />
+                          <span className="text-xs">Telegram</span>
+                        </div>
+                      </CarouselItem>
+                      <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+                        <div onClick={() => openShare(`mailto:?subject=${encodeURIComponent(`${group.name} - Join our group`)}&body=${encodeURIComponent(`Hi!\nJoin our ${group.name} group for ${group.yearOfPassing}: ${shareLink}`)}`)} className="cursor-pointer p-4 rounded-lg bg-white border hover:shadow flex flex-col items-center gap-2">
+                          <img src="/icons/email.svg" alt="Email" className="h-8 w-8" />
+                          <span className="text-xs">Email</span>
+                        </div>
+                      </CarouselItem>
+                      <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+                        <div onClick={() => openShare(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`)} className="cursor-pointer p-4 rounded-lg bg-white border hover:shadow flex flex-col items-center gap-2">
+                          <img src="/icons/facebook.svg" alt="Facebook" className="h-8 w-8" />
+                          <span className="text-xs">Facebook</span>
+                        </div>
+                      </CarouselItem>
+                      <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+                        <div onClick={() => openShare(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join our ${group.name} group!`)}&url=${encodeURIComponent(shareLink)}`)} className="cursor-pointer p-4 rounded-lg bg-white border hover:shadow flex flex-col items-center gap-2">
+                          <img src="/icons/x.svg" alt="X (Twitter)" className="h-8 w-8" />
+                          <span className="text-xs">Twitter/X</span>
+                        </div>
+                      </CarouselItem>
+                    </CarouselContent>
+                  </Carousel>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <MemberDetailsModal
         member={selectedMember}
         isOpen={isModalOpen}

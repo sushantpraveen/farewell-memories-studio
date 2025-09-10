@@ -115,16 +115,20 @@ const CreateGroup = () => {
     setIsSubmitting(true);
 
     try {
-      const groupId = createGroup({
+      const groupId = await createGroup({
         name: formData.name,
         yearOfPassing: formData.yearOfPassing,
         totalMembers: parseInt(formData.totalMembers),
         gridTemplate: formData.gridTemplate
       });
 
+      if (!groupId) {
+        throw new Error('Failed to create group');
+      }
+
       // Update user data to mark as leader and set groupId
       if (user) {
-        updateUser({ 
+        await updateUser({ 
           isLeader: true, 
           groupId 
         });

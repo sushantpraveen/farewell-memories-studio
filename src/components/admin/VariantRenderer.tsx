@@ -3,7 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import { enumerate45, enumerate33 } from '@/templates/layouts';
+import { enumerate45, enumerate33, enumerate34 } from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
@@ -151,11 +151,18 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         // Create canvas at print-equivalent pixels based on template
         const canvas = document.createElement('canvas');
         const DPI = 300;
-        const is45 = templateKey === '45';
+        // Derive effective template key from the order to match layouts.ts
+        const count = order.members.length;
+        let effectiveKey = templateKey;
+        if (order.gridTemplate === 'square') {
+          if (count === 33) effectiveKey = '33';
+          else if (count === 45) effectiveKey = '45';
+        }
+        const is45 = effectiveKey === '45';
         const TARGET_W_IN = is45 ? 8 : 8.5;
         const TARGET_H_IN = 13.5;
         const COLS = 8;
-        const ROWS = is45 ? 10 : 9; // 45 has 10 virtual rows; 33 has 9 (rows 0..8)
+        const ROWS = is45 ? 10 : 9; // 45 → 10 rows; 33 → 9 rows (0..8)
         const gap = 4; // align with desiredGapPx used in downloads
         canvas.width = Math.round(TARGET_W_IN * DPI);
         canvas.height = Math.round(TARGET_H_IN * DPI);
@@ -205,7 +212,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const memberAt = (idx: number) => variant.members[idx];
 
         // Draw using shared enumerator for the selected template
-        if (templateKey === '45') {
+        if (effectiveKey === '45') {
           await enumerate45(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
@@ -222,7 +229,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
               await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
             }
           });
-        } else if (templateKey === '33') {
+        } else if (effectiveKey === '33') {
           await enumerate33(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
@@ -239,7 +246,26 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
               await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
             }
           });
-        } else {
+        } else if (effectiveKey === '34') {
+        await enumerate34(async (slot) => {
+          if (slot.kind === 'center') {
+            if (variant.centerMember?.photo) {
+              await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            } else {
+              const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              ctx.fillStyle = '#f3f4f6';
+              ctx.fillRect(x, y, w, h);
+            }
+            return;
+          }
+          const m = slot.index >= 0 ? memberAt(slot.index) : null;
+          if (m?.photo) {
+            await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+          }
+        });
+      } 
+
+        else {
           // Fallback: do nothing for unknown template (future templates will be added here)
         }
 
