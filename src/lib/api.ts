@@ -1,10 +1,11 @@
 import { LocalStorageService } from './localStorage';
 
-// API base URL - change this to your backend server URL
-const API_BASE_URL = 'http://localhost:4000/api'; // Updated to match new backend port
+// Resolve base URLs from environment with safe fallbacks
+// Note: In Vite, only variables prefixed with VITE_ are exposed to the client.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
 
 // Backend URL for direct redirects (like OAuth)
-export const BACKEND_URL = 'http://localhost:4000';
+export const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
 /**
  * Custom error class for API errors
