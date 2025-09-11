@@ -4,7 +4,6 @@ import { HexagonalGrid } from "./grids/HexagonalGrid";
 import { SquareGrid } from "./grids/SquareGrid";
 import { CircleGrid } from "./grids/CircleGrid";
 import { GridProvider } from "./square/context/GridContext";
-import { centerCropFace } from "@/utils/faceCenterCrop";
 import { useGrid } from "./square/context/GridContext";
 
 interface GridPreviewProps {
@@ -114,49 +113,9 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
           setProcessedActiveMember({ ...activeMember, photo: transformed });
           return;
         }
-        // Check if the photo is a valid data URL
-        if (!activeMember.photo.startsWith('data:') || activeMember.photo.length < 100) {
-          console.warn(`Invalid photo data for active member, skipping face crop`);
-          setProcessedActiveMember(activeMember);
-          return;
-        }
-        // Cache hit?
-        const cacheKey = makeKey(activeMember);
-        const cached = cacheRef.current.get(cacheKey);
-        if (cached) {
-          setProcessedActiveMember({ ...activeMember, photo: cached });
-          return;
-        }
-        
-        // Create a blob from the data URL without using fetch API
-        const base64Data = activeMember.photo.split(',')[1];
-        if (!base64Data) {
-          console.warn(`Invalid base64 data for active member, skipping face crop`);
-          setProcessedActiveMember(activeMember);
-          return;
-        }
-        
-        try {
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          const blob = new Blob([bytes], { type: 'image/jpeg' });
-          const file = new File([blob], 'active-member-photo.jpg', { type: 'image/jpeg' });
-
-          // Process with face cropping (use reasonable cell size)
-          const cellSize = 256;
-          const processedPhoto = await centerCropFace(file, cellSize, cellSize);
-          
-          // Save to cache and state
-          cacheRef.current.set(cacheKey, processedPhoto);
-          setProcessedActiveMember({ ...activeMember, photo: processedPhoto });
-        } catch (e) {
-          console.warn(`Base64 decode failed for active member, using original photo`, e);
-          setProcessedActiveMember(activeMember);
-        }
+        // For data URLs or non-Cloudinary remote URLs, do not run any client-side face processing.
+        // Use the original image as provided.
+        setProcessedActiveMember(activeMember);
       } catch (error) {
         console.warn('Face cropping failed for active member:', error);
         // Fallback to original photo
@@ -191,48 +150,8 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
             processed.push({ ...member, photo: transformed });
             continue;
           }
-          // Check if the photo is a valid data URL
-          if (!member.photo.startsWith('data:') || member.photo.length < 100) {
-            console.warn(`Invalid photo data for member ${member.name}, skipping face crop`);
-            processed.push(member);
-            continue;
-          }
-          // Cache hit?
-          const cacheKey = makeKey(member);
-          const cached = cacheRef.current.get(cacheKey);
-          if (cached) {
-            processed.push({ ...member, photo: cached });
-            continue;
-          }
-          
-          // Create a blob from the data URL without using fetch API
-          const base64Data = member.photo.split(',')[1];
-          if (!base64Data) {
-            console.warn(`Invalid base64 data for member ${member.name}, skipping face crop`);
-            processed.push(member);
-            continue;
-          }
-          
-          try {
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            
-            const blob = new Blob([bytes], { type: 'image/jpeg' });
-            const file = new File([blob], 'member-photo.jpg', { type: 'image/jpeg' });
-
-            // Process with face cropping (use reasonable cell size)
-            const cellSize = 256;
-            const processedPhoto = await centerCropFace(file, cellSize, cellSize);
-            
-            cacheRef.current.set(cacheKey, processedPhoto);
-            processed.push({ ...member, photo: processedPhoto });
-          } catch (e) {
-            console.warn(`Base64 decode failed for member ${member.name}, using original photo`, e);
-            processed.push(member);
-          }
+          // For data URLs or non-Cloudinary URLs, keep the original image without client-side face processing
+          processed.push(member);
         } catch (error) {
           console.warn('Face cropping failed for member:', member.name, error);
           // Fallback to original photo

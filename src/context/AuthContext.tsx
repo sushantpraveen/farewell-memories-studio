@@ -57,14 +57,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               createdAt: new Date(userData.createdAt)
             });
           } catch (error) {
-            // If API fails, try to get from localStorage
-            console.warn('Failed to get user profile from API, using localStorage:', error);
-            const localUserData = LocalStorageService.loadUserData();
-            if (localUserData) {
-              setUser(localUserData);
-            } else {
-              // If no local data, clear token
+            // If Unauthorized, clear stale token and user data
+            if (error && typeof error === 'object' && (error as any).status === 401) {
+              console.warn('Auth token invalid or expired. Clearing local session.');
               LocalStorageService.clearAll();
+              setUser(null);
+            } else {
+              // Otherwise, do not trust local cache for auth
+              console.warn('Failed to get user profile from API. Ignoring local cache. Error:', error);
+              LocalStorageService.clearAll();
+              setUser(null);
             }
           }
         }

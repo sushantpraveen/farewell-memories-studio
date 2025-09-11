@@ -40,7 +40,8 @@ async function apiRequest<T>(
   // Add auth token if required and available
   if (requiresAuth) {
     const token = LocalStorageService.loadAuthToken();
-    if (token) {
+    // Only attach if it looks like a JWT (three segments)
+    if (token && token.split('.').length === 3) {
       headers['Authorization'] = `Bearer ${token}`;
     }
   }
@@ -63,6 +64,10 @@ async function apiRequest<T>(
     const responseData = raw ? JSON.parse(raw) : null;
 
     if (!response.ok) {
+      // If unauthorized, do not spam malformed token errors; let caller decide next steps
+      if (response.status === 401 && requiresAuth) {
+        throw new ApiError('Unauthorized', 401, responseData);
+      }
       throw new ApiError(
         (responseData && responseData.message) || 'Something went wrong',
         response.status,

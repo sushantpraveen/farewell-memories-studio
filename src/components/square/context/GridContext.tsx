@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { centerCropFace } from '@/utils/faceCenterCrop';
 
 export type CellImages = Record<string, string>;
 export type CellOffsets = Record<string, { x: number; y: number }>;
@@ -66,10 +65,9 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
     if (!file.type.startsWith('image/')) return;
 
     try {
-      // Use a reasonable default crop size; background cover will scale it in cells.
-      const cellSize = 256;
-      const processed = await centerCropFace(file, cellSize, cellSize);
-      setCellImages(prev => ({ ...prev, [selectedKey]: processed }));
+      // No client-side face processing; use the original file as an object URL.
+      const url = URL.createObjectURL(file);
+      setCellImages(prev => ({ ...prev, [selectedKey]: url }));
     } catch (e) {
       // Fallback: store original file as object URL on error
       const fallbackUrl = URL.createObjectURL(file);

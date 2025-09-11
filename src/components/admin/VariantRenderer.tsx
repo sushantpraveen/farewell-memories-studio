@@ -2,7 +2,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
-import * as faceapi from 'face-api.js';
 import { enumerate45, enumerate33, enumerate34 } from '@/templates/layouts';
 
 interface VariantRendererProps {
@@ -145,9 +144,6 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
       try {
         console.log('Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
 
-        // 0) Ensure face-api models are loaded (once per session)
-        await ensureModelsLoaded();
-
         // Create canvas at print-equivalent pixels based on template
         const canvas = document.createElement('canvas');
         const DPI = 300;
@@ -188,23 +184,44 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           h: rspan * cellH + (rspan - 1) * gap,
         });
 
+        // Cloudinary helpers
+        const isCloudinaryUrl = (url: string): boolean => typeof url === 'string' && url.includes('/image/upload');
+        const withCloudinaryTransform = (url: string, transform: string): string => {
+          try { return url.replace('/image/upload/', `/image/upload/${transform}/`); } catch { return url; }
+        };
+
         const drawCover = async (src: string, c: number, r: number, cspan = 1, rspan = 1) => {
           const { x, y, w, h } = rect(c, r, cspan, rspan);
+          // Try to apply Cloudinary face-aware transform at the source when possible
+          let source = src;
+          if (isCloudinaryUrl(src)) {
+            // Subject-aware thumbnail, gentle zoom, square aspect matching cell
+            const size = Math.round(Math.max(w, h));
+            const transform = `c_thumb,g_auto:face,z_0.8,ar_1:1,w_${size},h_${size},q_auto,f_auto,dpr_auto`;
+            source = withCloudinaryTransform(src, transform);
+          }
           return new Promise<void>((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.onload = async () => {
-              try {
-                // Try face-aware crop first (await detection)
-                const { sx, sy, sw, sh } = await getFaceAwareCropAsync(img, w, h);
-                ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-                resolve();
-              } catch (e) {
-                reject(e);
+            img.onload = () => {
+              // Default to CSS-like cover cropping (no face detection)
+              const sRatio = img.width / img.height;
+              const dRatio = w / h;
+              let sx = 0, sy = 0, sw = img.width, sh = img.height;
+              if (sRatio > dRatio) {
+                sh = img.height;
+                sw = sh * dRatio;
+                sx = (img.width - sw) / 2;
+              } else {
+                sw = img.width;
+                sh = sw / dRatio;
+                sy = (img.height - sh) / 2;
               }
+              ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+              resolve();
             };
             img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = src;
+            img.src = source;
           });
         };
 
@@ -292,73 +309,3 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
     </div>
   );
 };
-
-// -------- face-api helpers --------
-let faceModelsLoaded = false;
-async function ensureModelsLoaded() {
-  if (faceModelsLoaded) return;
-  const MODEL_URL = '/weights';
-  await Promise.all([
-    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-  ]);
-  faceModelsLoaded = true;
-}
-
-async function getFaceAwareCropAsync(img: HTMLImageElement, targetW: number, targetH: number) {
-  const dRatio = targetW / targetH;
-
-  const coverFallback = () => {
-    const sRatio = img.width / img.height;
-    let sx = 0, sy = 0, sw = img.width, sh = img.height;
-    if (sRatio > dRatio) {
-      sh = img.height;
-      sw = sh * dRatio;
-      sx = (img.width - sw) / 2;
-    } else {
-      sw = img.width;
-      sh = sw / dRatio;
-      sy = (img.height - sh) / 2;
-    }
-    return { sx, sy, sw, sh };
-  };
-
-  try {
-    const det = await faceapi
-      .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-      .withFaceLandmarks();
-    if (!det) return coverFallback();
-
-    const box = det.detection.box; // { x, y, width, height }
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-    const PADDING = 0.50; // expand to include a bit of hair/shoulders
-
-    // size so that face box fits inside target aspect with padding
-    let sw = box.width * (1 + PADDING);
-    let sh = sw / dRatio;
-    const neededH = box.height * (1 + PADDING);
-    if (sh < neededH) {
-      sh = neededH;
-      sw = sh * dRatio;
-    }
-
-    // center on face
-    let sx = cx - sw / 2;
-    let sy = cy - sh / 2;
-
-    // clamp to image bounds
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    if (sx + sw > img.width) sx = Math.max(0, img.width - sw);
-    if (sy + sh > img.height) sy = Math.max(0, img.height - sh);
-
-    // final safety: ensure sw/sh within bounds
-    sw = Math.min(sw, img.width);
-    sh = Math.min(sh, img.height);
-
-    return { sx, sy, sw, sh };
-  } catch {
-    return coverFallback();
-  }
-}

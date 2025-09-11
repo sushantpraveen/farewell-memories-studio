@@ -213,7 +213,13 @@ export class LocalStorageService {
 
   static loadAuthToken(): string | null {
     try {
-      return localStorage.getItem(this.STORAGE_KEYS.AUTH_TOKEN);
+      const raw = localStorage.getItem(this.STORAGE_KEYS.AUTH_TOKEN);
+      // Treat missing, literal 'undefined'/'null', or obviously invalid values as no token
+      if (!raw) return null;
+      const trimmed = raw.trim();
+      if (trimmed === 'undefined' || trimmed === 'null') return null;
+      if (trimmed.length < 10) return null; // too short to be a real JWT
+      return trimmed;
     } catch (error) {
       console.error('Error loading auth token from localStorage:', error);
       return null;
