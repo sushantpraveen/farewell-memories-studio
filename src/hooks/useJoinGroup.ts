@@ -168,7 +168,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
       });
       const success = await joinGroup(groupId, payload);
       if (success) {
-        await updateUser({ groupId });
+        await updateUser({ 
+          groupId,
+          isLeader: false  // Explicitly set to false for group members
+        });
         toast.success("Successfully joined the group!");
         navigate(`/`);
       } else {

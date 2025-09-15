@@ -41,7 +41,10 @@ export const createGroup = async (req, res) => {
         gridTemplate: group.gridTemplate,
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
-        members: group.members,
+        members: group.members.map(member => ({
+          ...member,
+          id: member._id || member.id // Include id field for frontend compatibility
+        })),
         votes: group.votes
       });
     } else {
@@ -126,7 +129,10 @@ export const getGroupById = async (req, res) => {
         gridTemplate: group.gridTemplate,
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
-        members: group.members,
+        members: group.members.map(member => ({
+          ...member,
+          id: member._id || member.id // Include id field for frontend compatibility
+        })),
         votes: group.votes
       });
     } else {
@@ -202,7 +208,10 @@ export const getGroupMembers = async (req, res) => {
     const paginatedMembers = members.slice(skip, skip + limit);
     
     // Do not truncate photos for members list
-    const resultMembers = paginatedMembers;
+    const resultMembers = paginatedMembers.map(member => ({
+      ...member,
+      id: member._id || member.id // Include id field for frontend compatibility
+    }));
     
     res.json({
       members: resultMembers,
@@ -266,9 +275,12 @@ export const joinGroup = async (req, res) => {
     group.members.push(newMember);
     group.votes[vote] = (group.votes[vote] || 0) + 1;
 
-    // Update user's group association
+    // Update user's group association - members are not leaders
     if (req.user) {
-      await User.findByIdAndUpdate(req.user._id, { groupId: group._id });
+      await User.findByIdAndUpdate(req.user._id, { 
+        groupId: group._id,
+        isLeader: false  // Explicitly set to false for group members
+      });
     }
 
     // Save group

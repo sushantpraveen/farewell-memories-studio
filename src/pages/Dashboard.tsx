@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Award, TrendingUp, Users, Share, Eye, LogOut } from 'lucide-react';
+import { Award, TrendingUp, Users, Share, Eye, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCollage, Member } from '@/context/CollageContext'
 import { MemberDetailsModal } from '@/components/MemberDetailsModal';
@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [group, setGroup] = useState<any>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   
   // Update group data whenever user's groupId changes
@@ -33,6 +34,8 @@ const Dashboard = () => {
         try {
           const userGroup = await getGroup(user.groupId);
           console.log('Dashboard useEffect - userGroup:', userGroup);
+          console.log('Dashboard useEffect - userGroup.members:', userGroup?.members);
+          console.log('Dashboard useEffect - userGroup.members.length:', userGroup?.members?.length);
           if (userGroup) {
             setGroup(userGroup);
           } else {
@@ -46,12 +49,27 @@ const Dashboard = () => {
     
     fetchGroup();
     
-    // Set up polling at a reasonable interval (every 30 seconds)
+    // Set up polling at a more frequent interval (every 5 seconds) for real-time updates
+    let pollCount = 0;
     const intervalId = setInterval(() => {
       if (user?.groupId) {
-        fetchGroup();
+        // Force refresh every 4th poll (every 20 seconds) to ensure fresh data
+        const shouldForceRefresh = pollCount % 4 === 0;
+        if (shouldForceRefresh) {
+          console.log('Polling with force refresh');
+          getGroup(user.groupId, true).then(userGroup => {
+            if (userGroup) {
+              setGroup(userGroup);
+            }
+          }).catch(error => {
+            console.error('Error in polling force refresh:', error);
+          });
+        } else {
+          fetchGroup();
+        }
+        pollCount++;
       }
-    }, 30000);
+    }, 5000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
@@ -61,6 +79,26 @@ const Dashboard = () => {
   useEffect(() => {
     setIsShareModalOpen(true);
   }, []);
+
+  // Refresh data when user returns to the tab
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && user?.groupId) {
+        console.log('Tab became visible, refreshing group data');
+        try {
+          const userGroup = await getGroup(user.groupId, true); // Force refresh
+          if (userGroup) {
+            setGroup(userGroup);
+          }
+        } catch (error) {
+          console.error('Error refreshing group on visibility change:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user?.groupId, getGroup]);
   
   // Show loading state while context is initializing
   if (isLoading) {
@@ -104,6 +142,27 @@ const Dashboard = () => {
     setIsModalOpen(true);
   };
 
+  const handleRefresh = async () => {
+    if (!user?.groupId) return;
+    
+    setIsRefreshing(true);
+    try {
+      const userGroup = await getGroup(user.groupId, true); // Force refresh
+      console.log('Manual refresh - userGroup:', userGroup);
+      console.log('Manual refresh - userGroup.members:', userGroup?.members);
+      console.log('Manual refresh - userGroup.members.length:', userGroup?.members?.length);
+      if (userGroup) {
+        setGroup(userGroup);
+        toast.success('Group data refreshed!');
+      }
+    } catch (error) {
+      console.error('Error refreshing group:', error);
+      toast.error('Failed to refresh group data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
 
   if (!group) {
     return (
@@ -127,6 +186,11 @@ const Dashboard = () => {
   const completionPercentage = Math.round(((group?.members?.length || 0) / (group?.totalMembers || 1)) * 100);
   const totalVotes = group?.votes ? Object.values(group.votes as { hexagonal: number; square: number; circle: number }).reduce((a: number, b: number) => a + b, 0) : 0;
   const shareLink = `${window.location.origin}/join/${group.id}`;
+
+  // Debug logging
+  console.log('Dashboard render - group:', group);
+  console.log('Dashboard render - group.members:', group?.members);
+  console.log('Dashboard render - group.members.length:', group?.members?.length);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 ">
@@ -164,6 +228,17 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
             <p className="text-gray-600">Class of {group.yearOfPassing} • Dashboard</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
           </div>
           {/* <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
@@ -336,6 +411,15 @@ const Dashboard = () => {
               <Button onClick={handleShare} className="w-full" variant="outline">
                 <Share className="h-4 w-4 mr-2" />
                 Share Group Link
+              </Button>
+              <Button 
+                onClick={handleRefresh} 
+                className="w-full" 
+                variant="outline"
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
               </Button>
               <Link to="/editor">
                 <Button className="w-full bg-purple-600 hover:bg-purple-700">

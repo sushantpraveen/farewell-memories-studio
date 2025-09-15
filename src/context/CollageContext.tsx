@@ -32,7 +32,7 @@ interface CollageContextType {
   groups: Record<string, Group>;
   createGroup: (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'>) => Promise<string>;
   joinGroup: (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'>) => Promise<boolean>;
-  getGroup: (groupId: string) => Promise<Group | undefined>;
+  getGroup: (groupId: string, forceRefresh?: boolean) => Promise<Group | undefined>;
   updateGroupTemplate: (groupId: string) => Promise<void>;
   getAllGroups: () => Promise<Group[]>;
   deleteGroup: (groupId: string) => Promise<void>;
@@ -323,21 +323,26 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Cache for getGroup requests to prevent excessive API calls
   const groupRequestCache = React.useRef<Record<string, { data: Group | undefined, timestamp: number }>>({});
   
-  const getGroup = async (groupId: string): Promise<Group | undefined> => {
+  const getGroup = async (groupId: string, forceRefresh: boolean = false): Promise<Group | undefined> => {
     try {
-      // Check local state first
-      const localGroup = groups[groupId];
-      if (localGroup) {
-        console.log('Using local group data');
-        return localGroup;
-      }
-      
-      // Check cache (valid for 30 seconds)
-      const now = Date.now();
-      const cachedRequest = groupRequestCache.current[groupId];
-      if (cachedRequest && (now - cachedRequest.timestamp < 30000)) {
-        console.log('Using cached group data');
-        return cachedRequest.data;
+      // Skip cache checks if force refresh is requested
+      if (!forceRefresh) {
+        // Check local state first
+        const localGroup = groups[groupId];
+        if (localGroup) {
+          console.log('Using local group data');
+          return localGroup;
+        }
+        
+        // Check cache (valid for 30 seconds)
+        const now = Date.now();
+        const cachedRequest = groupRequestCache.current[groupId];
+        if (cachedRequest && (now - cachedRequest.timestamp < 30000)) {
+          console.log('Using cached group data');
+          return cachedRequest.data;
+        }
+      } else {
+        console.log('Force refresh requested, skipping cache');
       }
       
       // Try API with minimal loading state
@@ -348,6 +353,7 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
         const formattedGroup = convertDates(groupData);
         
         // Update caches
+        const now = Date.now();
         setGroups(prev => ({ ...prev, [groupId]: formattedGroup }));
         groupRequestCache.current[groupId] = { data: formattedGroup, timestamp: now };
         

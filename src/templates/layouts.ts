@@ -125,5 +125,3 @@ export async function enumerate34(cb: EnumerateCallback) {
     await cb({ kind: 'bottomExt', index: 28 + i, r: 8, c: 1 + i });
   }
 }
-
-
