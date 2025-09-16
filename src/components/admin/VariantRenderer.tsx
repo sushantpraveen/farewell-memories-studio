@@ -637,7 +637,7 @@ async function getFaceAwareCropAsync(img: HTMLImageElement, targetW: number, tar
 
   try {
     const det = await faceapi
-      .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+      .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
       .withFaceLandmarks();
     if (!det) return coverFallback();
 
