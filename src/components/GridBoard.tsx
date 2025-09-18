@@ -31,7 +31,6 @@ const GridBoard = () => {
   const [cellImages, setCellImages] = useState<CellImage>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
-  const [totalMembers, setTotalMembers] = useState<string>("");
   const [PreviewComp, setPreviewComp] = useState<React.LazyExoticComponent<React.ComponentType> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -287,7 +286,7 @@ const GridBoard = () => {
 
   const handlePreviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const n = Number(totalMembers);
+    const n = Number(formData.totalMembers);
     if (Number.isNaN(n)) {
       setLoadError('Enter a valid number.');
       return;
@@ -297,8 +296,7 @@ const GridBoard = () => {
 
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setTotalMembers(value);
-
+    
     // Update formData.totalMembers with validation
     handleFieldChange('totalMembers', value);
     
@@ -330,7 +328,7 @@ const GridBoard = () => {
           <CardTitle className="text-lg">Component Preview Loader</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePreviewSubmit} className="grid grid-cols-1 sm:grid-cols-[220px_1fr_auto] items-end gap-3">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-[220px_1fr_auto] items-end gap-3">
           <div className="flex flex-col gap-2 w-full">
             <div className="space-y-2">
                   <Label htmlFor="groupName" className="flex items-center">
@@ -403,7 +401,7 @@ const GridBoard = () => {
                   id="preview-number"
                   type="number"
                   inputMode="numeric"
-                  value={totalMembers}
+                  value={formData.totalMembers}
                   onChange={handleNumberInputChange}
                   placeholder="e.g. 33 or 37"
                   className={`${
@@ -431,7 +429,6 @@ const GridBoard = () => {
             {/* <Button type="submit" className="sm:justify-self-end">Load</Button> */}
 
             <Button
-                  onClick={handleSubmit} 
                   type="submit" 
                   className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
                   disabled={isSubmitting || !isValidForm}
