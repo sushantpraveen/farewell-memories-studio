@@ -2,10 +2,10 @@ import { LocalStorageService } from './localStorage';
 
 // Resolve base URLs from environment with safe fallbacks
 // Note: In Vite, only variables prefixed with VITE_ are exposed to the client.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Backend URL for direct redirects (like OAuth)
-export const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+export const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? '' : 'http://localhost:4000');
 
 /**
  * Custom error class for API errors

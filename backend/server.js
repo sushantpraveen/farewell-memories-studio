@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 4000; // Changed to 4000 to avoid conflict
 // Middleware
 // CORS configuration
 app.use(cors({
-  origin: ["http://69.62.83.140:8080", "http://localhost:8080"],
+  origin: ["http://signaturedaytshirt.com", "http://www.signaturedaytshirt.com", "http://localhost:8080"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -105,7 +105,8 @@ app.use('/api/auth', authRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
+  res.status(200).json({ status: 'ok', timestamp: new Date(),
+    database: 'connected', message: 'Server is running' });
 });
 
 // Error handling middleware
