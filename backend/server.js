@@ -25,11 +25,8 @@ const PORT = process.env.PORT || 4000; // Changed to 4000 to avoid conflict
 
 // Middleware
 // CORS configuration
-const frontendUrl = process.env.APP_BASE_URL || 'http://localhost:8080';
-console.log(`Setting up CORS for frontend URL: ${frontendUrl}`);
-
 app.use(cors({
-  origin: frontendUrl,
+  origin: ["http://69.62.83.140:8080", "http://localhost:8080"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

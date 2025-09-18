@@ -35,7 +35,7 @@ router.get('/google/callback', (req, res, next) => {
       const token = generateToken(req.user._id);
       
       // Redirect to frontend with token
-      const frontendUrl = process.env.APP_BASE_URL || 'http://localhost:8080';
+      const frontendUrl = process.env.API_BASE_URL || 'http://localhost:8080';
       res.redirect(`${frontendUrl}/auth/google/success?token=${token}`);
     } catch (error) {
       console.error('Google auth callback error:', error);
