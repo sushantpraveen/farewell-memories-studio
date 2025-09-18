@@ -8,17 +8,6 @@ import { useCollage } from "@/context/CollageContext";
 const Index = () => {
   const { createGroup } = useCollage();
 
-  const createTestGroup = () => {
-    const groupId = createGroup({
-      name: "Test Group",
-      yearOfPassing: "2024",
-      totalMembers: 10,
-      gridTemplate: "square"
-    });
-    console.log('Created test group with ID:', groupId);
-    alert(`Test group created with ID: ${groupId}\nVisit: http://localhost:8080/join/${groupId}`);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
       {/* Header */}
@@ -34,9 +23,6 @@ const Index = () => {
                 Create Group
               </Button>
             </Link>
-            {/* <Button onClick={createTestGroup} variant="outline">
-              Create Test Group
-            </Button> */}
           </div>
         </div>
       </header>
