@@ -2,7 +2,7 @@
 import React, { useRef, useState, Suspense, lazy } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, Users, Calendar, Hash, Layout, Type } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Hash, Layout, Type, AlertCircle } from "lucide-react";
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -14,6 +14,17 @@ import { useAuth } from '../context/AuthContext';
 
 interface CellImage {
   [key: string]: string;
+}
+
+interface FormErrors {
+  name?: string;
+  yearOfPassing?: string;
+  totalMembers?: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: FormErrors;
 }
 
 const GridBoard = () => {
@@ -33,6 +44,8 @@ const GridBoard = () => {
     logoPreview: "",
     customText: ""
   });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<{[key: string]: boolean}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createGroup, isLoading } = useCollage();
   const { user, updateUser } = useAuth();
@@ -42,14 +55,130 @@ const GridBoard = () => {
   // We will look for files like "33.tsx", "37.tsx", or any "n.tsx"
   const componentModules = import.meta.glob('./square/*.tsx');
 
+  // Validation functions
+  const validateGroupName = (name: string): string | undefined => {
+    if (!name.trim()) {
+      return "Group name is required";
+    }
+    if (name.trim().length < 3) {
+      return "Group name must be at least 3 characters long";
+    }
+    if (name.trim().length > 100) {
+      return "Group name must be less than 100 characters";
+    }
+    if (!/^[a-zA-Z0-9\s\-_&()]+$/.test(name.trim())) {
+      return "Group name contains invalid characters";
+    }
+    return undefined;
+  };
+
+  const validateYearOfPassing = (year: string): string | undefined => {
+    if (!year.trim()) {
+      return "Year of passing is required";
+    }
+    const yearNum = parseInt(year);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(yearNum)) {
+      return "Please enter a valid year";
+    }
+    if (yearNum < 1950) {
+      return "Year must be 1950 or later";
+    }
+    if (yearNum > currentYear + 10) {
+      return `Year cannot be more than ${currentYear + 10}`;
+    }
+    return undefined;
+  };
+
+  const validateTotalMembers = (members: string): string | undefined => {
+    if (!members.trim()) {
+      return "Total members is required";
+    }
+    const membersNum = parseInt(members);
+    if (isNaN(membersNum)) {
+      return "Please enter a valid number";
+    }
+    if (membersNum < 1) {
+      return "Total members must be at least 1";
+    }
+    if (membersNum > 1000) {
+      return "Total members cannot exceed 1000";
+    }
+    return undefined;
+  };
+
+  const validateForm = (data: typeof formData): ValidationResult => {
+    const errors: FormErrors = {};
+    
+    errors.name = validateGroupName(data.name);
+    errors.yearOfPassing = validateYearOfPassing(data.yearOfPassing);
+    errors.totalMembers = validateTotalMembers(data.totalMembers);
+
+    // Remove undefined errors
+    Object.keys(errors).forEach(key => {
+      if (errors[key as keyof FormErrors] === undefined) {
+        delete errors[key as keyof FormErrors];
+      }
+    });
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
+  };
+
+  // Handle field changes with real-time validation
+  const handleFieldChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Mark field as touched
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Validate the specific field
+    let fieldError: string | undefined;
+    switch (field) {
+      case 'name':
+        fieldError = validateGroupName(value);
+        break;
+      case 'yearOfPassing':
+        fieldError = validateYearOfPassing(value);
+        break;
+      case 'totalMembers':
+        fieldError = validateTotalMembers(value);
+        break;
+    }
+    
+    setFormErrors(prev => ({
+      ...prev,
+      [field]: fieldError
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Mark all fields as touched
+    setTouched({
+      name: true,
+      yearOfPassing: true,
+      totalMembers: true
+    });
+
+    // Validate entire form
+    const validation = validateForm(formData);
+    setFormErrors(validation.errors);
+
+    if (!validation.isValid) {
+      toast.error("Please fix the form errors before submitting");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const groupId = await createGroup({
-        name: formData.name,
-        yearOfPassing: formData.yearOfPassing,
+        name: formData.name.trim(),
+        yearOfPassing: formData.yearOfPassing.trim(),
         totalMembers: parseInt(formData.totalMembers),
         gridTemplate: formData.gridTemplate
       });
@@ -65,6 +194,7 @@ const GridBoard = () => {
       toast.success("Group created successfully!");
       navigate(`/dashboard`);
     } catch (error) {
+      console.error("Error creating group:", error);
       toast.error("Failed to create group. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -169,8 +299,8 @@ const GridBoard = () => {
     const value = e.target.value;
     setTotalMembers(value);
 
-    // Update formData.totalMembers as well
-    setFormData(prev => ({ ...prev, totalMembers: value }));
+    // Update formData.totalMembers with validation
+    handleFieldChange('totalMembers', value);
     
     // Auto-load component when typing
     if (value.trim()) {
@@ -188,7 +318,8 @@ const GridBoard = () => {
   };
 
   
-const isValidForm = formData.name && formData.yearOfPassing && formData.totalMembers && parseInt(formData.totalMembers) > 0;
+  // Check if form is valid for submit button
+  const isValidForm = validateForm(formData).isValid;
 
   return (
     <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
@@ -206,13 +337,29 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
                     <Users className="mr-2 h-4 w-4" />
                     Group Name
                   </Label>
-                  <Input
-                    id="groupName"
-                    placeholder="e.g., Computer Science Batch 2024"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="groupName"
+                      placeholder="e.g., Computer Science Batch 2024"
+                      value={formData.name}
+                      onChange={(e) => handleFieldChange('name', e.target.value)}
+                      className={`${
+                        touched.name && formErrors.name 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                          : ''
+                      }`}
+                      required
+                    />
+                    {touched.name && formErrors.name && (
+                      <AlertCircle className="absolute right-3 top-3 h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                  {touched.name && formErrors.name && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <AlertCircle className="mr-1 h-3 w-3" />
+                      {formErrors.name}
+                    </p>
+                  )}
             </div>
 
             <div className="space-y-2">
@@ -220,25 +367,62 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
                     <Calendar className="mr-2 h-4 w-4" />
                     Year of Passing
                   </Label>
-                  <Input
-                    id="yearOfPassing"
-                    placeholder="e.g., 2024"
-                    value={formData.yearOfPassing}
-                    onChange={(e) => setFormData({ ...formData, yearOfPassing: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="yearOfPassing"
+                      type="number"
+                      placeholder="e.g., 2024"
+                      value={formData.yearOfPassing}
+                      onChange={(e) => handleFieldChange('yearOfPassing', e.target.value)}
+                      className={`${
+                        touched.yearOfPassing && formErrors.yearOfPassing 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                          : ''
+                      }`}
+                      required
+                    />
+                    {touched.yearOfPassing && formErrors.yearOfPassing && (
+                      <AlertCircle className="absolute right-3 top-3 h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                  {touched.yearOfPassing && formErrors.yearOfPassing && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <AlertCircle className="mr-1 h-3 w-3" />
+                      {formErrors.yearOfPassing}
+                    </p>
+                  )}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="preview-number">Total Members</Label>
-              <Input
-                id="preview-number"
-                type="number"
-                inputMode="numeric"
-                value={totalMembers}
-                onChange={handleNumberInputChange}
-                placeholder="e.g. 33 or 37"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="preview-number" className="flex items-center">
+                <Hash className="mr-2 h-4 w-4" />
+                Total Members
+              </Label>
+              <div className="relative">
+                <Input
+                  id="preview-number"
+                  type="number"
+                  inputMode="numeric"
+                  value={totalMembers}
+                  onChange={handleNumberInputChange}
+                  placeholder="e.g. 33 or 37"
+                  className={`${
+                    touched.totalMembers && formErrors.totalMembers 
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                      : ''
+                  }`}
+                  required
+                />
+                {touched.totalMembers && formErrors.totalMembers && (
+                  <AlertCircle className="absolute right-3 top-3 h-4 w-4 text-red-500" />
+                )}
+              </div>
+              {touched.totalMembers && formErrors.totalMembers && (
+                <p className="text-sm text-red-600 flex items-center">
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                  {formErrors.totalMembers}
+                </p>
+              )}
             </div>
 
             {/* <div className="text-xs text-slate-500 sm:self-center">
@@ -249,8 +433,8 @@ const isValidForm = formData.name && formData.yearOfPassing && formData.totalMem
             <Button
                   onClick={handleSubmit} 
                   type="submit" 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  disabled={isSubmitting}
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                  disabled={isSubmitting || !isValidForm}
                 >
                   {isSubmitting ? "Creating Group..." : "Create Group"}
                 </Button>
