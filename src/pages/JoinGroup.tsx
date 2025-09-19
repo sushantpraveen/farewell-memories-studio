@@ -31,7 +31,9 @@ const JoinGroup = () => {
     formTouched,
     handleInputChange,
     handlePhotoUpload,
-    handleSubmit
+    handleSubmit,
+    submitPhotoUrl,
+    isUploadingPhoto
   } = useJoinGroup(groupId);
 
 
@@ -261,8 +263,9 @@ const JoinGroup = () => {
                     disabled={
                       !memberData.name || 
                       !memberData.memberRollNumber || 
-                      !memberData.photo || 
                       !memberData.size || 
+                      !submitPhotoUrl ||
+                      isUploadingPhoto ||
                       isSubmitting || 
                       Object.values(errors).some(error => error)
                     }
@@ -271,6 +274,11 @@ const JoinGroup = () => {
                       <span className="flex items-center">
                         <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
                         Joining Group...
+                      </span>
+                    ) : isUploadingPhoto ? (
+                      <span className="flex items-center">
+                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+                        Uploading photo...
                       </span>
                     ) : "Join Group"}
                   </Button>

@@ -54,6 +54,8 @@ export const useJoinGroup = (groupId: string | undefined) => {
   const [submitPhotoUrl, setSubmitPhotoUrl] = useState<string>("");
   // Track the latest preview object URL to revoke it safely later
   const lastObjectUrlRef = useRef<string | null>(null);
+  // Track upload status to control UI (e.g., disable submit while uploading)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
 
   // Validation
   const validateForm = useCallback((data: MemberData) => {
@@ -120,6 +122,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
     // 2) Upload original to Cloudinary in the background
     console.debug('[JoinGroup] Starting Cloudinary upload for original file', { name: file.name, size: file.size, type: file.type });
     const uploadToast = toast.loading('Uploading photo...');
+    setIsUploadingPhoto(true);
     try {
       const result = await uploadToCloudinary(file, 'groups');
       setSubmitPhotoUrl(result.secure_url);
@@ -139,6 +142,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
     } finally {
       // If upload failed, keep the object URL alive so other components don't break.
       // We'll clean it up on unmount or on next successful upload.
+      setIsUploadingPhoto(false);
     }
   }, []);
 
@@ -276,6 +280,8 @@ export const useJoinGroup = (groupId: string | undefined) => {
     formTouched,
     handleInputChange,
     handlePhotoUpload,
-    handleSubmit
+    handleSubmit,
+    submitPhotoUrl,
+    isUploadingPhoto
   };
 };
