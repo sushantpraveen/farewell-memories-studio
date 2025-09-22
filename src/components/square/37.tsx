@@ -11,9 +11,10 @@ interface CellImage {
 interface GridBoardProps {
   previewMember?: Member;
   existingMembers?: Member[];
+  centerEmptyDefault?: boolean;
 }
 
-const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = [] }) => {
+const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = [], centerEmptyDefault = false }) => {
   const {
     cellImages,
     setCellImages,
@@ -71,6 +72,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     // This handles the case where we're in JoinGroup.tsx preview mode
     const cellIndex = getCellIndexFromKey(cellKey);
     if (cellIndex !== -1 && existingMembers[cellIndex]?.photo) {
+      console.log(`Using existing member photo for ${cellKey}:`, existingMembers[cellIndex].name);
       return {
         backgroundImage: `url(${existingMembers[cellIndex].photo})`,
         backgroundSize: 'cover',
@@ -80,6 +82,48 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
     
     return gridStyle;
+  };
+
+  // Reverse mapping: given a linear member index, return the cell keys
+  // used in both preview and download so we can seed GridContext correctly
+  const getKeysForIndex = (index: number): string[] => {
+    const keys: string[] = [];
+    // Top row 0-7
+    if (index >= 0 && index <= 7) {
+      keys.push(cid('top', 0, index));
+      return keys;
+    }
+    // Left side 8-13 (rows 1..6)
+    if (index >= 8 && index <= 13) {
+      keys.push(cid('left', index - 7, 0));
+      return keys;
+    }
+    // Right side 14-19 (rows 1..6)
+    if (index >= 14 && index <= 19) {
+      keys.push(cid('right', index - 13, 7));
+      return keys;
+    }
+    // Bottom row 20-27 (row 9, cols 0..7)
+    if (index >= 20 && index <= 27) {
+      keys.push(cid('bottom', 9, index - 20));
+      return keys;
+    }
+    // Bottom extension 28-32 (5 cells centered)
+    if (index >= 28 && index <= 32) {
+      const col = index - 28; // 0..4
+      // Preview variant (row 0) and download variant (row -1)
+      keys.push(cid('bottom-extension', 0, col + 2));
+      keys.push(cid('bottom-extension', -1, col + 2));
+      return keys;
+    }
+    // Top extension 33-36 (4 cells centered)
+    if (index >= 33 && index <= 36) {
+      const col = index - 33; // 0..3
+      keys.push(cid('topExt', 0, col + 2));
+      keys.push(cid('topExt', -1, col + 2));
+      return keys;
+    }
+    return keys;
   };
 
   // Helper function to get member index from cell key
@@ -105,11 +149,35 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       // Bottom row: 20-27
       return 20 + col;
     } else if (section === 'bottom-extension') {
-      // Bottom extension: 28-35
-      return 28 + col;
+      // Bottom extension: 5 cells (indices 28-32)
+      // col ranges from 2-6 (colIndex + 2), so we need col - 2
+      console.log("bottom-extension mapping → row:", row, "col:", col, "index:", 28 + (col - 2));
+      return 28 + (col - 2);
+    } else if (section === 'topExt') {
+      // Top extension: 4 cells (indices 33-36)  
+      // col ranges from 2-5 (colIndex + 2), so we need col - 2
+      console.log("topExt mapping → row:", row, "col:", col, "index:", 33 + (col - 2));
+      return 33 + (col - 2);
     }
     
     return -1;
+  };
+
+  // Debug function to log cell styles
+  const debugCellStyle = (cellKey: string) => {
+    const style = getCellStyleWithFallback(cellKey);
+    const cellIndex = getCellIndexFromKey(cellKey);
+    const hasExistingMember = cellIndex !== -1 && existingMembers[cellIndex]?.photo;
+    
+    console.log(`Cell ${cellKey}:`, {
+      cellIndex,
+      hasExistingMember,
+      existingMemberPhoto: hasExistingMember ? existingMembers[cellIndex].photo : 'none',
+      gridStyle: getCellStyle(cellKey),
+      finalStyle: style
+    });
+    
+    return style;
   };
 
   // Integrate form-uploaded images with GridContext
@@ -122,6 +190,47 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       }));
     }
   }, [previewMember?.photo, setCellImages, cid]);
+
+  // Seed GridContext with existingMembers so downloads can see images
+  useEffect(() => {
+    if (!existingMembers || existingMembers.length === 0) return;
+    // Build a single update object to minimize state churn
+    const updates: Record<string, string> = {};
+
+    existingMembers.forEach((m, idx) => {
+      if (!m?.photo) return;
+      const keys = getKeysForIndex(idx);
+      keys.forEach(k => { updates[k] = m.photo as string; });
+      // Optionally map first member into center, unless center should be empty by default
+      if (idx === 0 && !centerEmptyDefault) {
+        updates[cid('center', 0, 0)] = m.photo as string;
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      setCellImages(prev => ({ ...prev, ...updates }));
+    }
+  }, [existingMembers, centerEmptyDefault, setCellImages]);
+
+  // Debug existing members and cell images
+  useEffect(() => {
+    console.log('=== DEBUG INFO ===');
+    console.log('existingMembers:', existingMembers);
+    console.log('existingMembers.length:', existingMembers?.length);
+    console.log('cellImages:', cellImages);
+    console.log('Object.keys(cellImages):', Object.keys(cellImages));
+    
+    if (existingMembers && existingMembers.length > 0) {
+      existingMembers.forEach((member, index) => {
+        console.log(`Member ${index}:`, {
+          name: member.name,
+          hasPhoto: !!member.photo,
+          photoLength: member.photo?.length || 0
+        });
+      });
+    }
+    console.log('==================');
+  }, [existingMembers, cellImages]);
 
   // Canvas helpers and renderer for this 8x10 layout
   const loadImage = (src: string) =>
@@ -163,71 +272,100 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
 
     try {
-      await downloadImage('template-34.png', {
+      await downloadImage('template-37.png', {
         cols: 8,
-        rows: 11, // Increased to include both top and bottom extension rows
+        rows: 9, // Increased to include both top extension rows and both bottom extension rows
         // Target physical size for print within requested ranges
-        targetWidthIn: 8.5,
-        targetHeightIn: 12.5,
+        targetWidthIn: 8,
+        targetHeightIn: 13.5,
         dpi: 300,
         desiredGapPx: 4,
         draw: async ({ drawKey, ctx, width, height }) => {
           // Calculate cell dimensions
           const cellWidth = width / 8;
           const cellHeight = height / 8;
-     
-          // First, draw top extension (8 cells centered)
+          
+          // Constants for layout
           const extensionCells = 8;
-          const startCol = 0;
-          
-          // Draw top extension row at row 0
-          for (let i = 0; i < extensionCells; i++) {
-            await drawKey(
-              cid('top-extension', -1, i + 2),
-              0,
-              i,
-              1,
-              1
-            );
-          }
-          
-          // Then draw main top row at row 1
-          for (let c = 0; c < 8; c++) {
-            await drawKey(cid('top', 0, c), 1, c);
-          }
+          const endCol = 3.5;  // For centered cells
 
-          // Draw left side (6 cells)
-          for (let r = 2; r <= 7; r++) {
-            await drawKey(cid('left', r, 0), r, 0);
-          }
+          // 1. Draw first top extension row (8 cells)
+          // await Promise.all(Array.from({ length: 4 }, (_, i) => 
+          //   drawKey(
+          //     cid('topExt-most', -1, i + 2),
+          //     0,  // First row
+          //     0 + i,
+          //     1,
+          //     1
+          //   )
+          // ));
 
-          // Draw center cell (spans 6x6)
-          await drawKey(cid('center', 0, 0), 2, 1, 6, 6);
+          // 2. Draw second top extension row (8 cells)
+          // await Promise.all(Array.from({ length: 4 }, (_, i) => 
+          //   drawKey(
+          //     cid('topExt', -1, i + 2),
+          //     0,  // Second row
+          //     i,
+          //     1,
+          //     1
+          //   )
+          // ));
 
-          // Draw right side (6 cells)
-          for (let r = 2; r <= 7; r++) {
-            await drawKey(cid('right', r, 7), r, 7);
-          }
-
-          // Draw bottom row (8 cells)
-          const bottomRow = 8;
-          for (let c = 0; c < 8; c++) {
-            // Use consistent cell ID format as shown in the grid
-            await drawKey(cid('bottom', 9, c), bottomRow, c, 1, 1);
-          }
-        
-          // 6. Draw bottom extension (8 cells centered)
-          // Draw the bottom extension cells with equal gaps
-          const endCol=3.5;
-          await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
+          await Promise.all(Array.from({ length: 4 }, (_, i) => 
             drawKey(
-              cid('bottom-extension', -1, i + 2),
-              9,  // row 8 for bottom extension
-              endCol + i,
+              cid('topExt', -1, i + 2),
+              0,  // First row
+              0 + i,
               1,
               1
             )
           ));
+
+          // 3. Draw main top row (8 cells)
+          for (let c = 0; c < 8; c++) {
+            await drawKey(cid('top', 0, c), 0, c);
+          }
+
+          // 4. Draw left side (6 cells)
+          for (let r = 1; r <= 6; r++) {
+            await drawKey(cid('left', r, 0), r + 0, 0);
+          }
+
+          // 5. Draw center cell (spans 6x6)
+          await drawKey(cid('center', 0, 0), 1, 1, 6, 6);
+
+          // 6. Draw right side (6 cells)
+          for (let r = 1; r <= 6; r++) {
+            await drawKey(cid('right', r, 7), r + 0, 7);
+          }
+
+          // 7. Draw bottom row (8 cells)
+          const bottomRow = 7;
+          for (let c = 0; c < 8; c++) {
+            await drawKey(cid('bottom', 9, c), bottomRow, c, 1, 1);
+          }
+
+          // 8. Draw bottom extension row (5 cells)
+          await Promise.all(Array.from({ length: 5 }, (_, i) => 
+            drawKey(
+              cid('bottom-extension', -1, i + 2),
+              8,  // Bottom extension row
+              1.5+i,  // Centered for 5 cells
+              1,
+              1
+            )
+          ));
+
+          // 9. Draw second bottom extension row (3 cells centered)
+          // await Promise.all(Array.from({ length: 3 }, (_, i) => 
+          //   drawKey(
+          //     cid('bottom-most-extension', -1, i + 2),
+          //     9,  // Second bottom extension row
+          //     2.5 + i,  // More centered for 3 cells
+          //     1,
+          //     1
+          //   )
+          // ));
         },
       });
       toast.success('Template downloaded successfully!');
@@ -236,6 +374,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       toast.error('Failed to download template. Please try again.');
     }
 
+
+    
   };
 
   const handleDownload = buildAndDownload;
@@ -278,9 +418,9 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         } as React.CSSProperties}
       >
         
-         {/* Top extension - centered on all sizes, same size as grid cells */}
+         {/* Top extension - 1 cells centered (non-intrusive full-row) */}
          <div className="col-span-8">
-          <div
+         <div
             className="grid"
             style={{
               display: 'grid',
@@ -291,44 +431,43 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 8 }, (_, colIndex) => {
-              const key = cid('top-extension', -1, colIndex + 2);
-              return (
-                <div
-                  key={key}
-                  className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                  style={getCellStyleWithFallback(key)}
-                  onMouseDown={(e) => startDrag(e, key)}
-                  onTouchStart={(e) => startDrag(e, key)}
-                  onClick={() => handleCellActivate(key)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleCellActivate(key);
-                    }
-                  }}
-                >
-                  {!cellImages[key] && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                      +
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {Array.from({ length: 4 }, (_, colIndex) => {
+            const cellKey = cid('topExt', -1, colIndex + 2);
+            return (
+              <div
+                key={cellKey}
+                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+                style={{ ...(getCellStyle(cellKey) as any) }}
+                onClick={() => handleCellClick(cellKey)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleCellClick(cellKey);
+                  }
+                }}
+              >
+                {!cellImages[cellKey] && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                    +
+                  </div>
+                )}
+              </div>
+            );
+          })}
           </div>
         </div>
 
         {/* Top row - 9 cells */}
         {Array.from({ length: 8 }, (_, colIndex) => {
           const cellKey = cid('top', 0, colIndex);
+          
           return (
             <div
               key={cellKey}
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-              style={getCellStyleWithFallback(cellKey)}
+              style={debugCellStyle(cellKey)}
               onClick={() => handleCellClick(cellKey)}
               role="button"
               tabIndex={0}
@@ -372,12 +511,12 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               )}
             </div>
 
-            {/* Center cell - only render once and span 5 columns */}
+            {/* Center cell - only render once and span 6 columns */}
             {rowIndex === 0 && (
               <div
                 className="col-span-6 row-span-6 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
                 style={(() => {
-                  // First priority: previewMember (for JoinGroup preview)
+                  // 1) If user has uploaded a preview photo, show it
                   if (previewMember?.photo) {
                     return {
                       backgroundImage: `url(${previewMember.photo})`,
@@ -386,8 +525,11 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
                       backgroundRepeat: 'no-repeat',
                     } as React.CSSProperties;
                   }
-                  
-                  // Second priority: first existing member (for Editor view)
+                  // 2) If center must stay empty by default (JoinGroup), do not auto-fill from existing members
+                  if (centerEmptyDefault) {
+                    return getCellStyle(cid('center', 0, 0));
+                  }
+                  // 3) Otherwise (Editor), allow auto-fill from first existing member
                   if (existingMembers.length > 0 && existingMembers[0]?.photo) {
                     return {
                       backgroundImage: `url(${existingMembers[0].photo})`,
@@ -396,15 +538,18 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
                       backgroundRepeat: 'no-repeat',
                     } as React.CSSProperties;
                   }
-                  
-                  // Fallback: use GridContext styling
+                  // 4) Fallback: GridContext styling
                   return getCellStyle(cid('center', 0, 0));
                 })()}
                 onClick={() => handleCellClick(cid('center', 0, 0))}
                 role="button"
                 tabIndex={0}
               >
-                {!previewMember?.photo && !existingMembers[0]?.photo && !cellImages[cid('center', 0, 0)] && (
+                {(!previewMember?.photo && (
+                    centerEmptyDefault
+                      ? !cellImages[cid('center', 0, 0)] // JoinGroup: show placeholder if no uploaded center
+                      : (!existingMembers[0]?.photo && !cellImages[cid('center', 0, 0)])
+                  )) && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span>CENTER</span>
                   </div>
@@ -438,6 +583,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         {/* Bottom row - 8 cells */}
         {Array.from({ length: 8 }, (_, colIndex) => {
           const cellKey = cid('bottom', 9, colIndex); // This matches our download cell ID
+          
           return (
             <div
               key={cellKey}
@@ -475,8 +621,9 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 1 }, (_, colIndex) => {
-              const key = cid('bottom-extension', -1, colIndex + 2);
+            {Array.from({ length: 5 }, (_, colIndex) => {
+              const key = cid('bottom-extension', 0, colIndex + 2);
+              
               return (
                 <div
                   key={key}
@@ -504,37 +651,6 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             })}
           </div>
         </div>
-
-        {/* Bottom extension - 4 cells centered */}
-        {/* <div className="col-span-6 flex justify-center gap-1">
-          {Array.from({ length: 6 }, (_, colIndex) => {
-            const key = cid('bottom-extension', -1, colIndex + 2);
-            return (
-              <div
-                key={key}
-                className="grid-cell w-full active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={getCellStyleWithFallback(key)}
-                onMouseDown={(e) => startDrag(e, key)}
-                onTouchStart={(e) => startDrag(e, key)}
-                onClick={() => handleCellActivate(key)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleCellActivate(key);
-                  }
-                }}
-              >
-                {!cellImages[key] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div> */}
 
       </div>
       

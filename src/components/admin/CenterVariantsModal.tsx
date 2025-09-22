@@ -291,12 +291,30 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
           // Map known layouts to our template keys used by VariantRenderer
           // 33 template (34/35 total cells including center) => '33'
           // 45 template (75 total cells including center)   => '45'
-          const templateKey = layout && layout.totalCells === 34
-          ? '34'
-          : layout && layout.totalCells === 33
+          const templateKey = layout && layout.totalCells === 33
           ? '33'
-          : layout && layout.totalCells === 75
-          ? '45'
+          : layout && layout.totalCells === 34
+          ? '34'
+          : layout && layout.totalCells === 35
+          ? '35'
+          : layout && layout.totalCells === 36
+          ? '36'
+          : layout && layout.totalCells === 37
+          ? '37'
+          : layout && layout.totalCells === 38
+          ? '38'      
+          : layout && layout.totalCells === 39
+          ? '39'
+          : layout && layout.totalCells === 40
+          ? '40'
+          : layout && layout.totalCells === 41
+          ? '41'
+          : layout && layout.totalCells === 42
+          ? '42'
+          : layout && layout.totalCells === 43
+          ? '43'
+          : layout && layout.totalCells === 44
+          ? '44'
           : '45';
 
           return variants.map((variant, index) => (

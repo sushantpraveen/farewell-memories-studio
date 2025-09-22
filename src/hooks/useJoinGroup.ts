@@ -230,7 +230,8 @@ export const useJoinGroup = (groupId: string | undefined) => {
             yearOfPassing,
             totalMembers,
             gridTemplate,
-            members: [], // Empty array for member count only
+            // Use actual members from API to ensure correct counts
+            members: Array.isArray((groupData as any).members) ? (groupData as any).members : [],
             shareLink: '', // Not needed for join form
             createdAt: new Date(),
             votes: { hexagonal: 0, square: 0, circle: 0 }

@@ -133,11 +133,6 @@ const JoinGroup = () => {
             <CardContent className="pt-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Group is Full!</h2>
               <p className="text-gray-600 mb-6">This group has reached its maximum capacity.</p>
-              <Link to={`/editor/${groupId}`}>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  View Collage
-                </Button>
-              </Link>
             </CardContent>
           </Card>
         ) : (

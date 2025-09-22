@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import { enumerate45, enumerate33, enumerate34 } from '@/templates/layouts';
+import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45 } from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
@@ -157,11 +157,11 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           if (count === 33) effectiveKey = '33';
           else if (count === 45) effectiveKey = '45';
         }
-        const is45 = effectiveKey === '45';
-        const TARGET_W_IN = is45 ? 8 : 8.5;
+        const is37to45 = effectiveKey === '37' || effectiveKey === '38' || effectiveKey === '39' || effectiveKey === '40' || effectiveKey === '41' || effectiveKey === '42' || effectiveKey === '43' || effectiveKey === '44' || effectiveKey === '45';
+        const TARGET_W_IN = is37to45 ? 8 : 8.5;
         const TARGET_H_IN = 13.5;
         const COLS = 8;
-        const ROWS = is45 ? 10 : 9; // 45 → 10 rows; 33 → 9 rows (0..8)
+        const ROWS = is37to45 ? 10 : 9; // 45 → 10 rows; 33 → 9 rows (0..8)
         const gap = 4; // align with desiredGapPx used in downloads
         canvas.width = Math.round(TARGET_W_IN * DPI);
         canvas.height = Math.round(TARGET_H_IN * DPI);
@@ -262,12 +262,283 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
           }
         });
-      } 
-
+        } else if (effectiveKey === '35') {
+        await enumerate35(async (slot) => {
+          if (slot.kind === 'center') {
+            if (variant.centerMember?.photo) {
+              await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            } else {
+              const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              ctx.fillStyle = '#f3f4f6';
+              ctx.fillRect(x, y, w, h);
+            }
+            return;
+          }
+          const m = slot.index >= 0 ? memberAt(slot.index) : null;
+          if (m?.photo) {
+            await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+          }
+        });
+        } else if (effectiveKey === '36') {
+          await enumerate36(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } else if (effectiveKey === '37') {
+          await enumerate37(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+      //   } else if (effectiveKey === '38') {
+      //   await enumerate38(async (slot) => {
+      //     if (slot.kind === 'center') {
+      //       if (variant.centerMember?.photo) {
+      //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //       } else {
+      //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //         ctx.fillStyle = '#f3f4f6';
+      //         ctx.fillRect(x, y, w, h);
+      //       }
+      //       return;
+      //     }
+      //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+      //     if (m?.photo) {
+      //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //     }
+      //   });
+      //   } else if (effectiveKey === '39') {
+      //   await enumerate39(async (slot) => {
+      //     if (slot.kind === 'center') {
+      //       if (variant.centerMember?.photo) {
+      //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //       } else {
+      //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //         ctx.fillStyle = '#f3f4f6';
+      //         ctx.fillRect(x, y, w, h);
+      //       }
+      //       return;
+      //     }
+      //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+      //     if (m?.photo) {
+      //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //     }
+      //   });
+      //   } else if (effectiveKey === '40') {
+      //   await enumerate40(async (slot) => {
+      //     if (slot.kind === 'center') {
+      //       if (variant.centerMember?.photo) {
+      //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //       } else {
+      //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //         ctx.fillStyle = '#f3f4f6';
+      //         ctx.fillRect(x, y, w, h);
+      //       }
+      //       return;
+      //     }
+      //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+      //     if (m?.photo) {
+      //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+      //     }
+      //   });
+        } else if (effectiveKey === '38') {
+        await enumerate38(async (slot) => {
+          if (slot.kind === 'center') {
+            if (variant.centerMember?.photo) {
+              await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            } else {
+              const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              ctx.fillStyle = '#f3f4f6';
+              ctx.fillRect(x, y, w, h);
+            }
+            return;
+          }
+          const m = slot.index >= 0 ? memberAt(slot.index) : null;
+          if (m?.photo) {
+            await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+          }
+        });
+    //   } else if (effectiveKey === '38') {
+    //   await enumerate38(async (slot) => {
+    //     if (slot.kind === 'center') {
+    //       if (variant.centerMember?.photo) {
+    //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //       } else {
+    //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //         ctx.fillStyle = '#f3f4f6';
+    //         ctx.fillRect(x, y, w, h);
+    //       }
+    //       return;
+    //     }
+    //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+    //     if (m?.photo) {
+    //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //     }
+    //   });
+    //   } else if (effectiveKey === '39') {
+    //   await enumerate39(async (slot) => {
+    //     if (slot.kind === 'center') {
+    //       if (variant.centerMember?.photo) {
+    //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //       } else {
+    //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //         ctx.fillStyle = '#f3f4f6';
+    //         ctx.fillRect(x, y, w, h);
+    //       }
+    //       return;
+    //     }
+    //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+    //     if (m?.photo) {
+    //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //     }
+    //   });
+    //   } else if (effectiveKey === '40') {
+    //   await enumerate40(async (slot) => {
+    //     if (slot.kind === 'center') {
+    //       if (variant.centerMember?.photo) {
+    //         await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //       } else {
+    //         const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //         ctx.fillStyle = '#f3f4f6';
+    //         ctx.fillRect(x, y, w, h);
+    //       }
+    //       return;
+    //     }
+    //     const m = slot.index >= 0 ? memberAt(slot.index) : null;
+    //     if (m?.photo) {
+    //       await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+    //     }
+    //   });
+        } else if (effectiveKey === '39') {
+          await enumerate39(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+      
+        } else if (effectiveKey === '40') {
+        await enumerate40(async (slot) => {
+          if (slot.kind === 'center') {
+            if (variant.centerMember?.photo) {
+              await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            } else {
+              const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              ctx.fillStyle = '#f3f4f6';
+              ctx.fillRect(x, y, w, h);
+            }
+            return;
+          }
+          const m = slot.index >= 0 ? memberAt(slot.index) : null;
+          if (m?.photo) {
+            await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+          }
+        });
+        } else if (effectiveKey === '41') {
+          await enumerate41(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } else if (effectiveKey === '42') {
+          await enumerate42(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } else if (effectiveKey === '43') {
+            await enumerate43(async (slot) => {
+              if (slot.kind === 'center') {
+                if (variant.centerMember?.photo) {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } else {
+                  const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                  ctx.fillStyle = '#f3f4f6';
+                  ctx.fillRect(x, y, w, h);
+                }
+                return;
+              }
+              const m = slot.index >= 0 ? memberAt(slot.index) : null;
+              if (m?.photo) {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              }
+            });
+        } else if (effectiveKey === '44') {
+              await enumerate44(async (slot) => {
+                if (slot.kind === 'center') {
+                  if (variant.centerMember?.photo) {
+                    await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                  } else {
+                    const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                    ctx.fillStyle = '#f3f4f6';
+                    ctx.fillRect(x, y, w, h);
+                  }
+                  return;
+                }
+                const m = slot.index >= 0 ? memberAt(slot.index) : null;
+                if (m?.photo) {
+                  await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                }
+              });
+        }
         else {
           // Fallback: do nothing for unknown template (future templates will be added here)
         }
-
         // Export with embedded 300 DPI (pHYs chunk)
         const rawPng = canvas.toDataURL('image/png');
         const dpiPng = embedPngDpi300(rawPng);
