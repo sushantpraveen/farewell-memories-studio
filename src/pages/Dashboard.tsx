@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,32 +18,83 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const { getGroup, getAllGroups, isLoading, groups } = useCollage();
   const navigate = useNavigate();
+  const { groupId } = useParams<{ groupId?: string }>();
   const [selectedMember, setSelectedMember] = useState<Member | null>(null); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [group, setGroup] = useState<any>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadingGroup, setLoadingGroup] = useState(true);
 
-  
-  // Update group data whenever user's groupId changes
+  // Helper functions for group storage
+  const saveLastActiveGroup = (groupId: string) => {
+    localStorage.setItem('lastActiveGroupId', groupId);
+  };
+
+  const getLastActiveGroup = (): string | null => {
+    return localStorage.getItem('lastActiveGroupId');
+  };
+
+  // Handle route redirection for legacy routes without groupId
   useEffect(() => {
-    console.log('Dashboard useEffect - user.groupId:', user?.groupId);
-    
-    const fetchGroup = async () => {
+    // If no groupId in URL params, redirect to appropriate group
+    if (!groupId) {
+      // First try user's current groupId
       if (user?.groupId) {
-        try {
-          const userGroup = await getGroup(user.groupId);
-          console.log('Dashboard useEffect - userGroup:', userGroup);
-          console.log('Dashboard useEffect - userGroup.members:', userGroup?.members);
-          console.log('Dashboard useEffect - userGroup.members.length:', userGroup?.members?.length);
-          if (userGroup) {
-            setGroup(userGroup);
+        navigate(`/dashboard/${user.groupId}`, { replace: true });
+        return;
+      }
+      
+      // Then try last active group from localStorage
+      const lastActive = getLastActiveGroup();
+      if (lastActive) {
+        navigate(`/dashboard/${lastActive}`, { replace: true });
+        return;
+      }
+      
+      // If user has groups available, redirect to first one
+      if (groups && Array.isArray(groups) && groups.length > 0) {
+        navigate(`/dashboard/${groups[0].id}`, { replace: true });
+        return;
+      }
+      
+      // Otherwise show "no group" state
+      setLoadingGroup(false);
+    }
+  }, [groupId, user?.groupId, groups, navigate]);
+  
+  // Update group data whenever groupId changes
+  useEffect(() => {
+    const fetchGroup = async () => {
+      if (!groupId) {
+        setLoadingGroup(false);
+        return;
+      }
+
+      try {
+        setLoadingGroup(true);
+        const fetchedGroup = await getGroup(groupId);
+        console.log('Dashboard useEffect - fetchedGroup:', fetchedGroup);
+        
+        if (fetchedGroup) {
+          setGroup(fetchedGroup);
+          saveLastActiveGroup(groupId); // Save as last active group
+        } else {
+          console.log('No group found for groupId:', groupId);
+          // Redirect to user's default group or show error
+          if (user?.groupId && user.groupId !== groupId) {
+            navigate(`/dashboard/${user.groupId}`, { replace: true });
           } else {
-            console.log('No group found for groupId:', user.groupId);
+            toast.error('Group not found');
+            navigate('/create-group');
           }
-        } catch (error) {
-          console.error('Error fetching group:', error);
         }
+      } catch (error) {
+        console.error('Error fetching group:', error);
+        toast.error('Failed to load group');
+        navigate('/create-group');
+      } finally {
+        setLoadingGroup(false);
       }
     };
     
@@ -52,14 +103,14 @@ const Dashboard = () => {
     // Set up polling at a more frequent interval (every 5 seconds) for real-time updates
     let pollCount = 0;
     const intervalId = setInterval(() => {
-      if (user?.groupId) {
+      if (groupId) {
         // Force refresh every 4th poll (every 20 seconds) to ensure fresh data
         const shouldForceRefresh = pollCount % 4 === 0;
         if (shouldForceRefresh) {
           console.log('Polling with force refresh');
-          getGroup(user.groupId, true).then(userGroup => {
-            if (userGroup) {
-              setGroup(userGroup);
+          getGroup(groupId, true).then(fetchedGroup => {
+            if (fetchedGroup) {
+              setGroup(fetchedGroup);
             }
           }).catch(error => {
             console.error('Error in polling force refresh:', error);
@@ -73,7 +124,7 @@ const Dashboard = () => {
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, [user?.groupId, getGroup]); // Remove groups dependency to prevent excessive re-fetching
+  }, [groupId, getGroup, navigate, user?.groupId]);
   
   // Open the share/suggestions modal when user lands on dashboard
   useEffect(() => {
@@ -83,12 +134,12 @@ const Dashboard = () => {
   // Refresh data when user returns to the tab
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      if (!document.hidden && user?.groupId) {
+      if (!document.hidden && groupId) {
         console.log('Tab became visible, refreshing group data');
         try {
-          const userGroup = await getGroup(user.groupId, true); // Force refresh
-          if (userGroup) {
-            setGroup(userGroup);
+          const fetchedGroup = await getGroup(groupId, true); // Force refresh
+          if (fetchedGroup) {
+            setGroup(fetchedGroup);
           }
         } catch (error) {
           console.error('Error refreshing group on visibility change:', error);
@@ -98,16 +149,16 @@ const Dashboard = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user?.groupId, getGroup]);
+  }, [groupId, getGroup]);
   
-  // Show loading state while context is initializing
-  if (isLoading) {
+  // Show loading state while context is initializing or group is loading
+  if (isLoading || loadingGroup) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading...</h1>
-            <p className="text-gray-600">Initializing application...</p>
+            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p>
           </CardContent>
         </Card>
       </div>
@@ -143,16 +194,16 @@ const Dashboard = () => {
   };
 
   const handleRefresh = async () => {
-    if (!user?.groupId) return;
+    if (!groupId) return;
     
     setIsRefreshing(true);
     try {
-      const userGroup = await getGroup(user.groupId, true); // Force refresh
-      console.log('Manual refresh - userGroup:', userGroup);
-      console.log('Manual refresh - userGroup.members:', userGroup?.members);
-      console.log('Manual refresh - userGroup.members.length:', userGroup?.members?.length);
-      if (userGroup) {
-        setGroup(userGroup);
+      const fetchedGroup = await getGroup(groupId, true); // Force refresh
+      console.log('Manual refresh - fetchedGroup:', fetchedGroup);
+      console.log('Manual refresh - fetchedGroup.members:', fetchedGroup?.members);
+      console.log('Manual refresh - fetchedGroup.members.length:', fetchedGroup?.members?.length);
+      if (fetchedGroup) {
+        setGroup(fetchedGroup);
         toast.success('Group data refreshed!');
       }
     } catch (error) {
@@ -421,7 +472,7 @@ const Dashboard = () => {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
               </Button>
-              <Link to="/editor">
+              <Link to={`/editor/${groupId}`}>
                 <Button className="w-full bg-purple-600 hover:bg-purple-700">
                   <Eye className="h-4 w-4 mr-2" />
                   View Editor

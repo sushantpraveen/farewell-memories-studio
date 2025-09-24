@@ -20,6 +20,32 @@ const Checkout = () => {
   
   // Load group data (getGroup is async)
   const [group, setGroup] = useState<Group | null>(null);
+
+  // Helper functions for group storage
+  const saveLastActiveGroup = (groupId: string) => {
+    localStorage.setItem('lastActiveGroupId', groupId);
+  };
+
+  const getLastActiveGroup = (): string | null => {
+    return localStorage.getItem('lastActiveGroupId');
+  };
+
+  // Handle route redirection for legacy routes without groupId
+  useEffect(() => {
+    // If no groupId in URL params, redirect to appropriate group
+    if (!groupId) {
+      // Try last active group from localStorage
+      const lastActive = getLastActiveGroup();
+      if (lastActive) {
+        navigate(`/checkout/${lastActive}`, { replace: true });
+        return;
+      }
+      
+      // Otherwise redirect to dashboard
+      navigate('/dashboard');
+    }
+  }, [groupId, navigate]);
+
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
@@ -29,7 +55,12 @@ const Checkout = () => {
       }
       try {
         const g = await getGroup(groupId);
-        if (isMounted) setGroup(g ?? null);
+        if (isMounted) {
+          setGroup(g ?? null);
+          if (g) {
+            saveLastActiveGroup(groupId); // Save as last active group
+          }
+        }
       } catch (e) {
         console.error('Failed to load group in Checkout:', e);
         if (isMounted) setGroup(null);

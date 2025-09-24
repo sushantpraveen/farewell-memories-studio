@@ -196,7 +196,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 8 }, (_, colIndex) => {
+          {Array.from({ length: 11 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -237,7 +237,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 9 }, (_, colIndex) => {
+          {Array.from({ length: 11 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -278,7 +278,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 10 }, (_, colIndex) => {
+          {Array.from({ length: 11 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -470,7 +470,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 9 }, (_, colIndex) => {
+            {Array.from({ length: 11 }, (_, colIndex) => {
               const key = cid('bottom-most-extension', -1, colIndex + 2);
               return (
                 <div
@@ -513,7 +513,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 8 }, (_, colIndex) => {
+            {Array.from({ length: 11 }, (_, colIndex) => {
               const key = cid('bottom-most-extension', -1, colIndex + 2);
               return (
                 <div

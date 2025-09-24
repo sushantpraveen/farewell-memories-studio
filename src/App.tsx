@@ -47,6 +47,7 @@ const App = () => (
                   <JoinGroup />
                 // </ProtectedRoute>
               } />
+              {/* Legacy routes without groupId - redirect to group selection */}
               <Route path="/dashboard" element={
                 <ProtectedRoute requiresLeader>
                   <Dashboard />
@@ -57,13 +58,27 @@ const App = () => (
                   <Editor />
                 </ProtectedRoute>
               } />
+              <Route path="/checkout" element={
+                <ProtectedRoute requiresLeader>
+                  <Checkout />
+                </ProtectedRoute>
+              } />
+              
+              {/* New groupId-based routes */}
+              <Route path="/dashboard/:groupId" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
               <Route path="/editor/:groupId" element={
                 <ProtectedRoute>
                   <Editor />
                 </ProtectedRoute>
               } />
               <Route path="/checkout/:groupId" element={
+                <ProtectedRoute>
                   <Checkout />
+                </ProtectedRoute>
               } />
                <Route path="/admin/order" element={
                 <ProtectedRoute requiresAdmin>

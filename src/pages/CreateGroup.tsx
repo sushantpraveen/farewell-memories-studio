@@ -135,7 +135,7 @@ const CreateGroup = () => {
       }
 
       toast.success("Group created successfully!");
-      navigate(`/dashboard`);
+      navigate(`/dashboard/${groupId}`);
     } catch (error) {
       toast.error("Failed to create group. Please try again.");
     } finally {

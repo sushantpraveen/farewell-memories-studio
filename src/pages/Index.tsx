@@ -2,11 +2,55 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Camera, Shirt, Heart } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCollage } from "@/context/CollageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
 
 const Index = () => {
-  const { createGroup } = useCollage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [userDashboardPath, setUserDashboardPath] = useState<string | null>(null);
+
+  // Helper functions for group storage
+  const getLastActiveGroup = (): string | null => {
+    return localStorage.getItem('lastActiveGroupId');
+  };
+
+  useEffect(() => {
+    // Determine the best dashboard path for this user
+    const determineDashboardPath = () => {
+      // First try user's current groupId
+      if (user?.groupId) {
+        setUserDashboardPath(`/dashboard/${user.groupId}`);
+        return;
+      }
+      
+      // Then try last active group from localStorage
+      const lastActive = getLastActiveGroup();
+      if (lastActive) {
+        setUserDashboardPath(`/dashboard/${lastActive}`);
+        return;
+      }
+      
+      // No group found - will show create group
+      setUserDashboardPath(null);
+    };
+
+    determineDashboardPath();
+  }, [user?.groupId]);
+
+  const handleMainAction = () => {
+    if (userDashboardPath) {
+      navigate(userDashboardPath);
+    } else {
+      navigate('/create-group');
+    }
+  };
+
+  const hasGroup = !!userDashboardPath;
+  const buttonText = hasGroup ? 'Go to Dashboard' : 'Create Group';
+  const heroButtonText = hasGroup ? 'Go to Dashboard' : 'Start a Group';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
@@ -18,11 +62,12 @@ const Index = () => {
             <h1 className="text-2xl font-bold text-gray-900">FarewellTees</h1>
           </div>
           <div className="flex space-x-2">
-            <Link to="/create-group">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                Create Group
-              </Button>
-            </Link>
+            <Button 
+              onClick={handleMainAction}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {buttonText}
+            </Button>
           </div>
         </div>
       </header>
@@ -39,12 +84,14 @@ const Index = () => {
             and create the perfect farewell memory that you'll treasure forever.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/create-group">
-              <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4">
-                <Users className="mr-2 h-5 w-5" />
-                Start a Group
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              onClick={handleMainAction}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4"
+            >
+              <Users className="mr-2 h-5 w-5" />
+              {heroButtonText}
+            </Button>
           </div>
         </div>
       </section>
@@ -111,11 +158,14 @@ const Index = () => {
             <p className="text-purple-100 mb-8 text-lg">
               Join thousands of students who've created beautiful farewell T-shirts with their classmates.
             </p>
-            <Link to="/create-group">
-              <Button size="lg" variant="secondary" className="px-8 py-4">
-                Get Started Now
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              className="px-8 py-4"
+              onClick={handleMainAction}
+            >
+              {hasGroup ? 'Go to Dashboard' : 'Get Started Now'}
+            </Button>
           </div>
         </div>
       </section>

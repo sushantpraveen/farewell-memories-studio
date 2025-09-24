@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56 } from '@/templates/layouts';
+import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57 } from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
@@ -721,6 +721,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         }
         else if (effectiveKey === '56') {
           await enumerate56(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        }
+        else if (effectiveKey === '57') {
+          await enumerate57(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
                 await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);

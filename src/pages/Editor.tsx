@@ -20,22 +20,53 @@ const Editor = () => {
   const [group, setGroup] = useState<CollageGroup | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
 
-  // Update group data whenever groupId, user's groupId, or groups change
+  // Helper functions for group storage
+  const saveLastActiveGroup = (groupId: string) => {
+    localStorage.setItem('lastActiveGroupId', groupId);
+  };
+
+  const getLastActiveGroup = (): string | null => {
+    return localStorage.getItem('lastActiveGroupId');
+  };
+
+  // Handle route redirection for legacy routes without groupId
+  useEffect(() => {
+    // If no groupId in URL params, redirect to appropriate group
+    if (!groupId) {
+      // First try user's current groupId
+      if (user?.groupId) {
+        navigate(`/editor/${user.groupId}`, { replace: true });
+        return;
+      }
+      
+      // Then try last active group from localStorage
+      const lastActive = getLastActiveGroup();
+      if (lastActive) {
+        navigate(`/editor/${lastActive}`, { replace: true });
+        return;
+      }
+      
+      // Otherwise redirect to dashboard
+      navigate('/dashboard');
+    }
+  }, [groupId, user?.groupId, navigate]);
+
+  // Update group data whenever groupId changes
   useEffect(() => {
     const fetchGroup = async () => {
-      const targetGroupId = groupId || user?.groupId;
-      
-      if (!targetGroupId) {
-        navigate('/dashboard');
+      if (!groupId) {
+        setLoadingGroup(false);
         return;
       }
 
       try {
         setLoadingGroup(true);
-        const userGroup = await getGroup(targetGroupId);
-        if (userGroup) {
-          setGroup(userGroup);
+        const fetchedGroup = await getGroup(groupId);
+        if (fetchedGroup) {
+          setGroup(fetchedGroup);
+          saveLastActiveGroup(groupId); // Save as last active group
         } else {
+          toast.error('Group not found');
           navigate('/dashboard');
         }
       } catch (error) {
@@ -48,7 +79,7 @@ const Editor = () => {
     };
 
     fetchGroup();
-  }, [groupId, user?.groupId, getGroup, navigate]);
+  }, [groupId, getGroup, navigate]);
 
   // Show loading state while context is initializing or group is loading
   if (isLoading || loadingGroup) {
@@ -94,8 +125,11 @@ const Editor = () => {
 
   const handleCheckout = () => {
     // Navigate to a dedicated checkout page for this group
-    // Adjust the path to match your routing setup
-    navigate(`/checkout/${group.id}`);
+    if (groupId) {
+      navigate(`/checkout/${groupId}`);
+    } else if (group?.id) {
+      navigate(`/checkout/${group.id}`);
+    }
   };
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
@@ -111,11 +145,11 @@ const Editor = () => {
           <div className="flex items-center justify-between h-16">
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(groupId ? `/dashboard/${groupId}` : '/dashboard')}
               className="flex items-center gap-2"
             >
               {/* <ArrowLeft className="h-4 w-4" /> */}
-              <Link to="/">Back to Home</Link>
+              <Link to={groupId ? `/dashboard/${groupId}` : "/"}>Back to Dashboard</Link>
             </Button>
             {/* <div className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-purple-600" />

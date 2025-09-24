@@ -1,5 +1,6 @@
 export type SlotKind =
   | 'topExtMost'
+  | 'topExt'
   | 'top'
   | 'left'
   | 'center'
@@ -849,3 +850,44 @@ export async function enumerate56(cb: EnumerateCallback) {
     await cb({ kind: 'bottomExt', index: 38 + c, r: 8, c });
   }
 }
+
+// 56 template: bottomExt 9, topExtMost 9 (full)
+export async function enumerate57(cb: EnumerateCallback) {
+  // Top extension most (9 cells) – row 0, cols 0..8
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'topExtMost', index: 47 + c, r: 0, c });
+  }
+  // Top extension most (9 cells) – row 0, cols 0..8
+  for (let c = 0; c < 6; c++) {
+    await cb({ kind: 'topExt', index: 47 + c, r: 1, c });
+  }
+  // Top row (9 cells)
+  for (let c = 0; c < 9; c++) {
+    await cb({ kind: 'top', index: c, r: 2, c });
+  }
+  // Left two columns
+  for (let r = 0; r < 5; r++) {
+    await cb({ kind: 'left', index: 9 + r * 2 + 0, r: 3 + r, c: 0 });
+    await cb({ kind: 'left', index: 9 + r * 2 + 1, r: 3 + r, c: 1 });
+  }
+  // Center (5x5)
+  await cb({ kind: 'center', index: -1, r: 3, c: 3, rspan: 5, cspan: 5 });
+  // Right two columns
+  for (let r = 0; r < 5; r++) {
+    await cb({ kind: 'right', index: 19 + r * 2 + 0, r: 3 + r, c: 7 });
+    await cb({ kind: 'right', index: 19 + r * 2 + 1, r: 3 + r, c: 8 });
+  }
+  // Bottom row (9 cells)
+  for (let c = 0; c < 9; c++) {
+    await cb({ kind: 'bottom', index: 29 + c, r: 9, c });
+  }
+  // Bottom extension (9 cells)
+  for (let c = 0; c < 6; c++) {
+    await cb({ kind: 'bottomExt', index: 38 + c, r: 10, c });
+  }
+  // Bottom most extension (4 cells)  
+  for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'bottomMostExt', index: 44 + c, r: 11, c });
+  }
+}
+

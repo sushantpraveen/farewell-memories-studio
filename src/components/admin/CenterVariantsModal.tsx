@@ -339,6 +339,8 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
           ? '55'
           : layout && layout.totalCells === 56
           ? '56'
+          : layout && layout.totalCells === 57
+          ? '57'
           : '45';
 
           return variants.map((variant, index) => (
