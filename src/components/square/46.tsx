@@ -163,7 +163,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return 34 + col;
     } else if (section === 'topExt-most') {
       // Top extension: 37-45
-      return 37 + col;
+      return 38 + col;
     }
     
     return -1;

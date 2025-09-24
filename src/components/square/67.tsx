@@ -212,24 +212,24 @@ const GridBoard = () => {
         className="grid grid-cols-9 bg-white rounded-xl shadow-2xl p-1 md:p-3 sm:-ml-4"
         style={{
           gap: 'var(--gap)',
-          // 7 gaps across 8 cols/rows
+          // 8 gaps across 9 cols
           // cell = min(fit width, fit height)
           // ratio keeps cells slightly taller than wide
           // pad approximates container padding on mobile
           ['--gap' as any]: '2px',
           ['--pad' as any]: '8px',
           ['--cell' as any]: isDesktop
-            ? 'min(calc((35vw - (var(--pad)*2) - (7 * var(--gap))) / 8), calc((100vh - (var(--pad)*2) - (7 * var(--gap))) / 8))'
-            : 'min(calc((100vw - (var(--pad)*2) - (7 * var(--gap))) / 8), calc((100vh - (var(--pad)*2) - (7 * var(--gap))) / 8))',
+            ? 'min(calc((35vw - (var(--pad)*2) - (8 * var(--gap))) / 9), calc((100vh - (var(--pad)*2) - (8 * var(--gap))) / 9))'
+            : 'min(calc((100vw - (var(--pad)*2) - (8 * var(--gap))) / 9), calc((100vh - (var(--pad)*2) - (8 * var(--gap))) / 9))',
           ['--ratio' as any]: '1.2',
           ['--row' as any]: 'calc(var(--cell) * var(--ratio))',
           gridAutoRows: 'var(--row)',
-          gridTemplateColumns: 'repeat(8, var(--cell))'
+          gridTemplateColumns: 'repeat(9, var(--cell))'
         } as React.CSSProperties}
       >
         
          {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-         {/* <div className="col-span-8">
+         <div className="col-span-9">
          <div
             className="grid"
             style={{
@@ -241,7 +241,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 8 }, (_, colIndex) => {
+          {Array.from({ length: 6 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -267,7 +267,7 @@ const GridBoard = () => {
             );
           })}
           </div>
-        </div> */}
+        </div>
 
          {/* Top extension - 2  8-cells centered (non-intrusive full-row) */}
          <div className="col-span-9">
@@ -282,7 +282,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 9 }, (_, colIndex) => {
+          {Array.from({ length: 8 }, (_, colIndex) => {
             const cellKey = cid('topExt-most', -1, colIndex + 2);
             return (
               <div
@@ -364,7 +364,7 @@ const GridBoard = () => {
             </div> */}
 
             {/* Left 2 columns */}
-            <div className="col-span-2 grid grid-cols-2 gap-1">
+            <div className="col-span-2 grid grid-cols-2" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
               {Array.from({ length: 2 }, (_, colIndex) => (
                 <div
                   key={`left-side-${colIndex}`}
@@ -401,7 +401,7 @@ const GridBoard = () => {
             )}
 
             {/* Right 2 columns */}
-            <div className="col-span-2 grid grid-cols-2 gap-1">
+            <div className="col-span-2 grid grid-cols-2" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
               {Array.from({ length: 2 }, (_, colIndex) => (
                 <div
                   key={`right-side-${colIndex}`}
@@ -485,7 +485,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 9 }, (_, colIndex) => {
+            {Array.from({ length: 8 }, (_, colIndex) => {
               const key = cid('bottom-extension', -1, colIndex + 2);
               return (
                 <div
@@ -528,7 +528,7 @@ const GridBoard = () => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 3 }, (_, colIndex) => {
+            {Array.from({ length: 7 }, (_, colIndex) => {
               const key = cid('bottom-most-extension', -1, colIndex + 2);
               return (
                 <div
