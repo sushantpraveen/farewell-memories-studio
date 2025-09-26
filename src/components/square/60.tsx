@@ -1,15 +1,22 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {useGrid} from './context/GridContext';
+import { Member } from '@/context/CollageContext';
 
 interface CellImage {
   [key: string]: string;
 }
 
-const GridBoard = () => {
+interface GridBoardProps {
+  previewMember?: Member;
+  existingMembers?: Member[];
+  centerEmptyDefault?: boolean;
+}
+
+const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = [], centerEmptyDefault = false }) => {
   const {
     cellImages,
+    setCellImages,
     isDownloading,
     getCellStyle,
     startDrag,
@@ -45,12 +52,208 @@ const GridBoard = () => {
       }
     };
   }, []);
-
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-45';
+  const COMP_ID = 'grid-75';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
+
+  
+// Helper function to get cell style with fallback to existing members
+const getCellStyleWithFallback = (cellKey: string) => {
+  // First try to get style from GridContext
+  const gridStyle = getCellStyle(cellKey);
+  if (gridStyle.backgroundImage) {
+    return gridStyle;
+  }
+  
+  // If no image in GridContext, check if we have an existing member for this cell
+  // This handles the case where we're in JoinGroup.tsx preview mode
+  const cellIndex = getCellIndexFromKey(cellKey);
+  if (cellIndex !== -1 && existingMembers[cellIndex]?.photo) {
+    console.log(`Using existing member photo for ${cellKey}:`, existingMembers[cellIndex].name);
+    return {
+      backgroundImage: `url(${existingMembers[cellIndex].photo})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    } as React.CSSProperties;
+  }
+  
+  return gridStyle;
+};
+
+// Reverse mapping: given a linear member index, return the cell keys
+// used in both preview and download so we can seed GridContext correctly
+const getKeysForIndex = (index: number): string[] => {
+  const keys: string[] = [];
+  // Top row 0-8 (9 cells)
+  if (index >= 0 && index <= 8) {
+    keys.push(cid('top', 0, index));
+    return keys;
+  }
+  // Left side two columns 9..18 (10 cells) → rows 0..4, cols 0..1
+  if (index >= 9 && index <= 18) {
+    const local = index - 9; // 0..9
+    const row = Math.floor(local / 2); // 0..4
+    const col = local % 2; // 0 or 1
+    keys.push(cid('left-side', row, col));
+    return keys;
+  }
+  // Right side two columns 19..28 (10 cells) → rows 0..4, cols 0..1
+  if (index >= 19 && index <= 28) {
+    const local = index - 19; // 0..9
+    const row = Math.floor(local / 2); // 0..4
+    const col = local % 2; // 0 or 1
+    keys.push(cid('right-side', row, col));
+    return keys;
+  }
+  // Bottom row 29..37 (9 cells)
+  if (index >= 29 && index <= 37) {
+    keys.push(cid('bottom', 9, index - 29));
+    return keys;
+  }
+  // Bottom extension 38..44 (6 cells centered)
+  if (index >= 38 && index <= 44) {
+    const col = index - 38; // 0..9
+    keys.push(cid('bottom-extension', 0, col + 2));
+    keys.push(cid('bottom-extension', -1, col + 2));
+    return keys;
+  }
+  // Bottom most extension 44..47 (4 cells centered)
+  if (index >= 45 && index <= 48) {
+    const col = index - 45; // 0..9
+    keys.push(cid('bottomExt-most', 0, col + 2));
+    keys.push(cid('bottomExt-most', -1, col + 2));
+    return keys;
+  }
+
+  // Top extension 45..50 (6 cells centered)
+  if (index >= 49 && index <= 55) {
+    const col = index - 49; // 0..6
+    keys.push(cid('topExt', 0, col + 2));
+    keys.push(cid('topExt', -1, col + 2));
+    return keys;
+  }
+  // Top most extension 54..56 (3 cells centered)
+  if (index >= 56 && index <= 59) {
+    const col = index - 56; // 0..9
+    keys.push(cid('topExt-most', 0, col + 2));
+    keys.push(cid('topExt-most', -1, col + 2));
+    return keys;
+  }
+  return keys;
+};
+
+// Helper function to get member index from cell key
+const getCellIndexFromKey = (cellKey: string) => {
+  // Extract row and column from cell key
+  const parts = cellKey.split(':');
+  if (parts.length < 3) return -1;
+  
+  const section = parts[1];
+  const position = parts[2];
+  const [row, col] = position.split('-').map(Number);
+  
+  if (section === 'top') {
+    // Top row: 0..8
+    return col;
+  } else if (section === 'left-side') {
+    // Left two columns: 9..18
+    return 9 + row * 2 + col;
+  } else if (section === 'right-side') {
+    // Right two columns: 19..28
+    return 19 + row * 2 + col;
+  } else if (section === 'bottom') {
+    // Bottom row: 29..37
+    return 29 + col;
+  } else if (section === 'bottom-extension') {
+    // Bottom extension: 38..44 (cols encoded as 2..8 in key)
+    return 38 + (col - 2);
+  }
+  else if (section === 'bottomExt-most') {
+    // Bottom most extension: 45..48 (cols encoded as 2..5 in key)
+    return 45 + (col - 2);
+  } else if (section === 'topExt') {
+    // Top extension most: 45..50 (cols encoded as 2..7 in key)
+    return 49 + (col - 2);
+  }
+  else if (section === 'topExt-most') {
+    // Top most extension: 55..58 (cols encoded as 2..7 in key)
+    return 56 + (col - 2);
+  }
+  
+  return -1;
+};
+
+// Debug function to log cell styles
+const debugCellStyle = (cellKey: string) => {
+  const style = getCellStyleWithFallback(cellKey);
+  const cellIndex = getCellIndexFromKey(cellKey);
+  const hasExistingMember = cellIndex !== -1 && existingMembers[cellIndex]?.photo;
+  
+  console.log(`Cell ${cellKey}:`, {
+    cellIndex,
+    hasExistingMember,
+    existingMemberPhoto: hasExistingMember ? existingMembers[cellIndex].photo : 'none',
+    gridStyle: getCellStyle(cellKey),
+    finalStyle: style
+  });
+  
+  return style;
+};
+
+// Integrate form-uploaded images with GridContext
+useEffect(() => {
+  if (previewMember?.photo) {
+    // Set the preview member's photo in the center cell
+    setCellImages(prev => ({
+      ...prev,
+      [cid('center', 0, 0)]: previewMember.photo
+    }));
+  }
+}, [previewMember?.photo, setCellImages, cid]);
+
+// Seed GridContext with existingMembers so downloads can see images
+useEffect(() => {
+  if (!existingMembers || existingMembers.length === 0) return;
+  // Build a single update object to minimize state churn
+  const updates: Record<string, string> = {};
+
+  existingMembers.forEach((m, idx) => {
+    if (!m?.photo) return;
+    const keys = getKeysForIndex(idx);
+    keys.forEach(k => { updates[k] = m.photo as string; });
+    // Optionally map first member into center, unless center should be empty by default
+    if (idx === 0 && !centerEmptyDefault) {
+      updates[cid('center', 0, 0)] = m.photo as string;
+    }
+  });
+
+  if (Object.keys(updates).length > 0) {
+    setCellImages(prev => ({ ...prev, ...updates }));
+  }
+}, [existingMembers, centerEmptyDefault, setCellImages]);
+
+// Debug existing members and cell images
+useEffect(() => {
+  console.log('=== DEBUG INFO ===');
+  console.log('existingMembers:', existingMembers);
+  console.log('existingMembers.length:', existingMembers?.length);
+  console.log('cellImages:', cellImages);
+  console.log('Object.keys(cellImages):', Object.keys(cellImages));
+  
+  if (existingMembers && existingMembers.length > 0) {
+    existingMembers.forEach((member, index) => {
+      console.log(`Member ${index}:`, {
+        name: member.name,
+        hasPhoto: !!member.photo,
+        photoLength: member.photo?.length || 0
+      });
+    });
+  }
+  console.log('==================');
+}, [existingMembers, cellImages]);
 
   // Canvas helpers and renderer for this 8x10 layout
   const loadImage = (src: string) =>
@@ -92,7 +295,7 @@ const GridBoard = () => {
     }
 
     try {
-      await downloadImage('template-45.png', {
+      await downloadImage('template-57.png', {
         cols: 8,
         rows: 11, // Increased to include both top extension rows and both bottom extension rows
         // Target physical size for print within requested ranges
@@ -242,7 +445,7 @@ const GridBoard = () => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 4 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('topExt-most', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
@@ -283,7 +486,7 @@ const GridBoard = () => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 7 }, (_, colIndex) => {
-            const cellKey = cid('topExt-most', -1, colIndex + 2);
+            const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
@@ -529,7 +732,7 @@ const GridBoard = () => {
             } as React.CSSProperties}
           >
             {Array.from({ length: 4 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+              const key = cid('bottomExt-most', -1, colIndex + 2);
               return (
                 <div
                 key={key}

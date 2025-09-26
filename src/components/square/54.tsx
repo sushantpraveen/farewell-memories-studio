@@ -47,7 +47,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     return () => {
       if (mq.removeEventListener) {
         mq.removeEventListener('change', handler as (e: MediaQueryListEvent) => void);
-      } else {
+    } else {
         // @ts-ignore
         mq.removeListener(handler);
       }
@@ -185,8 +185,8 @@ const debugCellStyle = (cellKey: string) => {
 useEffect(() => {
   if (previewMember?.photo) {
     // Set the preview member's photo in the center cell
-    setCellImages(prev => ({
-      ...prev,
+      setCellImages(prev => ({
+        ...prev,
       [cid('center', 0, 0)]: previewMember.photo
     }));
   }
@@ -447,7 +447,7 @@ useEffect(() => {
               </div>
             );
           })}
-          </div>
+      </div>
         </div> */}
 
          {/* Top extension - 2  8-cells centered (non-intrusive full-row) */}
@@ -463,31 +463,31 @@ useEffect(() => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 8 }, (_, colIndex) => {
+        {Array.from({ length: 8 }, (_, colIndex) => {
             const cellKey = cid('topExt-most', -1, colIndex + 2);
-            return (
-              <div
+          return (
+            <div
                 key={cellKey}
                 className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
                 style={{ ...(getCellStyle(cellKey) as any) }}
                 onClick={() => handleCellClick(cellKey)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
                     handleCellClick(cellKey);
-                  }
-                }}
-              >
-                {!cellImages[cellKey] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                }
+              }}
+            >
+              {!cellImages[cellKey] && (
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
+                </div>
+              )}
+            </div>
+          );
+        })}
           </div>
         </div>
 
@@ -556,10 +556,10 @@ useEffect(() => {
                   tabIndex={0}
                 >
                   {!cellImages[cid('left-side', rowIndex, colIndex)] && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                      +
-                    </div>
-                  )}
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
+                </div>
+              )}
                 </div>
               ))}
             </div>
@@ -668,31 +668,31 @@ useEffect(() => {
           >
             {Array.from({ length: 8 }, (_, colIndex) => {
               const key = cid('bottom-extension', -1, colIndex + 2);
-              return (
-                <div
+          return (
+            <div
                   key={key}
                   className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
                   style={{ ...(getCellStyle(key) as any) }}
                   onMouseDown={(e) => startDrag(e, key)}
                   onTouchStart={(e) => startDrag(e, key)}
                   onClick={() => handleCellActivate(key)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
                       handleCellActivate(key);
-                    }
-                  }}
-                >
+                }
+              }}
+            >
                   {!cellImages[key] && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                      +
-                    </div>
-                  )}
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
                 </div>
-              );
-            })}
+              )}
+            </div>
+          );
+        })}
           </div>
         </div>
 
@@ -711,8 +711,8 @@ useEffect(() => {
           >
             {Array.from({ length: 3 }, (_, colIndex) => {
               const key = cid('bottom-most-extension', -1, colIndex + 2);
-              return (
-                <div
+            return (
+              <div
                 key={key}
                 className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
                 style={{ ...(getCellStyle(key) as any) }}
@@ -736,7 +736,7 @@ useEffect(() => {
               </div>
             );
           })}
-          </div>
+        </div>  
         </div> */}
 
       </div>

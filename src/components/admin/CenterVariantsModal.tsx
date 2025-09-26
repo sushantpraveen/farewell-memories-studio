@@ -341,6 +341,46 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
           ? '56'
           : layout && layout.totalCells === 57
           ? '57'
+          : layout && layout.totalCells === 58
+          ? '58'
+          : layout && layout.totalCells === 59
+          ? '59'
+          : layout && layout.totalCells === 60
+          ? '60'
+          : layout && layout.totalCells === 61
+          ? '61'
+          : layout && layout.totalCells === 62
+          ? '62'
+          : layout && layout.totalCells === 63
+          ? '63'
+          : layout && layout.totalCells === 64
+          ? '64'
+          : layout && layout.totalCells === 65
+          ? '65'
+          : layout && layout.totalCells === 66
+          ? '66'
+          : layout && layout.totalCells === 67
+          ? '67'
+          : layout && layout.totalCells === 68
+          ? '68'
+          : layout && layout.totalCells === 69
+          ? '69'
+          : layout && layout.totalCells === 70
+          ? '70'
+          : layout && layout.totalCells === 71
+          ? '71'
+          : layout && layout.totalCells === 72
+          ? '72'
+          : layout && layout.totalCells === 73
+          ? '73'
+          : layout && layout.totalCells === 74
+          ? '74'
+          : layout && layout.totalCells === 75
+          ? '75'
+          : layout && layout.totalCells === 76
+          ? '76'
+          : layout && layout.totalCells === 77
+          ? '77'
           : '45';
 
           return variants.map((variant, index) => (

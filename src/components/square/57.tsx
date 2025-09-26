@@ -123,19 +123,19 @@ const getKeysForIndex = (index: number): string[] => {
   // Bottom most extension 44..47 (4 cells centered)
   if (index >= 44 && index <= 47) {
     const col = index - 44; // 0..9
-    keys.push(cid('topExt-most', 0, col + 2));
-    keys.push(cid('topExt-most', -1, col + 2));
+    keys.push(cid('bottomExt-most', 0, col + 2));
+    keys.push(cid('bottomExt-most', -1, col + 2));
     return keys;
   }
 
   // Top extension 45..50 (6 cells centered)
   if (index >= 48 && index <= 53) {
     const col = index - 48; // 0..6
-    keys.push(cid('topExt-most', 0, col + 2));
-    keys.push(cid('topExt-most', -1, col + 2));
+    keys.push(cid('topExt', 0, col + 2));
+    keys.push(cid('topExt', -1, col + 2));
     return keys;
   }
-
+  // Top most extension 54..56 (3 cells centered)
   if (index >= 54 && index <= 56) {
     const col = index - 54; // 0..9
     keys.push(cid('topExt-most', 0, col + 2));
@@ -170,9 +170,13 @@ const getCellIndexFromKey = (cellKey: string) => {
   } else if (section === 'bottom-extension') {
     // Bottom extension: 38..44 (cols encoded as 2..8 in key)
     return 38 + (col - 2);
-  } else if (section === 'topExt-most') {
+  } else if (section === 'topExt') {
     // Top extension most: 45..50 (cols encoded as 2..7 in key)
     return 45 + (col - 2);
+  }
+  else if (section === 'topExt-most') {
+    // Top most extension: 54..56 (cols encoded as 2..7 in key)
+    return 54 + (col - 2);
   }
   
   return -1;
@@ -437,7 +441,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 3 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('topExt-most', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
@@ -478,7 +482,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 6 }, (_, colIndex) => {
-            const cellKey = cid('topExt-most', -1, colIndex + 2);
+            const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
@@ -724,7 +728,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
             {Array.from({ length: 4 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+              const key = cid('bottomExt-most', -1, colIndex + 2);
               return (
                 <div
                 key={key}

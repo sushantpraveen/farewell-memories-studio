@@ -90,40 +90,40 @@ const JoinGroup = () => {
     <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6 animate-fadeIn" key="main-container">
       <div className="container mx-auto max-w-6xl animate-slideUp opacity-0" style={{ animationDelay: '150ms', animationFillMode: 'forwards' }} key="content-container">
         {/* Header */}
-        <div className="flex items-center mb-8" key="header">
+        <div className="flex flex-col sm:flex-row sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0" key="header">
           <Link to="/" key="back-link">
-            <Button variant="ghost" size="sm" className="mr-4">
+            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 w-fit">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Button>
           </Link>
           <div key="group-info">
-            <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
-            <p className="text-gray-600">Class of {group.yearOfPassing}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{group.name}</h1>
+            <p className="text-sm sm:text-base text-gray-600">Class of {group.yearOfPassing}</p>
           </div>
         </div>
 
         {/* Group Info */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8" key="group-info-cards">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8" key="group-info-cards">
           <Card className="text-center" key="members-card">
-            <CardContent className="pt-6">
-              <Users className="h-8 w-8 mx-auto text-purple-600 mb-2" />
-              <p className="text-2xl font-bold">{group.members.length}/{group.totalMembers}</p>
-              <p className="text-sm text-gray-600">Members Joined</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <Users className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-purple-600 mb-2" />
+              <p className="text-xl sm:text-2xl font-bold">{group.members.length}/{group.totalMembers}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Members Joined</p>
             </CardContent>
           </Card>
           <Card className="text-center" key="year-card">
-            <CardContent className="pt-6">
-              <Calendar className="h-8 w-8 mx-auto text-pink-600 mb-2" />
-              <p className="text-2xl font-bold">{group.yearOfPassing}</p>
-              <p className="text-sm text-gray-600">Graduation Year</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-pink-600 mb-2" />
+              <p className="text-xl sm:text-2xl font-bold">{group.yearOfPassing}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Graduation Year</p>
             </CardContent>
           </Card>
           <Card className="text-center" key="template-card">
-            <CardContent className="pt-6">
-              <Vote className="h-8 w-8 mx-auto text-yellow-600 mb-2" />
-              <p className="text-2xl font-bold capitalize">{group.gridTemplate}</p>
-              <p className="text-sm text-gray-600">Current Winner</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+              <Vote className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-yellow-600 mb-2" />
+              <p className="text-xl sm:text-2xl font-bold capitalize">{group.gridTemplate}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Current Winner</p>
             </CardContent>
           </Card>
         </div>
@@ -131,27 +131,27 @@ const JoinGroup = () => {
         {isGroupFull ? (
           <Card className="text-center shadow-xl border-0">
             <CardContent className="pt-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Group is Full!</h2>
-              <p className="text-gray-600 mb-6">This group has reached its maximum capacity.</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Group is Full!</h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6">This group has reached its maximum capacity.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+            <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
           
             {/* Join Form */}
             <Card className="shadow-xl border-0">
-              <CardHeader>
-                <CardTitle className="text-2xl">Join the Group</CardTitle>
-                <CardDescription>
+              <CardHeader className="pb-4 sm:pb-6">
+                <CardTitle className="text-xl sm:text-2xl">Join the Group</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Upload your photo and vote for your favorite grid template. {remainingSpots} spots remaining!
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+              <CardContent className="pt-0">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="memberName" className="flex items-center justify-between">
-                      <span>Your Name</span>
+                    <Label htmlFor="memberName" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                      <span className="text-sm sm:text-base font-medium">Your Name</span>
                       {errors.name && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.name}</span>}
                       {formTouched && memberData.name && !errors.name && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
                     </Label>
@@ -167,8 +167,8 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="memberRollNumber" className="flex items-center justify-between">
-                      <span>Roll No.</span>
+                    <Label htmlFor="memberRollNumber" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                      <span className="text-sm sm:text-base font-medium">Roll No.</span>
                       {errors.memberRollNumber && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.memberRollNumber}</span>}
                       {formTouched && memberData.memberRollNumber && !errors.memberRollNumber && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
                     </Label>
@@ -184,8 +184,8 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="size" className="flex items-center justify-between">
-                      <span>T‑Shirt Size</span>
+                    <Label htmlFor="size" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                      <span className="text-sm sm:text-base font-medium">T‑Shirt Size</span>
                       {errors.size && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.size}</span>}
                       {formTouched && memberData.size && !errors.size && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Selected</span>}
                     </Label>
@@ -207,9 +207,9 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="photo" className="flex items-center justify-between">
-                      <span className="flex items-center">
-                        <Upload className="mr-2 h-4 w-4" />
+                    <Label htmlFor="photo" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                      <span className="flex items-center text-sm sm:text-base font-medium">
+                        <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         Upload Your Photo
                       </span>
                       {errors.photo && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.photo}</span>}
@@ -254,7 +254,7 @@ const JoinGroup = () => {
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3"
                     disabled={
                       !memberData.name || 
                       !memberData.memberRollNumber || 
@@ -283,44 +283,41 @@ const JoinGroup = () => {
             </div>
 
             {/* Grid Preview - 2/3 width */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-xl border-0 relative h-full">
-                 <CardHeader>
-                   <CardTitle>Grid Preview</CardTitle>
-                   <CardDescription>{group.gridTemplate}</CardDescription>
+            <div className="lg:col-span-2 order-1 lg:order-2">
+              <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px]">
+                 <CardHeader className="pb-2 sm:pb-4">
+                   <CardTitle className="text-lg sm:text-xl lg:text-2xl">Grid Preview</CardTitle>
+                   <CardDescription className="text-sm sm:text-base">{group.gridTemplate}</CardDescription>
                  </CardHeader>
-                 <CardContent className="flex justify-center items-center p-0 overflow-hidden">
+                 <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
                    <Suspense fallback={
-                     <div className="p-8 text-center">
-                       <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
-                       <p className="text-gray-600">Loading preview...</p>
+                     <div className="p-4 sm:p-8 text-center">
+                       <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+                       <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
                      </div>
                    }>
-                     <div className="w-full h-full flex items-center justify-center p-4">
+                     <div className="relative">
                        {isCloudinaryPhoto ? (
-                        <div className="max-w-full max-h-full w-auto h-auto">
-                          <GridPreview 
-                            template={group.gridTemplate}
-                            memberCount={group.totalMembers}
-                            members={[]} // Don't pass any members since we don't need them for preview
-                            centerEmptyDefault
-                            activeMember={{
-                              id: 'preview',
-                              name: memberData.name || 'You',
-                              memberRollNumber: memberData.memberRollNumber,
-                              photo: memberData.photo,
-                              vote: memberData.vote,
-                              joinedAt: new Date()
-                            }}
-                            size="large"
-                          />
-                        </div>
-                      ) : (
-                        <div className="p-8 text-center">
-                          
-                          <p className="text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
-                        </div>
-                      )}
+                         <GridPreview 
+                           template={group.gridTemplate}
+                           memberCount={group.totalMembers}
+                           members={[]} // Don't pass any members since we don't need them for preview
+                           centerEmptyDefault
+                           activeMember={{
+                             id: 'preview',
+                             name: memberData.name || 'You',
+                             memberRollNumber: memberData.memberRollNumber,
+                             photo: memberData.photo,
+                             vote: memberData.vote,
+                             joinedAt: new Date()
+                           }}
+                           size="large"
+                         />
+                       ) : (
+                         <div className="p-4 sm:p-8 text-center">
+                           <p className="text-sm sm:text-base text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
+                         </div>
+                       )}
                      </div>
                    </Suspense>
                  </CardContent>

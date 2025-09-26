@@ -177,7 +177,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
           isLeader: false  // Explicitly set to false for group members
         });
         toast.success("Successfully joined the group!");
-        navigate(`/dashboard/${groupId}`);
+        navigate('/');
       } else {
         toast.error("Unable to join group. It might be full or not exist.");
       }
