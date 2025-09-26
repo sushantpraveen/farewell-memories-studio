@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74 } from '@/templates/layouts';
+import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74, enumerate75 } from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
@@ -164,7 +164,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const TARGET_W_IN = is37to50 ? 8 : 8.5;
         const TARGET_H_IN = 13.5;
         const COLS = is51to56 || is57to74 ? 9 : is75to92 ? 11 : 8;
-        const ROWS = is37to50 ? 10 : is57to74 || is75to92 ? 11 : 9;
+        const ROWS = is57to74 ? 9 : is75to92 ? 11 : 10
         const gap = 4; // align with desiredGapPx used in downloads
         canvas.width = Math.round(TARGET_W_IN * DPI);
         canvas.height = Math.round(TARGET_H_IN * DPI);
@@ -1017,6 +1017,23 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           });
         } else if (effectiveKey === '74') {
           await enumerate74(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } else if (effectiveKey === '75') {
+          await enumerate75(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
                 await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);

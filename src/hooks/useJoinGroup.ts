@@ -177,14 +177,18 @@ export const useJoinGroup = (groupId: string | undefined) => {
           isLeader: false  // Explicitly set to false for group members
         });
         toast.success("Successfully joined the group!");
+        
+        // Add 3-second delay before navigation to show success animation
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
         navigate('/');
       } else {
         toast.error("Unable to join group. It might be full or not exist.");
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error("Join group error:", error);
       toast.error("Failed to join group. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   }, [groupId, memberData, submitPhotoUrl, validateForm, joinGroup, updateUser, navigate]);

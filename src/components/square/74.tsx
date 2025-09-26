@@ -53,7 +53,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     };
   }, []);
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-75';
+  const COMP_ID = 'grid-74';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
