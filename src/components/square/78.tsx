@@ -89,57 +89,57 @@ const getCellStyleWithFallback = (cellKey: string) => {
 // used in both preview and download so we can seed GridContext correctly
 const getKeysForIndex = (index: number): string[] => {
   const keys: string[] = [];
-  // Top row 0-8 (9 cells)
-  if (index >= 0 && index <= 8) {
+  // Top row 0-9 (10 cells)
+  if (index >= 0 && index <= 9) {
     keys.push(cid('top', 0, index));
     return keys;
   }
-  // Left side two columns 9..18 (10 cells) → rows 0..4, cols 0..1
-  if (index >= 9 && index <= 23) {
-    const local = index - 9; // 0..9
+  // Left side two columns 10..24 (15 cells) → rows 0..4, cols 0..1
+  if (index >= 10 && index <= 24) {
+    const local = index - 10; // 0..9
     const row = Math.floor(local / 3); // 0..4
     const col = local % 3; // 0 or 1
     keys.push(cid('left-side', row, col));
     return keys;
   }
   // Right side two columns 19..28 (10 cells) → rows 0..4, cols 0..1
-  if (index >= 24 && index <= 38) {
-    const local = index - 24; // 0..9
+  if (index >= 25 && index <= 39) {
+    const local = index - 25; // 0..9
     const row = Math.floor(local / 3); // 0..4
     const col = local % 3; // 0 or 1
     keys.push(cid('right-side', row, col));
     return keys;
   }
   // Bottom row 29..37 (9 cells)
-  if (index >= 39 && index <= 47) {
-    keys.push(cid('bottom', 9, index - 38));
+  if (index >= 40 && index <= 49) {
+    keys.push(cid('bottom', 9, index - 40));
     return keys;
   }
   // Bottom extension 38..44 (6 cells centered)
-  if (index >= 48 && index <= 54) {
-    const col = index - 48; // 0..9
+  if (index >= 50 && index <= 57) {
+    const col = index - 50; // 0..9
     keys.push(cid('bottom-extension', 0, col + 2));
     keys.push(cid('bottom-extension', -1, col + 2));
     return keys;
   }
   // Bottom most extension 44..47 (4 cells centered)
-  if (index >= 55 && index <= 60) {
-    const col = index - 55; // 0..9
+  if (index >= 58 && index <= 63) {
+    const col = index - 58; // 0..9
     keys.push(cid('bottomExt-most', 0, col + 2));
     keys.push(cid('bottomExt-most', -1, col + 2));
     return keys;
   }
 
   // Top extension 45..50 (6 cells centered)
-  if (index >= 61 && index <= 68) {
-    const col = index - 61; // 0..6
+  if (index >= 64 && index <= 71) {
+    const col = index - 64; // 0..6
     keys.push(cid('topExt', 0, col + 2));
     keys.push(cid('topExt', -1, col + 2));
     return keys;
   }
   // Top most extension 54..56 (3 cells centered)
-  if (index >= 69 && index <= 74) {
-    const col = index - 69; // 0..9
+  if (index >= 72 && index <= 77) {
+    const col = index - 72; // 0..9
     keys.push(cid('topExt-most', 0, col + 2));
     keys.push(cid('topExt-most', -1, col + 2));
     return keys;
@@ -402,7 +402,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 6 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('topExt-most', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
@@ -484,7 +484,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
           {Array.from({ length: 10 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('top', 0, colIndex );
             return (
               <div
                 key={cellKey}
@@ -539,23 +539,24 @@ useEffect(() => {
 
             {/* Left 3 columns */}
             <div className="col-span-3 grid grid-cols-3" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
-              {Array.from({ length: 3 }, (_, colIndex) => (
-                <div
-                  key={`left-side-${colIndex}`}
-                  className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                  style={getCellStyleWithFallback(cid('left', rowIndex, colIndex))}
-                  onClick={() => handleCellClick(cid('left', rowIndex, colIndex))}
-                  role="button"
-                  tabIndex={0}
-                >
-                  {!cellImages[cid('left', rowIndex, colIndex)] && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                      +
-                    </div>
-                  )}
+            {Array.from({ length: 3 }, (_, colIndex) => (
+              <div
+              key={`left-side-${colIndex}`}
+              className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+              style={getCellStyle(cid('left-side', rowIndex, colIndex))}
+              onClick={() => handleCellClick(cid('left-side', rowIndex, colIndex))}
+              role="button"
+              tabIndex={0}
+            >
+              {!cellImages[cid('left-side', rowIndex, colIndex)] && (
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
                 </div>
-              ))}
+              )}
             </div>
+            ))}
+          </div>
+
 
             {/* Center cell - span 5 columns over 5 rows */}
             {rowIndex === 0 && (
@@ -576,46 +577,23 @@ useEffect(() => {
 
             {/* Right 3 columns */}
             <div className="col-span-3 grid grid-cols-3" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
-              {Array.from({ length: 3 }, (_, colIndex) => (
-                <div
-                  key={`right-side-${colIndex}`}
-                  className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                  style={getCellStyleWithFallback(cid('right', rowIndex, colIndex))}
-                  onClick={() => handleCellClick(cid('right', rowIndex, colIndex))}
-                  role="button"
-                  tabIndex={0}
-                >
-                  {!cellImages[cid('right', rowIndex, colIndex)] && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                      +
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Right border cell */}
-            {/* <div className="col-span-2">
-            <div
+            {Array.from({ length: 3 }, (_, colIndex) => (
+              <div
+              key={`right-side-${colIndex}`}
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-              style={{ ...(getCellStyle(cid('right', rowIndex + 1, 7)) as any) }}
-              onClick={() => handleCellClick(cid('right', rowIndex + 1, 7))}
+              style={getCellStyle(cid('right-side', rowIndex, colIndex))}
+              onClick={() => handleCellClick(cid('right-side', rowIndex, colIndex))}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleCellClick(cid('right', rowIndex + 1, 7));
-                }
-              }}
             >
-              {!cellImages[cid('right', rowIndex + 1, 7)] && (
+              {!cellImages[cid('right-side', rowIndex, colIndex)] && (
                 <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
                   +
                 </div>
               )}
             </div>
-            </div> */}
+            ))}
+          </div>
           </React.Fragment>
         ))}
 
@@ -633,7 +611,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
             {Array.from({ length: 10 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+              const key = cid('bottom', 9, colIndex );
               return (
                 <div
                 key={key}
@@ -676,7 +654,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
             {Array.from({ length: 8 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+              const key = cid('bottom-extension', -1, colIndex + 2);
               return (
                 <div
                 key={key}
@@ -719,7 +697,7 @@ useEffect(() => {
             } as React.CSSProperties}
           >
             {Array.from({ length: 6 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+              const key = cid('bottomExt-most', -1, colIndex + 2);
               return (
                 <div
                 key={key}

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Users, Calendar, Hash, Layout, Type } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Hash, Layout, Type, Sparkles, Camera, Rocket, Heart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useCollage, GridTemplate } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +16,15 @@ import { GridPreview } from "@/components/GridPreview";
 import ImageUpload from "@/components/ImageUpload";
 import { GridProvider } from "@/components/square/context/GridContext";
 import "./grid.css";
+
+// Animated background gradient
+const AnimatedBackground = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/30 via-pink-400/30 to-yellow-400/30 animate-gradient-xy" />
+    <div className="absolute inset-0 bg-[url('/patterns/circuit-board.svg')] opacity-5" />
+    <div className="absolute inset-0 backdrop-blur-3xl" />
+  </div>
+);
 
 // Available square template numbers (all available templates from 34 to 128)
 const AVAILABLE_SQUARE_TEMPLATES = Array.from({ length: 95 }, (_, i) => i + 34);
@@ -188,60 +198,115 @@ const CreateGroup = () => {
   const isValidForm = formData.name && formData.yearOfPassing && formData.totalMembers && parseInt(formData.totalMembers) > 0;
 
   return (
-    <div className="min-h-screen max-w-8xl mx-auto bg-gradient-to-br from-slate-50 to-slate-100 p-3 sm:p-4 md:p-6">
-      <div className="grid gap-2 lg:grid lg:grid-cols-2">
-        {/* Header */}
-        {/* <div className="flex items-center mb-8">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="mr-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Create Your Group</h1>
-        </div> */}
+    <div className="min-h-screen max-w-8xl mx-auto p-3 sm:p-4 md:p-6 lg:p-8 relative">
+      <AnimatedBackground />
 
-        <Card className="w-1/2 lg:max-w-xl lg:h-[75vh]">
-        <CardHeader>
-          <CardTitle className="text-lg">Component Preview Loader</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePreviewSubmit} className="grid grid-cols-1 sm:grid-cols-[220px_1fr_auto] items-end gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="groupName" className="flex items-center">
-                    <Users className="mr-2 h-4 w-4" />
-                    Group Name
+      {/* Floating Decorative Elements */}
+      <motion.div
+        className="absolute top-10 right-10 text-purple-500 opacity-50"
+        animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
+        transition={{ duration: 4, repeat: Infinity }}
+      >
+        <Sparkles className="w-8 h-8" />
+      </motion.div>
+      <motion.div
+        className="absolute bottom-20 left-10 text-pink-500 opacity-50"
+        animate={{ y: [0, 10, 0], rotate: [0, -5, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity }}
+      >
+        <Heart className="w-6 h-6" />
+      </motion.div>
+      <motion.div
+        className="absolute top-1/3 left-5 text-yellow-500 opacity-50"
+        animate={{ x: [0, 10, 0], rotate: [0, 10, 0] }}
+        transition={{ duration: 5, repeat: Infinity }}
+      >
+        <Rocket className="w-7 h-7" />
+      </motion.div>
+
+      <div className="grid gap-6 md:gap-8 lg:grid-cols-2">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 text-center mb-4"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text mb-2">
+            Create Your Squad! 🚀
+          </h1>
+          <p className="text-slate-600 text-lg md:text-xl">
+            Design your perfect group photo layout and make memories together!
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="w-full md:max-w-2xl lg:max-w-xl lg:h-[75vh] backdrop-blur-lg bg-white/80 border-none shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                Squad Details
+              </CardTitle>
+              <CardDescription>
+                Fill in your group's info and watch the magic happen! ✨
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePreviewSubmit} className="grid grid-cols-1 gap-6">
+                <motion.div
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Label htmlFor="groupName" className="flex items-center text-base font-medium text-gray-700">
+                    <Users className="mr-2 h-5 w-5 text-purple-500" />
+                    Squad Name
                   </Label>
                   <Input
                     id="groupName"
-                    placeholder="e.g., Computer Science Batch 2024"
+                    placeholder="e.g., CS Warriors 2024 🎓"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                    className="w-full bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus:ring-purple-200 transition-all duration-300"
                   />
-                </div>
+                </motion.div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="yearOfPassing" className="flex items-center">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Year of Passing
+                <motion.div
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Label htmlFor="yearOfPassing" className="flex items-center text-base font-medium text-gray-700">
+                    <Calendar className="mr-2 h-5 w-5 text-pink-500" />
+                    Graduation Year
                   </Label>
                   <Input
                     id="yearOfPassing"
-                    placeholder="e.g., 2024"
+                    placeholder="When are you graduating? 🎉"
                     value={formData.yearOfPassing}
                     onChange={(e) => setFormData({ ...formData, yearOfPassing: e.target.value })}
                     required
+                    className="w-full bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus:ring-pink-200 transition-all duration-300"
                   />
-                </div>
+                </motion.div>
 
-                {/* <div className="space-y-2">
-                  <Label htmlFor="totalMembers" className="flex items-center">
-                    <Hash className="mr-2 h-4 w-4" />
-                    Total Number of Members
+                <motion.div
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Label htmlFor="totalMembers" className="flex items-center text-base font-medium text-gray-700">
+                    <Users className="mr-2 h-5 w-5 text-yellow-500" />
+                    Squad Size
                   </Label>
                   <Input
-                    id="preview-number"
+                    id="totalMembers"
                     type="number"
                     inputMode="numeric"
                     value={formData.totalMembers}
@@ -252,75 +317,159 @@ const CreateGroup = () => {
                         loadComponentByNumber(getSquareTemplateNumber(parseInt(value)));
                       }
                     }}
-                    placeholder="e.g. 33 or 37"
-              />
-                </div> */}
-
-                <div className="space-y-2">
-                  <Label htmlFor="totalMembers" className="flex items-center">
-                    <Hash className="mr-2 h-4 w-4" />
-                    Total Number of Members
-                  </Label>
-                  <Input
-                    id="preview-number"
-                    type="number"
-                    inputMode="numeric"
-                    value={formData.totalMembers}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData({ ...formData, totalMembers: value });
-                      if (value && !isNaN(parseInt(value))) {
-                        loadComponentByNumber(getSquareTemplateNumber(parseInt(value)));
-                      }
-                    }}
-                    placeholder="e.g. 33 or 37"
-              />
-                </div>
+                    placeholder="How many members in your squad? 👥"
+                    required
+                    className="w-full bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus:ring-yellow-200 transition-all duration-300"
+                  />
+                </motion.div>
 
                 {/* Logo Upload */}
-                <ImageUpload
-                  onImageChange={handleImageChange}
-                  currentPreview={formData.logoPreview}
-                  label="Group Logo (Optional)"
-                />
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  disabled={!isValidForm || isSubmitting}
+                <motion.div
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
                 >
-                  {isSubmitting ? "Creating Group..." : "Create Group"}
-                </Button>
+                  <Label className="flex items-center text-base font-medium text-gray-700">
+                    <Camera className="mr-2 h-5 w-5 text-purple-500" />
+                    Squad Logo
+                  </Label>
+                  <div className="bg-white/50 backdrop-blur-sm rounded-lg p-4 border border-purple-100">
+                    <ImageUpload
+                      onImageChange={handleImageChange}
+                      currentPreview={formData.logoPreview}
+                      label="Drop your logo here! ✨ (Optional)"
+                    />
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 }}
+                >
+                  <Button 
+                    type="submit" 
+                    className={`w-full py-4 text-base font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
+                      !isValidForm || isSubmitting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 hover:from-purple-700 hover:via-pink-700 hover:to-yellow-700"
+                    }`}
+                    disabled={!isValidForm || isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin mr-2">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        </div>
+                        Creating Your Squad...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <Rocket className="mr-2 h-5 w-5" />
+                        Launch Squad! 🚀
+                      </div>
+                    )}
+                  </Button>
+                </motion.div>
               </form>
             </CardContent>
-      </Card>
+          </Card>
+        </motion.div>
           
       {/* Preview Area */}
-      <div className="lg:max-w-3xl mt-4 lg:mt-0">
+      <motion.div 
+        className="w-full lg:max-w-3xl mt-4 lg:mt-0"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.4 }}
+      >
         {PreviewComp ? (
-          <Card className="-ml-4 sm:ml-0">
-            <CardContent className="p-0">
-              {/* Preview actions */}
-              <div className="flex justify-end p-2">
-                <Button size="sm" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
-                  Download
+          <Card className="w-full backdrop-blur-lg bg-white/80 border-none shadow-xl overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                  Squad Preview ✨
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  onClick={() => window.dispatchEvent(new Event('grid-template-download'))}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300"
+                >
+                  <motion.div
+                    className="flex items-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Download Layout
+                  </motion.div>
                 </Button>
               </div>
-              <Suspense fallback={<div className="p-6 text-sm text-slate-600">Loading preview...</div>}>
-                <GridProvider>
-                  <PreviewComp />
-                </GridProvider>
-              </Suspense>
+              <CardDescription>
+                Your squad's photo layout will look something like this! 📸
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-2 md:p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Suspense 
+                  fallback={
+                    <div className="p-8 text-center">
+                      <div className="animate-spin mx-auto mb-4">
+                        <svg className="w-8 h-8 text-purple-500" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      </div>
+                      <p className="text-purple-600 font-medium">Creating your squad's layout...</p>
+                    </div>
+                  }
+                >
+                  <GridProvider>
+                    <PreviewComp />
+                  </GridProvider>
+                </Suspense>
+              </motion.div>
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardContent className="p-6 text-sm text-slate-500 text-center">
-              Enter a number to preview a component (e.g. 33 or 37) from src/components/square.
+          <Card className="w-full backdrop-blur-lg bg-white/80 border-none shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                Squad Preview ✨
+              </CardTitle>
+              <CardDescription>
+                Your masterpiece will appear here!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 text-center">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.02, 1],
+                  opacity: [0.5, 1, 0.5]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <Sparkles className="h-12 w-12 text-purple-500 mx-auto mb-4 opacity-50" />
+                <p className="text-lg text-gray-600">
+                  Enter your squad size to see the magic happen! ✨
+                </p>
+              </motion.div>
             </CardContent>
           </Card>
         )}
-      </div>
+      </motion.div>
 
         </div>
       </div>
