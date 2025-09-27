@@ -96,7 +96,7 @@ const Index = () => {
   const heroButtonText = hasGroup ? 'Go to Dashboard' : 'Start a Group';
 
   return (
-    <div className="min-h-screen  bg-gradient-to-br from-purple-200 via-pink-100 to-yellow-100 relative">
+    <div className="min-h-screen relative bg-white">
       <AnimatedBackground />
 
       {/* Header */}
@@ -149,7 +149,7 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 sm:py-24 relative">
+      <section className="bg-gradient-to-b from-pink-300 to-white mx-auto px-4 py-16 sm:py-24 relative">
         <motion.div 
           className="max-w-4xl mx-auto text-center relative z-10"
           initial={{ opacity: 0, y: 20 }}
@@ -175,7 +175,7 @@ const Index = () => {
           >
             Create Memorable{" "}
             <span className="relative">
-              <span className="relative z-10 bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
+              <span className="relative z-10 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-500 text-transparent bg-clip-text">
                 Farewell T-Shirts
               </span>
               <motion.svg
@@ -254,11 +254,11 @@ const Index = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="px-4 py-1.5 rounded-full bg-pink-100 text-pink-700 text-sm font-medium">
+            {/* <div className="px-4 py-1.5 rounded-full text-pink-700 text-sm font-medium">
               Simple 3-Step Process
-            </div>
+            </div> */}
           </motion.div>
-          <h3 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text mb-4">
+          <h3 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text mb-4">
             How It Works
           </h3>
           <p className="text-gray-600 max-w-2xl mx-auto">
@@ -280,16 +280,17 @@ const Index = () => {
               <CardHeader>
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 relative">
-                    <Users className="h-8 w-8 text-purple-600" />
-                    <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-sm font-bold text-purple-700">
+                    <img src="/images/step1.svg" alt="Step 1" className="h-8 w-8" />
+                    {/* <Users className="h-8 w-8 text-purple-600" /> */}
+                    {/* <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-sm font-bold text-purple-700">
                       1
-                    </div>
+                    </div> */}
                   </div>
-                  <motion.div
+                  {/* <motion.div
                     className="absolute -right-2 -top-2 w-12 h-12 bg-purple-100/50 rounded-full"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                  />
+                  /> */}
                 </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
                   Create Your Group
@@ -297,7 +298,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Set up your group with name, graduation year, and number of members. 
+                  Set up your group with name, year, and number of members. 
                   Choose from beautiful grid templates and get a shareable link.
                 </CardDescription>
               </CardContent>
@@ -315,15 +316,15 @@ const Index = () => {
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mb-4 relative">
                     <Camera className="h-8 w-8 text-pink-600" />
-                    <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center text-sm font-bold text-pink-700">
+                    {/* <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center text-sm font-bold text-pink-700">
                       2
-                    </div>
+                    </div> */}
                   </div>
-                  <motion.div
+                  {/* <motion.div
                     className="absolute -right-2 -top-2 w-12 h-12 bg-pink-100/50 rounded-full"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-                  />
+                  /> */}
                 </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 text-transparent bg-clip-text">
                   Upload & Vote
@@ -349,15 +350,15 @@ const Index = () => {
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4 relative">
                     <Shirt className="h-8 w-8 text-yellow-600" />
-                    <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-yellow-200 flex items-center justify-center text-sm font-bold text-yellow-700">
+                    {/* <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-yellow-200 flex items-center justify-center text-sm font-bold text-yellow-700">
                       3
-                    </div>
+                    </div> */}
                   </div>
-                  <motion.div
+                  {/* <motion.div
                     className="absolute -right-2 -top-2 w-12 h-12 bg-yellow-100/50 rounded-full"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
-                  />
+                  /> */}
                 </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-yellow-600 to-pink-600 text-transparent bg-clip-text">
                   Get Your Design

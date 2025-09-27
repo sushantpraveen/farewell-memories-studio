@@ -268,8 +268,8 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-full">
-                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                <span className="text-sm text-purple-700 font-medium">Live</span>
+                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-sm text-green-700 font-medium">Live</span>
               </div>
               <div className="h-6 w-px bg-gray-200" />
               <div className="flex items-center gap-3">
@@ -389,7 +389,7 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
                   {group.members.map((member: Member, index: number) => (
                     <div 
                       key={member.memberRollNumber || member.id || index} 
@@ -509,14 +509,14 @@ const Dashboard = () => {
                   <div className="grid grid-cols-1 gap-3">
                     <Button 
                       onClick={handleShare} 
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="w-full bg-purple-600 hover:from-purple-700 hover:to-pink-700"
                     >
                       <Share className="h-4 w-4 mr-2" />
                       Copy Invite Link
                     </Button>
                     <Link to={`/editor/${groupId}`} className="w-full">
                       <Button 
-                        className="w-full bg-gradient-to-r from-pink-600 to-yellow-600 hover:from-pink-700 hover:to-yellow-700"
+                        className="w-full bg-pink-600 hover:from-pink-700 hover:to-yellow-700"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         Open Editor
@@ -566,32 +566,36 @@ const Dashboard = () => {
         </div>
 
       </div>
+      
       <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-        <DialogContent className="sm:max-w-lg bg-white backdrop-blur-lg border-none">
-          <DialogHeader className="space-y-3">
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+        <DialogContent className="w-[95vw] max-w-lg mx-auto bg-white/80 backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
+          <DialogHeader className="space-y-3 text-center sm:text-left">
+            <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
               Share with Your Class
             </DialogTitle>
-            <DialogDescription className="text-gray-600">
+            <DialogDescription className="text-sm sm:text-base text-gray-600">
               Invite your classmates to join the group and contribute their photos.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-6 mt-4">
             {/* Invite Link Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Share className="h-4 w-4 text-purple-600" />
-                <h3 className="font-medium text-gray-900">Invite Link</h3>
+                <h3 className="text-sm sm:text-base font-medium text-gray-900">Invite Link</h3>
               </div>
-              <div className="p-3 bg-purple-50 rounded-lg space-y-3">
-                <code className="text-xs bg-white p-2 rounded block break-all border border-purple-100">
-                  {shareLink}
-                </code>
+              <div className="p-3 sm:p-4 bg-purple-50 rounded-lg space-y-3">
+                <div className="relative">
+                  <code className="text-xs sm:text-sm bg-white p-2 sm:p-3 rounded block break-all border border-purple-100">
+                    {shareLink}
+                  </code>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white pointer-events-none" />
+                </div>
                 <Button 
                   variant="outline" 
                   onClick={handleShare}
-                  className="w-full bg-white hover:bg-purple-50 border-purple-200 text-purple-700"
+                  className="w-full bg-white hover:bg-purple-50 border-purple-200 text-purple-700 h-9 sm:h-10 text-sm"
                 >
                   <Share className="h-4 w-4 mr-2" /> Copy Link
                 </Button>
@@ -602,71 +606,60 @@ const Dashboard = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Share className="h-4 w-4 text-purple-600" />
-                <h3 className="font-medium text-gray-900">Share via</h3>
+                <h3 className="text-sm sm:text-base font-medium text-gray-900">Share via</h3>
               </div>
               <div className="relative">
                 <Carousel className="w-full" opts={{ align: 'start' }}>
-                  <CarouselContent>
-                    <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-                      <div 
-                        onClick={() => openShare(`https://wa.me/?text=${encodeURIComponent(`Join our ${group.name} group! ${shareLink}`)}`)} 
-                        className="cursor-pointer p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 border border-purple-100 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                          <img src="/icons/whatsapp.svg" alt="WhatsApp" className="h-6 w-6" />
+                  <CarouselContent className="-ml-2 sm:-ml-4">
+                    {[
+                      {
+                        name: 'WhatsApp',
+                        icon: '/icons/whatsapp.svg',
+                        bgColor: 'bg-green-50',
+                        url: `https://wa.me/?text=${encodeURIComponent(`Join our ${group.name} group! ${shareLink}`)}`
+                      },
+                      {
+                        name: 'Telegram',
+                        icon: '/icons/telegram.svg',
+                        bgColor: 'bg-blue-50',
+                        url: `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Join our ${group.name} group!`)}`
+                      },
+                      {
+                        name: 'Email',
+                        icon: '/icons/email.svg',
+                        bgColor: 'bg-red-50',
+                        url: `mailto:?subject=${encodeURIComponent(`${group.name} - Join our group`)}&body=${encodeURIComponent(`Hi!\nJoin our ${group.name} group for ${group.yearOfPassing}: ${shareLink}`)}`
+                      },
+                      {
+                        name: 'Facebook',
+                        icon: '/icons/facebook.svg',
+                        bgColor: 'bg-blue-50',
+                        url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`
+                      },
+                      {
+                        name: 'Twitter/X',
+                        icon: '/icons/x.svg',
+                        bgColor: 'bg-gray-50',
+                        url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join our ${group.name} group!`)}&url=${encodeURIComponent(shareLink)}`
+                      }
+                    ].map((platform, index) => (
+                      <CarouselItem key={platform.name} className="pl-2 sm:pl-4 basis-1/3 sm:basis-1/4 md:basis-1/5">
+                        <div 
+                          onClick={() => openShare(platform.url)} 
+                          className="cursor-pointer p-2 sm:p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105 group"
+                        >
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${platform.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                            <img src={platform.icon} alt={platform.name} className="h-5 w-5 sm:h-6 sm:w-6" />
+                          </div>
+                          <span className="text-[10px] sm:text-xs font-medium text-gray-700">{platform.name}</span>
                         </div>
-                        <span className="text-xs font-medium text-gray-700">WhatsApp</span>
-                      </div>
-                    </CarouselItem>
-                    <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-                      <div 
-                        onClick={() => openShare(`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Join our ${group.name} group!`)}`)} 
-                        className="cursor-pointer p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 border border-purple-100 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                          <img src="/icons/telegram.svg" alt="Telegram" className="h-6 w-6" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700">Telegram</span>
-                      </div>
-                    </CarouselItem>
-                    <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-                      <div 
-                        onClick={() => openShare(`mailto:?subject=${encodeURIComponent(`${group.name} - Join our group`)}&body=${encodeURIComponent(`Hi!\nJoin our ${group.name} group for ${group.yearOfPassing}: ${shareLink}`)}`)} 
-                        className="cursor-pointer p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 border border-purple-100 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                          <img src="/icons/email.svg" alt="Email" className="h-6 w-6" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700">Email</span>
-                      </div>
-                    </CarouselItem>
-                    <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-                      <div 
-                        onClick={() => openShare(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`)} 
-                        className="cursor-pointer p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 border border-purple-100 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                          <img src="/icons/facebook.svg" alt="Facebook" className="h-6 w-6" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700">Facebook</span>
-                      </div>
-                    </CarouselItem>
-                    <CarouselItem className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-                      <div 
-                        onClick={() => openShare(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join our ${group.name} group!`)}&url=${encodeURIComponent(shareLink)}`)} 
-                        className="cursor-pointer p-4 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 border border-purple-100 flex flex-col items-center gap-2 transition-all duration-300 hover:scale-105"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                          <img src="/icons/x.svg" alt="X (Twitter)" className="h-6 w-6" />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700">Twitter/X</span>
-                      </div>
-                    </CarouselItem>
+                      </CarouselItem>
+                    ))}
                   </CarouselContent>
                   <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-1">
-                    <div className="h-1 w-8 rounded-full bg-purple-200" />
-                    <div className="h-1 w-8 rounded-full bg-purple-100" />
-                    <div className="h-1 w-8 rounded-full bg-purple-100" />
+                    <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-200" />
+                    <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-100" />
+                    <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-100" />
                   </div>
                 </Carousel>
               </div>
