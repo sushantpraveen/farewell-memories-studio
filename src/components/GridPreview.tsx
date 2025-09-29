@@ -190,7 +190,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
           setLoadError(`Error loading component ${n}.tsx`);
         }
       } else {
-        setLoadError(`Component ${n}.tsx not found in src/components/square.`);
+        setLoadError(`Template ${n} will be available soon.`);
       }
     };
 

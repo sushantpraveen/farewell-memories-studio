@@ -30,8 +30,8 @@ export interface Group {
 
 interface CollageContextType {
   groups: Record<string, Group>;
-  createGroup: (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'>) => Promise<string>;
-  joinGroup: (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'>) => Promise<boolean>;
+  createGroup: (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'> & { phone?: string; phoneVerified?: boolean }) => Promise<string>;
+  joinGroup: (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'> & { phone?: string; phoneVerified?: boolean }) => Promise<boolean>;
   getGroup: (groupId: string, forceRefresh?: boolean) => Promise<Group | undefined>;
   updateGroupTemplate: (groupId: string) => Promise<void>;
   getAllGroups: () => Promise<Group[]>;
@@ -154,14 +154,14 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [groups]);
 
-  const createGroup = async (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'>): Promise<string> => {
+  const createGroup = async (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'> & { phone?: string; phoneVerified?: boolean }): Promise<string> => {
     setIsLoading(true);
     setError(null);
     
     try {
       // Try API first
       try {
-        const newGroupData = await groupApi.createGroup(groupData);
+        const newGroupData = await groupApi.createGroup(groupData as any);
         const formattedGroup = convertDates(newGroupData);
         
         setGroups(prev => ({ 
@@ -198,14 +198,14 @@ export const CollageProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const joinGroup = async (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'>): Promise<boolean> => {
+  const joinGroup = async (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'> & { phone?: string; phoneVerified?: boolean }): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     
     try {
       // Try API first
       try {
-        const joinResponse = await groupApi.joinGroup(groupId, memberData);
+        const joinResponse = await groupApi.joinGroup(groupId, memberData as any);
         
         // Refresh group data after joining
         const updatedGroupData = await groupApi.getGroupById(groupId);

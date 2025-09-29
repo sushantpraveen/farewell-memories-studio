@@ -13,6 +13,14 @@ import type { Group } from '@/context/CollageContext';
 import { ordersApi, paymentsApi } from '@/lib/api';
 import type { Order, AdminMember } from '@/types/admin';
 
+// Subtle animated background consistent with GridBoard/Dashboard
+const AnimatedBackground = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 via-pink-400/10 to-yellow-400/10 animate-gradient-xy" />
+    <div className="absolute inset-0 backdrop-blur-3xl" />
+  </div>
+);
+
 const Checkout = () => {
   const navigate = useNavigate();
   const { groupId } = useParams<{ groupId?: string }>();
@@ -262,8 +270,9 @@ const Checkout = () => {
   // Guard: group not found for provided id
   if (groupId && !group) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full shadow-lg border-0">
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        <AnimatedBackground />
+        <Card className="max-w-md w-full shadow-lg border-0 backdrop-blur-lg bg-white/80">
           <CardHeader>
             <CardTitle>Checkout</CardTitle>
           </CardHeader>
@@ -301,10 +310,22 @@ const Checkout = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+  // Background doodle component
+const BackgroundDoodle = () => (
+  <div className="absolute inset-0 -z-10">
+    <div 
+      className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
+      style={{ backgroundSize: '400px' }}
+    />
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
+  </div>
+);
+
+return (
+    <div className="min-h-screen relative">
+      <BackgroundDoodle />
       {/* Navigation Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Button 
@@ -328,23 +349,22 @@ const Checkout = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
           <div className="order-2 lg:order-1">
-            <Card className="shadow-lg border-0">
+            <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-600" />
-                  Order Summary
+                <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                  <Users className="h-5 w-5 text-purple-600" /> Order Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {group && (
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="bg-white/60 rounded-lg p-4 space-y-2 border border-gray-100">
                     <div className="flex items-center justify-between text-sm">
                       <span>Group Name:</span>
                       <span className="font-medium">{group.name}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span>Members:</span>
-                      <Badge variant="secondary">{group.members.length} members</Badge>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">{group.members.length} members</Badge>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span>Template:</span>
@@ -432,9 +452,9 @@ const Checkout = () => {
           {/* Shipping Form & Payment */}
           <div className="order-1 lg:order-2 space-y-6">
             {/* Shipping Information */}
-            <Card className="shadow-lg border-0">
+            <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader>
-                <CardTitle>Shipping Information</CardTitle>
+                <CardTitle className="bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Shipping Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -518,17 +538,16 @@ const Checkout = () => {
             </Card>
 
             {/* Payment Section */}
-            <Card className="shadow-lg border-0">
+            <Card className="fixed bottom-0 inset-x-0 z-50 sm:static shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-purple-600" />
-                  Payment
+                <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                  <CreditCard className="h-5 w-5 text-purple-600" /> Payment
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Button 
                   onClick={handleRazorpayPayment}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-semibold"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg font-semibold shadow"
                   disabled={isProcessing || !isFormValid}
                 >
                   {isProcessing ? (

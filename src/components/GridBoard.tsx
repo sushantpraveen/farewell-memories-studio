@@ -2,7 +2,7 @@
 import React, { useRef, useState, Suspense, lazy } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { ArrowLeft, Users, Calendar, Hash, Layout, Type, AlertCircle, Sparkles, Camera, Rocket, Heart, Download } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Hash, Layout, Type, AlertCircle, Sparkles, Camera, Rocket, Heart, Download, Drama } from "lucide-react";
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -12,6 +12,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCollage, GridTemplate } from '../context/CollageContext';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from "framer-motion";
+import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
 // import "./grid.css";
 
 // Animated celebration background
@@ -234,6 +235,8 @@ const GridBoard = () => {
   const { createGroup, isLoading } = useCollage();
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const [phone, setPhone] = useState<string>('');
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
 
   // Map of all TSX components in this folder
   // We will look for files like "33.tsx", "37.tsx", or any "n.tsx"
@@ -360,12 +363,17 @@ const GridBoard = () => {
     setIsSubmitting(true);
 
     try {
-      const groupId = await createGroup({
+      const payload: any = {
         name: formData.name.trim(),
         yearOfPassing: formData.yearOfPassing.trim(),
         totalMembers: parseInt(formData.totalMembers),
         gridTemplate: formData.gridTemplate
-      });
+      };
+      if (isPhoneVerified && phone) {
+        payload.phone = phone;
+        payload.phoneVerified = true;
+      }
+      const groupId = await createGroup(payload);
 
       // Update user data to mark as leader and set groupId
       if (user) {
@@ -455,7 +463,7 @@ const GridBoard = () => {
       const LazyComp = lazy(loader);
       setPreviewComp(() => LazyComp);
     } else {
-      setLoadError(`Component ${n}.tsx not found in src/components/square.`);
+      setLoadError(`Template ${n} will be available soon.`);
     }
   };
 
@@ -504,8 +512,21 @@ const GridBoard = () => {
   // Check if form is valid for submit button
   const isValidForm = validateForm(formData).isValid;
 
+  // Background doodle component
+  const BackgroundDoodle = () => (
+    <div className="absolute inset-0 -z-10">
+      <div 
+        className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
+        style={{ backgroundSize: '400px' }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
+    </div>
+  );
+  
   return (
-    <div className="min-h-screen w-full mx-auto p-2 sm:p-3 md:p-4 relative">
+      <div className="min-h-screen relative mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <BackgroundDoodle />
+
       <AnimatedBackground />
 
       {/* Floating Decorative Elements */}
@@ -521,19 +542,27 @@ const GridBoard = () => {
         animate={{ y: [0, 10, 0], rotate: [0, -5, 0] }}
         transition={{ duration: 3.5, repeat: Infinity }}
       >
-        <Heart className="w-6 h-6" />
+        <Heart className="w-12 h-12" />
       </motion.div>
       <motion.div
-        className="absolute top-1/3 left-5 text-yellow-500 opacity-50"
+        className="absolute top-1/3 left-20 text-yellow-500 opacity-50"
         animate={{ x: [0, 10, 0], rotate: [0, 10, 0] }}
         transition={{ duration: 5, repeat: Infinity }}
       >
-        <Rocket className="w-7 h-7" />
+        <Rocket className="w-14 h-14" />
       </motion.div>
 
-      <div className="grid gap-2 sm:gap-3 md:gap-4 lg:grid-flow-col lg:auto-cols-max lg:justify-center lg:items-start">
+      <motion.div
+        className="absolute top-1/3 right-20 text-red-500 opacity-50"
+        animate={{ x: [0, 10, 0], rotate: [0, 10, 0] }}
+        transition={{ duration: 5, repeat: Infinity }}
+      >
+        <Drama className="w-14 h-14" />
+      </motion.div>
+
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr,auto] max-w-[1400px] mx-auto">
       {/* Preview Controller */}
-      <Card className="w-full max-w-[95vw] sm:max-w-lg lg:max-w-xl lg:h-[75vh] mx-auto backdrop-blur-lg bg-white/80 border-none shadow-xl">
+      <Card className="w-full max-w-[800px] mx-auto backdrop-blur-lg bg-white/80 border-none shadow-xl">
           <CardHeader className="p-3 sm:p-4 md:p-6 space-y-1 sm:space-y-2">
             <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
               Design Your Grid ✨
@@ -543,7 +572,15 @@ const GridBoard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 items-end gap-3 sm:gap-4 md:gap-6">
+            <div className="mb-3 sm:mb-4">
+              <PhoneOtpBlock
+                value={phone}
+                onChange={(v) => setPhone(v)}
+                onVerified={(std) => { setPhone(std); setIsPhoneVerified(true); }}
+                source="createGroup"
+              />
+            </div>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 items-end gap-3 sm:gap-4 md:gap-6 min-w-[280px] w-full max-w-[600px] mx-auto">
               <div className="space-y-3">
                   <Label htmlFor="groupName" className="flex items-center text-base font-medium text-gray-700">
                     <Users className="mr-2 h-5 w-5 text-purple-500" />
@@ -555,7 +592,7 @@ const GridBoard = () => {
                       placeholder="e.g., CS Warriors 2024 🎓"
                       value={formData.name}
                       onChange={(e) => handleFieldChange('name', e.target.value)}
-                      className={`w-full bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus:ring-purple-200 transition-all duration-300 ${
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus:ring-purple-200 transition-all duration-300 ${
                         touched.name && formErrors.name 
                           ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
                           : ''
@@ -596,7 +633,7 @@ const GridBoard = () => {
                       placeholder="When are you graduating? 🎉"
                       value={formData.yearOfPassing}
                       onChange={(e) => handleFieldChange('yearOfPassing', e.target.value)}
-                      className={`w-full bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus:ring-pink-200 transition-all duration-300 ${
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus:ring-pink-200 transition-all duration-300 ${
                         touched.yearOfPassing && formErrors.yearOfPassing 
                           ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
                           : ''
@@ -638,7 +675,7 @@ const GridBoard = () => {
                   value={formData.totalMembers}
                   onChange={handleNumberInputChange}
                   placeholder="How many members in your squad? 👥"
-                  className={`w-full bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus:ring-yellow-200 transition-all duration-300 ${
+                  className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus:ring-yellow-200 transition-all duration-300 ${
                     touched.totalMembers && formErrors.totalMembers 
                       ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
                       : ''
@@ -679,12 +716,8 @@ const GridBoard = () => {
             >
               <Button 
                 type="submit" 
-                className={`w-full py-4 text-base font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
-                  !isValidForm || isSubmitting
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 hover:from-purple-700 hover:via-pink-700 hover:to-yellow-700"
-                }`}
-                disabled={isSubmitting || !isValidForm}
+                className={"w-full py-4 text-base font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 hover:from-purple-700 hover:via-pink-700 hover:to-yellow-700"}
+                disabled={isSubmitting || !isValidForm || !isPhoneVerified}
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">

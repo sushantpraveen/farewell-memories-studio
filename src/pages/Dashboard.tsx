@@ -243,8 +243,20 @@ const Dashboard = () => {
   console.log('Dashboard render - group.members:', group?.members);
   console.log('Dashboard render - group.members.length:', group?.members?.length);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+  // Background doodle component
+const BackgroundDoodle = () => (
+  <div className="absolute inset-0 -z-10">
+    <div 
+      className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
+      style={{ backgroundSize: '400px' }}
+    />
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
+  </div>
+);
+
+return (
+    <div className="min-h-screen relative">
+      <BackgroundDoodle />
       {/* Navigation Header */}
       <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -509,14 +521,14 @@ const Dashboard = () => {
                   <div className="grid grid-cols-1 gap-3">
                     <Button 
                       onClick={handleShare} 
-                      className="w-full bg-purple-600 hover:from-purple-700 hover:to-pink-700"
+                      className="w-full bg-purple-600 hover:bg-purple-800"
                     >
                       <Share className="h-4 w-4 mr-2" />
                       Copy Invite Link
                     </Button>
                     <Link to={`/editor/${groupId}`} className="w-full">
                       <Button 
-                        className="w-full bg-pink-600 hover:from-pink-700 hover:to-yellow-700"
+                        className="w-full bg-pink-600 hover:bg-pink-800"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         Open Editor
@@ -568,7 +580,7 @@ const Dashboard = () => {
       </div>
       
       <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-        <DialogContent className="w-[95vw] max-w-lg mx-auto bg-white/80 backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
+        <DialogContent className="w-[95vw] max-w-lg mx-auto bg-white backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
           <DialogHeader className="space-y-3 text-center sm:text-left">
             <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
               Share with Your Class

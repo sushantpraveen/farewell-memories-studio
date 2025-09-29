@@ -10,6 +10,15 @@ import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LazyImage } from "@/components/LazyImage";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
+import PhoneOtpBlock from "@/components/otp/PhoneOtpBlock";
+
+// Subtle animated background to match GridBoard/Dashboard look
+const AnimatedBackground = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 via-pink-400/10 to-yellow-400/10 animate-gradient-xy" />
+    <div className="absolute inset-0 backdrop-blur-3xl" />
+  </div>
+);
 
 // Fix the import to use named export
 const GridPreview = lazy(() => 
@@ -33,7 +42,12 @@ const JoinGroup = () => {
     handlePhotoUpload,
     handleSubmit,
     submitPhotoUrl,
-    isUploadingPhoto
+    isUploadingPhoto,
+    // OTP
+    phone,
+    setPhone,
+    isPhoneVerified,
+    setIsPhoneVerified
   } = useJoinGroup(groupId);
 
 
@@ -43,14 +57,15 @@ const JoinGroup = () => {
   // Show loading state while context is initializing or group is loading
   if (isLoading || loadingGroup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div className="min-h-screen relative flex items-center justify-center p-4 animate-fadeIn">
+        <AnimatedBackground />
         { isSubmitting ?  <div className="mb-6">
               <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
                 <img src="/congrats.gif" alt="success" width={400} />
               </div>
             </div>
           : 
-        <Card className="w-full max-w-md text-center animate-slideUp">
+        <Card className="w-full max-w-md text-center animate-slideUp backdrop-blur-lg bg-white/80 border-none shadow-xl">
           <CardContent className="pt-6">
             <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
@@ -68,8 +83,9 @@ const JoinGroup = () => {
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        <AnimatedBackground />
+        <Card className="w-full max-w-md text-center backdrop-blur-lg bg-white/80 border-none shadow-xl">
           <CardContent className="pt-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Group Not Found</h1>
             <p className="text-gray-600 mb-6">The group you're looking for doesn't exist or has been removed.</p>
@@ -87,18 +103,19 @@ const JoinGroup = () => {
   const isCloudinaryPhoto = typeof memberData.photo === 'string' && memberData.photo.includes('/image/upload');
 
   return (
-    <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 p-3 sm:p-4 md:p-6 animate-fadeIn" key="main-container">
+    <div className="min-h-screen w-full mx-auto p-3 sm:p-4 md:p-6 relative animate-fadeIn" key="main-container">
+      <AnimatedBackground />
       <div className="container mx-auto max-w-6xl animate-slideUp opacity-0" style={{ animationDelay: '150ms', animationFillMode: 'forwards' }} key="content-container">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0" key="header">
           <Link to="/" key="back-link">
-            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 w-fit">
+            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 w-fit text-gray-700">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Button>
           </Link>
           <div key="group-info">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{group.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">{group.name}</h1>
             <p className="text-sm sm:text-base text-gray-600">Class of {group.yearOfPassing}</p>
           </div>
         </div>
@@ -129,7 +146,7 @@ const JoinGroup = () => {
         </div>
 
         {isGroupFull ? (
-          <Card className="text-center shadow-xl border-0">
+          <Card className="text-center shadow-xl border-0 backdrop-blur-lg bg-white/80">
             <CardContent className="pt-6">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Group is Full!</h2>
               <p className="text-sm sm:text-base text-gray-600 mb-6">This group has reached its maximum capacity.</p>
@@ -140,14 +157,25 @@ const JoinGroup = () => {
             <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
           
             {/* Join Form */}
-            <Card className="shadow-xl border-0">
+            <Card className="shadow-xl border-0 backdrop-blur-lg bg-white/80">
               <CardHeader className="pb-4 sm:pb-6">
-                <CardTitle className="text-xl sm:text-2xl">Join the Group</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Join the Group</CardTitle>
                 <CardDescription className="text-sm sm:text-base">
                   Upload your photo and vote for your favorite grid template. {remainingSpots} spots remaining!
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
+                <div className="mb-4 sm:mb-6">
+                  <PhoneOtpBlock
+                    value={phone}
+                    onChange={(v) => setPhone(v)}
+                    onVerified={(std) => {
+                      setPhone(std);
+                      setIsPhoneVerified(true);
+                    }}
+                    source="joinGroup"
+                  />
+                </div>
                 <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="memberName" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
@@ -262,7 +290,8 @@ const JoinGroup = () => {
                       !submitPhotoUrl ||
                       isUploadingPhoto ||
                       isSubmitting || 
-                      Object.values(errors).some(error => error)
+                      Object.values(errors).some(error => error) ||
+                      !isPhoneVerified
                     }
                   >
                     {isSubmitting ? (
@@ -284,9 +313,9 @@ const JoinGroup = () => {
 
             {/* Grid Preview - 2/3 width */}
             <div className="lg:col-span-2 order-1 lg:order-2">
-              <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px]">
+              <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] backdrop-blur-lg bg-white/80">
                  <CardHeader className="pb-2 sm:pb-4">
-                   <CardTitle className="text-lg sm:text-xl lg:text-2xl">Grid Preview</CardTitle>
+                   <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Grid Preview</CardTitle>
                    <CardDescription className="text-sm sm:text-base">{group.gridTemplate}</CardDescription>
                  </CardHeader>
                  <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">

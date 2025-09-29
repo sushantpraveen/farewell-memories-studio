@@ -57,6 +57,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
   // Track upload status to control UI (e.g., disable submit while uploading)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
 
+  // OTP phone verification state (optional)
+  const [phone, setPhone] = useState<string>("");
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
+
   // Validation
   const validateForm = useCallback((data: MemberData) => {
     const newErrors = {
@@ -162,10 +166,14 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
     try {
       // Prefer Cloudinary URL if available to keep payload small and preserve original quality
-      const payload = {
+      const payload: any = {
         ...memberData,
         photo: submitPhotoUrl || memberData.photo,
       };
+      if (isPhoneVerified && phone) {
+        payload.phone = phone;
+        payload.phoneVerified = true;
+      }
       console.debug('[JoinGroup] Submitting join payload', {
         usesCloudinary: Boolean(submitPhotoUrl),
         photoPreviewType: memberData.photo?.slice(0, 15),
@@ -191,7 +199,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
       toast.error("Failed to join group. Please try again.");
       setIsSubmitting(false);
     }
-  }, [groupId, memberData, submitPhotoUrl, validateForm, joinGroup, updateUser, navigate]);
+  }, [groupId, memberData, submitPhotoUrl, validateForm, joinGroup, updateUser, navigate, isPhoneVerified, phone]);
 
   // Effects
   // Memoize validation effect to prevent unnecessary reruns
@@ -287,6 +295,11 @@ export const useJoinGroup = (groupId: string | undefined) => {
     handlePhotoUpload,
     handleSubmit,
     submitPhotoUrl,
-    isUploadingPhoto
+    isUploadingPhoto,
+    // OTP
+    phone,
+    setPhone,
+    isPhoneVerified,
+    setIsPhoneVerified
   };
 };

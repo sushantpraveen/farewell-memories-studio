@@ -181,7 +181,7 @@ const CreateGroup = () => {
       }
     } else {
       console.warn(`Component ${n}.tsx not found in available modules`);
-      setLoadError(`Component ${n}.tsx not found in src/components/square.`);
+      setLoadError(`Template ${n} will be available soon.`);
     }
   };
 

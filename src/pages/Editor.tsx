@@ -11,6 +11,17 @@ import { useCollage } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
 import { GridProvider } from "@/components/square/context/GridContext";
 
+// Background doodle component
+const BackgroundDoodle = () => (
+  <div className="absolute inset-0 -z-10">
+    <div 
+      className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
+      style={{ backgroundSize: '400px' }}
+    />
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
+  </div>
+);
+
 
 const Editor = () => {
   const { groupId } = useParams<{ groupId?: string }>();
@@ -137,10 +148,11 @@ const Editor = () => {
   const isGridComplete = group.members.length === group.totalMembers;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+    <div className="min-h-screen relative">
+      <BackgroundDoodle />
 
        {/* Navigation Header */}
-       <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 sm:py-0 sm:h-16 space-y-3 sm:space-y-0">
             <Button 
@@ -153,7 +165,7 @@ const Editor = () => {
             </Button>
             
              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div className="flex flex-wrap gap-2 sm:space-x-2">
+            <div className="hidden sm:flex flex-wrap gap-2 sm:space-x-2">
             <Button 
               className={`${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'} text-xs sm:text-sm px-3 sm:px-4 py-2`}
               onClick={handleCheckout}
@@ -214,7 +226,7 @@ const Editor = () => {
         </div>
 
         {/* Progress */}
-        <Card className="mb-6 sm:mb-8 shadow-lg border-0">
+        <Card className="mb-6 sm:mb-8 shadow-lg border-0 backdrop-blur-lg bg-white/80">
           <CardContent className="pt-4 sm:pt-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 space-y-2 sm:space-y-0">
               <div className="flex items-center space-x-2">
@@ -238,11 +250,11 @@ const Editor = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Collage Preview */}
           <div className="lg:col-span-2 order-1 lg:order-1">
-            <Card className="shadow-xl border-0">
+            <Card className="shadow-xl border-0 backdrop-blur-lg bg-white/80">
               <CardHeader className="pb-3 sm:pb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                   <div>
-                    <CardTitle className="text-lg sm:text-xl lg:text-2xl">Live Collage Preview</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Live Collage Preview</CardTitle>
                     <CardDescription className="text-xs sm:text-sm lg:text-base">Grid template: {group.totalMembers} members • {group.gridTemplate} layout</CardDescription>
                   </div>
                   <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
@@ -276,9 +288,9 @@ const Editor = () => {
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6 order-2 lg:order-2">
             {/* Member List */}
-            <Card className="shadow-lg border-0">
+            <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader className="pb-3 sm:pb-6">
-                <CardTitle className="text-lg sm:text-xl">Members ({group.members.length}/{group.totalMembers})</CardTitle>
+                <CardTitle className="text-lg sm:text-xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Members ({group.members.length}/{group.totalMembers})</CardTitle>
               </CardHeader>
               <CardContent>
                 {group.members.length === 0 ? (
@@ -315,9 +327,9 @@ const Editor = () => {
             </Card>
 
             {/* Voting Results */}
-            <Card className="shadow-lg border-0">
+            <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader className="pb-3 sm:pb-6">
-                <CardTitle className="text-lg sm:text-xl">Template Votes</CardTitle>
+                <CardTitle className="text-lg sm:text-xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Template Votes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 sm:space-y-4">
@@ -350,9 +362,9 @@ const Editor = () => {
             </Card>
 
             {/* Quick Actions */}
-            <Card className="shadow-lg border-0">
+            <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
               <CardHeader className="pb-3 sm:pb-6">
-                <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
+                <CardTitle className="text-lg sm:text-xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 sm:space-y-4">
                 

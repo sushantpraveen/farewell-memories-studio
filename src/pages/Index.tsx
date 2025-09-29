@@ -129,7 +129,7 @@ const Index = () => {
             >
               <Button 
                 onClick={handleMainAction}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
+                className="hidden sm:flex bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
               >
                 {hasGroup ? (
                   <>
