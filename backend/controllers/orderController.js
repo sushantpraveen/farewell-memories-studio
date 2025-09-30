@@ -21,6 +21,7 @@ export const createOrder = async (req, res) => {
         vote: m.vote,
         joinedAt: m.joinedAt ? new Date(m.joinedAt) : new Date(),
         size: m.size,
+        phone: m.phone || undefined,
       })),
       shipping: payload.shipping,
       settings: payload.settings,
