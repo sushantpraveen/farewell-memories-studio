@@ -58,8 +58,10 @@ const Dashboard = () => {
         return;
       }
       
-      // Otherwise show "no group" state
-      setLoadingGroup(false);
+      // If user has no group, redirect to create group page
+      toast.info('Create a group to get started!');
+      navigate('/create-group', { replace: true });
+      return;
     }
   }, [groupId, user?.groupId, groups, navigate]);
   
@@ -77,6 +79,14 @@ const Dashboard = () => {
         console.log('Dashboard useEffect - fetchedGroup:', fetchedGroup);
         
         if (fetchedGroup) {
+          // Check if user is the leader of this group
+          if (!user?.isLeader || user?.groupId !== groupId) {
+            console.log('User is not the leader of this group');
+            // toast.error('Access denied: Only the group leader can access the dashboard');
+            navigate('/', { replace: true });
+            return;
+          }
+          
           setGroup(fetchedGroup);
           saveLastActiveGroup(groupId); // Save as last active group
         } else {
@@ -216,21 +226,9 @@ const Dashboard = () => {
 
 
   if (!group) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">No Group Found</h1>
-            <p className="text-gray-600 mb-6">You need to create a group first.</p>
-            <Link to="/create-group">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                Create Group
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // Redirect to create group if no group found
+    navigate('/create-group', { replace: true });
+    return null;
   }
 
   const winningTemplate = getWinningTemplate(group?.votes);
@@ -254,7 +252,7 @@ const BackgroundDoodle = () => (
   </div>
 );
 
-return (
+  return (
     <div className="min-h-screen relative">
       <BackgroundDoodle />
       {/* Navigation Header */}
@@ -262,13 +260,13 @@ return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/')}
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/')}
                 className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
-              >
+            >
                 <Link to="/">← Back</Link>
-              </Button>
+            </Button>
               <div className="hidden sm:block h-6 w-px bg-gray-200" />
               <div className="hidden sm:flex items-center gap-2">
                 <Users className="h-5 w-5 text-purple-600" />
@@ -288,9 +286,9 @@ return (
                 <span className="text-sm font-medium text-gray-700">Welcome, {user?.name}</span>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="text-gray-700">
                   <LogOut className="h-4 w-4" />
-                </Button>
+            </Button>
               </div>
-            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -310,10 +308,10 @@ return (
                       <Users className="h-4 w-4" />
                       <span>{group.members.length} of {group.totalMembers} members</span>
                     </p>
-                  </div>
+          </div>
                   <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
+            <Button 
+              variant="outline" 
                       size="sm"
                       onClick={handleShare}
                       className="text-purple-600 border-purple-200 hover:bg-purple-50"
@@ -325,10 +323,10 @@ return (
                       <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
                         <Eye className="h-4 w-4 mr-2" />
                         Open Editor
-                      </Button>
+            </Button>
                     </Link>
-                  </div>
-                </div>
+          </div>
+        </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -349,8 +347,8 @@ return (
                     <span>{group.totalMembers - group.members.length} spots left</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           </div>
 
           <div>
@@ -363,8 +361,8 @@ return (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 capitalize">
-                      {winningTemplate}
-                    </Badge>
+                {winningTemplate}
+              </Badge>
                     <span className="text-sm font-medium text-gray-600">Current Winner</span>
                   </div>
                   <div className="h-px bg-gray-100" />
@@ -379,8 +377,8 @@ return (
                     }
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
           </div>
         </div>
 
@@ -447,9 +445,9 @@ return (
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
+            </CardContent>
+          </Card>
+          
             {/* Vote Distribution */}
             <Card className="bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
               <CardHeader className="p-6 pb-4">
@@ -460,22 +458,22 @@ return (
                   </div>
                   <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                     {totalVotes} total votes
-                  </Badge>
-                </div>
-              </CardHeader>
+              </Badge>
+        </div>
+            </CardHeader>
               <CardContent className="p-6 pt-0">
-                <div className="space-y-4">
-                  {Object.entries(group.votes || {}).map(([template, count]) => (
+              <div className="space-y-4">
+                {Object.entries(group.votes || {}).map(([template, count]) => (
                     <div key={template} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="capitalize font-medium text-gray-700">{template}</span>
-                          {winningTemplate === template && (
+                      {winningTemplate === template && (
                             <Badge className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
                               Winner
                             </Badge>
-                          )}
-                        </div>
+                      )}
+                    </div>
                         <span className="text-sm font-medium text-gray-900">{count as number} votes</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-purple-100 overflow-hidden">
@@ -535,9 +533,9 @@ return (
                       </Button>
                     </Link>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
             <Card className="bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
               <CardHeader className="p-6 pb-4">
@@ -545,7 +543,7 @@ return (
                   <Award className="h-5 w-5 text-yellow-600" />
                   <CardTitle>Quick Stats</CardTitle>
                 </div>
-              </CardHeader>
+            </CardHeader>
               <CardContent className="p-6 pt-0">
                 <div className="space-y-6">
                   <div>
@@ -559,7 +557,7 @@ return (
                         style={{ width: `${completionPercentage}%` }}
                       />
                     </div>
-                  </div>
+                        </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-purple-50 rounded-lg text-center">
@@ -571,11 +569,11 @@ return (
                       <p className="text-xs text-pink-600">Votes</p>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+      </div>
 
       </div>
       
@@ -620,8 +618,8 @@ return (
                 <Share className="h-4 w-4 text-purple-600" />
                 <h3 className="text-sm sm:text-base font-medium text-gray-900">Share via</h3>
               </div>
-              <div className="relative">
-                <Carousel className="w-full" opts={{ align: 'start' }}>
+                <div className="relative">
+                  <Carousel className="w-full" opts={{ align: 'start' }}>
                   <CarouselContent className="-ml-2 sm:-ml-4">
                     {[
                       {
@@ -662,7 +660,7 @@ return (
                         >
                           <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${platform.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}>
                             <img src={platform.icon} alt={platform.name} className="h-5 w-5 sm:h-6 sm:w-6" />
-                          </div>
+                        </div>
                           <span className="text-[10px] sm:text-xs font-medium text-gray-700">{platform.name}</span>
                         </div>
                       </CarouselItem>
@@ -672,8 +670,8 @@ return (
                     <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-200" />
                     <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-100" />
                     <div className="h-1 w-6 sm:w-8 rounded-full bg-purple-100" />
-                  </div>
-                </Carousel>
+                        </div>
+                  </Carousel>
               </div>
             </div>
           </div>

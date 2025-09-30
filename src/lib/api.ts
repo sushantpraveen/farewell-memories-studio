@@ -202,6 +202,8 @@ export const groupApi = {
   
   // Join a group
   joinGroup: (groupId: string, memberData: any) => {
+    console.log('API Layer - joinGroup called with:', memberData);
+    console.log('API Layer - Phone in memberData:', memberData.phone);
     return apiRequest<any>(`/groups/${groupId}/join`, 'POST', memberData, false);
   },
   

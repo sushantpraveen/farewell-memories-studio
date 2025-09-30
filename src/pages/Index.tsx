@@ -63,15 +63,22 @@ const Index = () => {
   useEffect(() => {
     // Determine the best dashboard path for this user
     const determineDashboardPath = () => {
-      // First try user's current groupId
-      if (user?.groupId) {
+      // Only allow dashboard access if user is a leader
+      if (user?.isLeader && user?.groupId) {
         setUserDashboardPath(`/dashboard/${user.groupId}`);
         return;
       }
       
-      // Then try last active group from localStorage
+      // If user is not a leader but has a groupId, they're a member
+      if (!user?.isLeader && user?.groupId) {
+        // Members cannot access dashboard, redirect to create their own group
+        setUserDashboardPath(null);
+        return;
+      }
+      
+      // Then try last active group from localStorage (only if user is leader)
       const lastActive = getLastActiveGroup();
-      if (lastActive) {
+      if (lastActive && user?.isLeader) {
         setUserDashboardPath(`/dashboard/${lastActive}`);
         return;
       }
@@ -81,7 +88,7 @@ const Index = () => {
     };
 
     determineDashboardPath();
-  }, [user?.groupId]);
+  }, [user?.groupId, user?.isLeader]);
 
   const handleMainAction = () => {
     if (userDashboardPath) {
@@ -110,13 +117,13 @@ const Index = () => {
               transition={{ duration: 0.5 }}
             >
               <div className="relative">
-                <Shirt className="h-8 w-8 text-purple-600" />
+            <Shirt className="h-8 w-8 text-purple-600" />
                 <motion.div
                   className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-pink-400"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-              </div>
+          </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
                 FarewellTees
               </h1>
@@ -221,7 +228,7 @@ const Index = () => {
                 <span>{heroButtonText}</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </span>
-            </Button>
+              </Button>
             <div className="flex items-center gap-2 text-gray-500">
               <div className="flex -space-x-2">
                 <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
@@ -232,8 +239,8 @@ const Index = () => {
                 </div>
                 <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
                   <Heart className="h-4 w-4 text-yellow-600" />
-                </div>
-              </div>
+          </div>
+        </div>
               <span className="text-sm">Join thousands of happy students</span>
             </div>
           </motion.div>
@@ -277,7 +284,7 @@ const Index = () => {
           >
             <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardHeader>
+            <CardHeader>
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 relative">
                     <img src="/images/step1.svg" alt="Step 1" className="h-8 w-8" />
@@ -291,18 +298,18 @@ const Index = () => {
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   /> */}
-                </div>
+              </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
                   Create Your Group
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-gray-600">
                   Set up your group with name, year, and number of members. 
-                  Choose from beautiful grid templates and get a shareable link.
-                </CardDescription>
-              </CardContent>
-            </Card>
+                Choose from beautiful grid templates and get a shareable link.
+              </CardDescription>
+            </CardContent>
+          </Card>
           </motion.div>
 
           <motion.div
@@ -312,10 +319,10 @@ const Index = () => {
           >
             <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardHeader>
+            <CardHeader>
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mb-4 relative">
-                    <Camera className="h-8 w-8 text-pink-600" />
+                <Camera className="h-8 w-8 text-pink-600" />
                     {/* <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center text-sm font-bold text-pink-700">
                       2
                     </div> */}
@@ -325,18 +332,18 @@ const Index = () => {
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
                   /> */}
-                </div>
+              </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 text-transparent bg-clip-text">
                   Upload & Vote
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Each member uploads their photo and votes for their favorite grid layout. 
-                  Democracy decides the final design!
-                </CardDescription>
-              </CardContent>
-            </Card>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-gray-600">
+                Each member uploads their photo and votes for their favorite grid layout. 
+                Democracy decides the final design!
+              </CardDescription>
+            </CardContent>
+          </Card>
           </motion.div>
 
           <motion.div
@@ -346,10 +353,10 @@ const Index = () => {
           >
             <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardHeader>
+            <CardHeader>
                 <div className="relative">
                   <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4 relative">
-                    <Shirt className="h-8 w-8 text-yellow-600" />
+                <Shirt className="h-8 w-8 text-yellow-600" />
                     {/* <div className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-yellow-200 flex items-center justify-center text-sm font-bold text-yellow-700">
                       3
                     </div> */}
@@ -359,18 +366,18 @@ const Index = () => {
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
                   /> */}
-                </div>
+              </div>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-yellow-600 to-pink-600 text-transparent bg-clip-text">
                   Get Your Design
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Watch your collage come together in real-time. Download the final design 
-                  and print your custom farewell T-shirts!
-                </CardDescription>
-              </CardContent>
-            </Card>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-gray-600">
+                Watch your collage come together in real-time. Download the final design 
+                and print your custom farewell T-shirts!
+              </CardDescription>
+            </CardContent>
+          </Card>
           </motion.div>
         </div>
       </section>
@@ -443,11 +450,11 @@ const Index = () => {
                   </motion.svg>
                 </span>
                 ?
-              </h3>
+            </h3>
 
               <p className="text-xl text-purple-100 mb-12 max-w-2xl mx-auto">
-                Join thousands of students who've created beautiful farewell T-shirts with their classmates.
-              </p>
+              Join thousands of students who've created beautiful farewell T-shirts with their classmates.
+            </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Button 
@@ -469,7 +476,7 @@ const Index = () => {
                     )}
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </span>
-                </Button>
+              </Button>
 
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-2">
@@ -484,7 +491,7 @@ const Index = () => {
                     </div>
                   </div>
                   <span className="text-sm text-purple-100">Join the community</span>
-                </div>
+          </div>
               </div>
             </motion.div>
           </motion.div>
@@ -563,7 +570,7 @@ const Index = () => {
                   </ul>
                 </div>
               </div>
-            </div>
+          </div>
 
             <div className="mt-12 pt-8 border-t border-gray-800 text-center">
               <p className="text-gray-500 text-sm">

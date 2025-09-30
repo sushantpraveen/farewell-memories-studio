@@ -186,6 +186,7 @@ const Checkout = () => {
               vote: m.vote,
               joinedAt: m.joinedAt.toISOString(),
               size: m.size,
+              phone: m.phone,
             }));
             const newOrder: Order = {
               id: `ORD-${Date.now()}`,

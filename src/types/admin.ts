@@ -6,6 +6,7 @@ export interface AdminMember {
     vote?: 'square' | 'hexagonal' | 'circle';
     joinedAt: string;
     size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
+    phone?: string;
   }
   
   export interface Shipping {

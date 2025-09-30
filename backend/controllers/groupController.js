@@ -241,8 +241,11 @@ export const joinGroup = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, memberRollNumber, photo, vote, size } = req.body;
+    const { name, memberRollNumber, photo, vote, size, phone } = req.body;
     const group = await Group.findById(req.params.id);
+
+    console.log('Join group request body:', req.body);
+    console.log('Phone from join request:', phone);
 
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
@@ -269,8 +272,11 @@ export const joinGroup = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
+      phone: phone || undefined,
       joinedAt: new Date()
     };
+
+    console.log('Creating new member with data:', newMember);
 
     group.members.push(newMember);
     group.votes[vote] = (group.votes[vote] || 0) + 1;
@@ -285,6 +291,9 @@ export const joinGroup = async (req, res) => {
 
     // Save group
     const updatedGroup = await group.save();
+
+    console.log('Group saved. Last member added:', updatedGroup.members[updatedGroup.members.length - 1]);
+    console.log('Last member phone:', updatedGroup.members[updatedGroup.members.length - 1]?.phone);
 
     res.status(201).json({
       groupId: updatedGroup._id,

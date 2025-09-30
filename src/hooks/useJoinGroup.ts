@@ -174,7 +174,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
         payload.phone = phone;
         payload.phoneVerified = true;
       }
-      console.debug('[JoinGroup] Submitting join payload', {
+      console.log('[JoinGroup] Submitting join payload:', payload);
+      console.log('[JoinGroup] Phone verified:', isPhoneVerified);
+      console.log('[JoinGroup] Phone value:', phone);
+      console.debug('[JoinGroup] Additional info:', {
         usesCloudinary: Boolean(submitPhotoUrl),
         photoPreviewType: memberData.photo?.slice(0, 15),
       });

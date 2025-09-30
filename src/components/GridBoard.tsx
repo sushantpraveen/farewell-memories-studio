@@ -12,7 +12,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCollage, GridTemplate } from '../context/CollageContext';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from "framer-motion";
-import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
 // import "./grid.css";
 
 // Animated celebration background
@@ -235,8 +234,6 @@ const GridBoard = () => {
   const { createGroup, isLoading } = useCollage();
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
-  const [phone, setPhone] = useState<string>('');
-  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
 
   // Map of all TSX components in this folder
   // We will look for files like "33.tsx", "37.tsx", or any "n.tsx"
@@ -369,10 +366,6 @@ const GridBoard = () => {
         totalMembers: parseInt(formData.totalMembers),
         gridTemplate: formData.gridTemplate
       };
-      if (isPhoneVerified && phone) {
-        payload.phone = phone;
-        payload.phoneVerified = true;
-      }
       const groupId = await createGroup(payload);
 
       // Update user data to mark as leader and set groupId
@@ -384,7 +377,7 @@ const GridBoard = () => {
       }
 
       toast.success("Group created successfully!");
-      navigate(`/dashboard`);
+      navigate(`/dashboard/${groupId}`);
     } catch (error) {
       console.error("Error creating group:", error);
       toast.error("Failed to create group. Please try again.");
@@ -393,20 +386,20 @@ const GridBoard = () => {
     }
   };
 
-  const handleCellClick = (cellType: string, position?: { row: number, col: number }) => {
-    let cellKey: string;
+  // const handleCellClick = (cellType: string, position?: { row: number, col: number }) => {
+  //   let cellKey: string;
     
-    if (cellType === 'center') {
-      cellKey = 'center';
-      console.log('Center cell clicked');
-    } else {
-      cellKey = `${position?.row}-${position?.col}`;
-      console.log(`Border cell clicked: row ${position?.row}, col ${position?.col}`);
-    }
+  //   if (cellType === 'center') {
+  //     cellKey = 'center';
+  //     console.log('Center cell clicked');
+  //   } else {
+  //     cellKey = `${position?.row}-${position?.col}`;
+  //     console.log(`Border cell clicked: row ${position?.row}, col ${position?.col}`);
+  //   }
     
-    setSelectedCell(cellKey);
-    fileInputRef.current?.click();
-  };
+  //   setSelectedCell(cellKey);
+  //   fileInputRef.current?.click();
+  // };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -571,15 +564,7 @@ const GridBoard = () => {
               Create your perfect photo layout and make memories together! 🎨
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4 md:p-6">
-            <div className="mb-3 sm:mb-4">
-              <PhoneOtpBlock
-                value={phone}
-                onChange={(v) => setPhone(v)}
-                onVerified={(std) => { setPhone(std); setIsPhoneVerified(true); }}
-                source="createGroup"
-              />
-            </div>
+          <CardContent className="p-3 sm:p-4 md:p-6">       
             <form onSubmit={handleSubmit} className="grid grid-cols-1 items-end gap-3 sm:gap-4 md:gap-6 min-w-[280px] w-full max-w-[600px] mx-auto">
               <div className="space-y-3">
                   <Label htmlFor="groupName" className="flex items-center text-base font-medium text-gray-700">
@@ -717,7 +702,7 @@ const GridBoard = () => {
               <Button 
                 type="submit" 
                 className={"w-full py-4 text-base font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 hover:from-purple-700 hover:via-pink-700 hover:to-yellow-700"}
-                disabled={isSubmitting || !isValidForm || !isPhoneVerified}
+                disabled={isSubmitting || !isValidForm }
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">
@@ -785,7 +770,7 @@ const GridBoard = () => {
 
       {/* Preview Area */}
       <motion.div 
-        className="mt-2 sm:mt-3 md:mt-4 lg:mt-0 w-full lg:w-[40vw] min-w-[280px] sm:min-w-[400px] lg:min-w-[500px] max-w-[800px] mx-auto"
+        className="mt-2 sm:mt-3 md:mt-4 lg:mt-0 w-full lg:w-[40vw] min-w-[280px] sm:min-w-[400px] lg:min-w-[500px] max-w-[800px] mx-auto pointer-events-none select-none"
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.4 }}
@@ -797,7 +782,7 @@ const GridBoard = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="w-full h-full"
+                className="w-full h-full pointer-events-none select-none"
               >
                 <Suspense 
                   fallback={

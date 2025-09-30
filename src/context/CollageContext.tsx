@@ -14,6 +14,7 @@ export interface Member {
   joinedAt: Date;
   memberRollNumber: string;
   size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
+  phone?: string;
 }
 
 export interface Group {

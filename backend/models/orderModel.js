@@ -8,7 +8,8 @@ const AdminMemberSchema = new mongoose.Schema(
     photo: { type: String, required: true },
     vote: { type: String, enum: ['square', 'hexagonal', 'circle'], required: false },
     joinedAt: { type: Date, required: true },
-    size: { type: String, enum: ['s', 'm', 'l', 'xl', 'xxl'], required: false }
+    size: { type: String, enum: ['s', 'm', 'l', 'xl', 'xxl'], required: false },
+    phone: { type: String, required: false }
   },
   { _id: false }
 );

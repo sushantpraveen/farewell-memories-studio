@@ -594,7 +594,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                     <TableHead>Name</TableHead>
                     <TableHead>Roll No</TableHead>
                     <TableHead>Size</TableHead>
-                    <TableHead>Vote</TableHead>
+                    <TableHead>Mobile</TableHead>
                     <TableHead>Joined</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -664,8 +664,10 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       <TableCell>{member.memberRollNumber}</TableCell>
                       <TableCell className="uppercase">{member.size ? member.size : '-'}</TableCell>
                       <TableCell>
-                        {member.vote && (
-                          <Badge variant="outline">{member.vote}</Badge>
+                        {member.phone ? (
+                          <span className="text-sm font-mono">{member.phone}</span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Not provided</span>
                         )}
                       </TableCell>
                       <TableCell>

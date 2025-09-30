@@ -25,6 +25,10 @@ const memberSchema = new mongoose.Schema({
     enum: ['s', 'm', 'l', 'xl', 'xxl'],
     default: 'm'
   },
+  phone: {
+    type: String,
+    required: false
+  },
   joinedAt: {
     type: Date,
     default: Date.now
@@ -37,6 +41,10 @@ const groupSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Group name is required'],
       trim: true
+    },
+    phone: {
+      type: String,
+      required: false
     },
     yearOfPassing: {
       type: String,

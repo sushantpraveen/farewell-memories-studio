@@ -165,7 +165,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         [cid('center', 0, 0)]: previewMember.photo
       }));
     }
-  }, [previewMember?.photo, setCellImages, cid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewMember?.photo]);
 
   // Seed GridContext with existingMembers so downloads can see images
   useEffect(() => {
@@ -186,27 +187,28 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     if (Object.keys(updates).length > 0) {
       setCellImages(prev => ({ ...prev, ...updates }));
     }
-  }, [existingMembers, centerEmptyDefault, setCellImages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingMembers, centerEmptyDefault]);
 
-  // Debug existing members and cell images
-  useEffect(() => {
-    console.log('=== DEBUG INFO ===');
-    console.log('existingMembers:', existingMembers);
-    console.log('existingMembers.length:', existingMembers?.length);
-    console.log('cellImages:', cellImages);
-    console.log('Object.keys(cellImages):', Object.keys(cellImages));
-    
-    if (existingMembers && existingMembers.length > 0) {
-      existingMembers.forEach((member, index) => {
-        console.log(`Member ${index}:`, {
-          name: member.name,
-          hasPhoto: !!member.photo,
-          photoLength: member.photo?.length || 0
-        });
-      });
-    }
-    console.log('==================');
-  }, [existingMembers, cellImages]);
+  // Debug existing members and cell images (commented out to reduce console noise)
+  // useEffect(() => {
+  //   console.log('=== DEBUG INFO ===');
+  //   console.log('existingMembers:', existingMembers);
+  //   console.log('existingMembers.length:', existingMembers?.length);
+  //   console.log('cellImages:', cellImages);
+  //   console.log('Object.keys(cellImages):', Object.keys(cellImages));
+  //   
+  //   if (existingMembers && existingMembers.length > 0) {
+  //     existingMembers.forEach((member, index) => {
+  //       console.log(`Member ${index}:`, {
+  //         name: member.name,
+  //         hasPhoto: !!member.photo,
+  //         photoLength: member.photo?.length || 0
+  //       });
+  //     });
+  //   }
+  //   console.log('==================');
+  // }, [existingMembers, cellImages]);
 
   // Canvas helpers and renderer for this 8x10 layout
   const loadImage = (src: string) =>
