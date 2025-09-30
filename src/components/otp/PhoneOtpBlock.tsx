@@ -25,6 +25,7 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
   const [countdown, setCountdown] = useState(0); // seconds
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const disabled = success;
   const normalizedPhone = useMemo(() => normalizePhone(value), [value]);
@@ -46,6 +47,7 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
       const resp = await sendOtp(normalizedPhone, source);
       if (resp.ok) {
         setCountdown(60);
+        setOtpSent(true);
       } else {
         const data = await resp.json().catch(() => ({} as any));
         setError(data?.message || 'Failed to send code');
@@ -56,6 +58,13 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
       setIsSending(false);
     }
   };
+
+  // Auto-send OTP when valid phone number is entered
+  useEffect(() => {
+    if (!otpSent && !success && normalizedPhone && normalizedPhone.length >= 13 && countdown === 0 && !isSending) {
+      handleSend();
+    }
+  }, [normalizedPhone, otpSent, success, countdown, isSending]);
 
   const handleVerify = async () => {
     setError(null);
@@ -80,62 +89,76 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
     }
   };
 
+  // Auto-verify when 6-digit OTP is entered
+  useEffect(() => {
+    if (otp.length === 6 && !success && !isVerifying && otpSent) {
+      handleVerify();
+    }
+  }, [otp, success, isVerifying, otpSent]);
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <label className="text-sm font-medium text-gray-700">Mobile Number</label>
-        <div className="flex items-center gap-2">
-        <input
-          type="tel"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          placeholder="9876543210"
-          className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : 'border-gray-200'} focus:outline-none focus:ring-2 focus:ring-purple-200`}
-        />
-         <button
-          type="button"
-          onClick={handleSend}
-          disabled={disabled || isSending || countdown > 0}
-          className={`px-3 py-2 rounded-md text-white text-sm ${disabled || isSending || countdown > 0 ? 'bg-gray-300' : 'bg-purple-600 hover:bg-purple-700'} transition`}
-        >
-          {countdown > 0 ? `Resend in ${countdown}s` : 'Send'}
-        </button>
+        <div className="relative">
+          <input
+            type="tel"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+            placeholder="9876543210"
+            className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : success ? 'border-green-500' : 'border-gray-200'} focus:outline-none focus:ring-2 ${success ? 'focus:ring-green-200' : 'focus:ring-purple-200'}`}
+          />
+          {isSending && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          {otpSent && !success && countdown > 0 && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+              {countdown}s
+            </div>
+          )}
         </div>
-        {/* <p className="text-xs text-gray-500">+91 added automatically</p> */}
+        {isSending && <p className="text-xs text-purple-600">Sending OTP...</p>}
+        {otpSent && !success && <p className="text-xs text-green-600">OTP sent! Check your messages.</p>}
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-          value={otp}
-          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0,6))}
-          disabled={disabled}
-          placeholder="Enter 6-digit OTP"
-          className={`flex-1 px-3 py-2 rounded-md border ${error ? 'border-red-500' : 'border-gray-200'} focus:outline-none focus:ring-2 focus:ring-pink-200`}
-        />
-        <button
-          type="button"
-          onClick={handleVerify}
-          disabled={disabled || isVerifying}
-          className={`px-3 py-2 rounded-md text-white text-sm ${disabled || isVerifying ? 'bg-gray-300' : 'bg-pink-600 hover:bg-pink-700'} transition`}
-        >
-          Verify
-        </button>
-      </div>
+      {otpSent && !success && (
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Enter OTP</label>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0,6))}
+              disabled={disabled}
+              placeholder="Enter 6-digit OTP"
+              className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : 'border-gray-200'} focus:outline-none focus:ring-2 focus:ring-pink-200 tracking-widest text-center text-lg`}
+              autoFocus
+            />
+            {isVerifying && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+          </div>
+          {isVerifying && <p className="text-xs text-pink-600">Verifying...</p>}
+        </div>
+      )}
 
       {success && (
-        <div className="text-xs inline-flex items-center gap-1 text-green-600">
-          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-          Verified
+        <div className="text-sm inline-flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-md">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          <span className="font-medium">Phone Verified ✓</span>
         </div>
       )}
 
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">{error}</p>
       )}
     </div>
   );
