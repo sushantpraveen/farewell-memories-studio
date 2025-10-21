@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { CollageProvider } from "./context/CollageContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import StructuredData from "./components/seo/StructuredData";
+import PerformanceOptimizer from "./components/seo/PerformanceOptimizer";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -28,6 +30,8 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <CollageProvider>
+          <StructuredData />
+          <PerformanceOptimizer />
           <Toaster />
           <Sonner />
           <BrowserRouter>

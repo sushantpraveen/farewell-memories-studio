@@ -107,7 +107,7 @@ const Index = () => {
       <AnimatedBackground />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50" role="banner">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <motion.div 
@@ -125,7 +125,7 @@ const Index = () => {
                 />
           </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
-                FarewellTees
+                SignatureDayTshirt
               </h1>
             </motion.div>
 
@@ -156,7 +156,7 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-pink-300 to-white mx-auto px-4 py-16 sm:py-24 relative">
+      <section className="bg-gradient-to-b from-pink-300 to-white mx-auto px-4 py-16 sm:py-24 relative" role="main" aria-labelledby="hero-title">
         <motion.div 
           className="max-w-4xl mx-auto text-center relative z-10"
           initial={{ opacity: 0, y: 20 }}
@@ -174,7 +174,8 @@ const Index = () => {
             </motion.div>
           </div>
 
-          <motion.h2 
+          <motion.h1 
+            id="hero-title"
             className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -200,7 +201,7 @@ const Index = () => {
                 />
               </motion.svg>
             </span>
-          </motion.h2>
+          </motion.h1>
 
           <motion.p 
             className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed max-w-3xl mx-auto"
@@ -248,7 +249,7 @@ const Index = () => {
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-4 py-16 sm:py-24">
+      <section className="container mx-auto px-4 py-16 sm:py-24" aria-labelledby="features-title">
         <motion.div 
           className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
@@ -265,9 +266,9 @@ const Index = () => {
               Simple 3-Step Process
             </div> */}
           </motion.div>
-          <h3 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text mb-4">
+          <h2 id="features-title" className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text mb-4">
             How It Works
-          </h3>
+          </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Creating your perfect farewell T-shirt is easy and fun. Follow these simple steps to get started.
           </p>
@@ -383,7 +384,7 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden" aria-labelledby="cta-title">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600">
           <motion.div
             className="absolute inset-0 opacity-30"
@@ -430,7 +431,7 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.4 }}
             >
-              <h3 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
+              <h2 id="cta-title" className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
                 Ready to Create{" "}
                 <span className="relative">
                   <span className="relative z-10">Lasting Memories</span>
@@ -450,10 +451,10 @@ const Index = () => {
                   </motion.svg>
                 </span>
                 ?
-            </h3>
+            </h2>
 
               <p className="text-xl text-purple-100 mb-12 max-w-2xl mx-auto">
-              Join thousands of students who've created beautiful farewell T-shirts with their classmates.
+              Join thousands of students who've created beautiful SignagureDay T-shirts with their classmates.
             </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -499,7 +500,7 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white relative overflow-hidden">
+      <footer className="bg-gray-900 text-white relative overflow-hidden" role="contentinfo">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_rgba(147,51,234,0.1),_transparent_70%)]" />
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-6xl mx-auto">
@@ -520,7 +521,7 @@ const Index = () => {
                     />
                   </div>
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
-                    FarewellTees
+                    SignatureDayTshirt
                   </h2>
                 </motion.div>
                 <p className="text-gray-400 max-w-md mx-auto md:mx-0">
@@ -574,7 +575,7 @@ const Index = () => {
 
             <div className="mt-12 pt-8 border-t border-gray-800 text-center">
               <p className="text-gray-500 text-sm">
-                © {new Date().getFullYear()} FarewellTees. All rights reserved.
+                © {new Date().getFullYear()} SignatureDayTshirt. All rights reserved.
               </p>
             </div>
           </div>
