@@ -48,10 +48,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { storageService } from '@/lib/storage';
-// import { Project, MemberSubmission } from '@/lib/types';
-import { CollageStyle } from './CollageStyleCard';
+import { Project, MemberSubmission } from '@/lib/types';
 import { useGridTemplates, GridCell } from './GridTemplates';
 import { DesignSidebar } from './DesignSidebar';
+
+// CollageStyle type definition
+export type CollageStyle = 'hexagonal' | 'square' | 'circular';
 
 interface CollageEditorProps {
   projectId?: string;
@@ -135,58 +137,53 @@ export const CollageEditor: React.FC<CollageEditorProps> = ({ projectId: propPro
       }
       
       // TEMPORARY: Add test submissions if none exist
-      if (loadedProject.submissions.length === 0) {
+      if (loadedProject.submissions && loadedProject.submissions.length === 0) {
         console.log('No submissions found, creating test data...');
-        const testSubmissions = [
+        const testSubmissions: MemberSubmission[] = [
           {
             id: 'test1',
             projectId: projectId,
+            memberId: 'member1',
             name: 'Test User 1',
-            photo: '/placeholder.svg',
-            collageStyle: 'hexagonal' as CollageStyle,
-            hasVoted: true,
-            submittedAt: new Date().toISOString(),
-            occasionFields: {}
+            photoUrl: '/placeholder.svg',
+            uploadedAt: new Date().toISOString(),
+            croppedPhotoUrl: '/placeholder.svg'
           },
           {
             id: 'test2',
             projectId: projectId,
+            memberId: 'member2',
             name: 'Test User 2',
-            photo: '/placeholder.svg',
-            collageStyle: 'square' as CollageStyle,
-            hasVoted: true,
-            submittedAt: new Date().toISOString(),
-            occasionFields: {}
+            photoUrl: '/placeholder.svg',
+            uploadedAt: new Date().toISOString(),
+            croppedPhotoUrl: '/placeholder.svg'
           },
           {
             id: 'test3',
             projectId: projectId,
+            memberId: 'member3',
             name: 'Test User 3',
-            photo: '/placeholder.svg',
-            collageStyle: 'circular' as CollageStyle,
-            hasVoted: true,
-            submittedAt: new Date().toISOString(),
-            occasionFields: {}
+            photoUrl: '/placeholder.svg',
+            uploadedAt: new Date().toISOString(),
+            croppedPhotoUrl: '/placeholder.svg'
           },
           {
             id: 'test4',
             projectId: projectId,
+            memberId: 'member4',
             name: 'Test User 4',
-            photo: '/placeholder.svg',
-            collageStyle: 'hexagonal' as CollageStyle,
-            hasVoted: true,
-            submittedAt: new Date().toISOString(),
-            occasionFields: {}
+            photoUrl: '/placeholder.svg',
+            uploadedAt: new Date().toISOString(),
+            croppedPhotoUrl: '/placeholder.svg'
           },
           {
             id: 'test5',
             projectId: projectId,
+            memberId: 'member5',
             name: 'Test User 5',
-            photo: '/placeholder.svg',
-            collageStyle: 'square' as CollageStyle,
-            hasVoted: true,
-            submittedAt: new Date().toISOString(),
-            occasionFields: {}
+            photoUrl: '/placeholder.svg',
+            uploadedAt: new Date().toISOString(),
+            croppedPhotoUrl: '/placeholder.svg'
           }
         ];
         
