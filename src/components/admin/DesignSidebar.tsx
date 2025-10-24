@@ -463,7 +463,7 @@ export const DesignSidebar = ({
 
       {/* Content */}
       <div className="flex-1 p-4 overflow-y-auto">
-       <canvas ref={canvasRef} />
+        {/* Canvas is handled by parent component */}
       </div>
     </div>
   );
