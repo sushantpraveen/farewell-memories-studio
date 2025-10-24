@@ -261,7 +261,7 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
         }
         const optimized: Uint8Array = await oxipngFn(u8, { level: 6 }); // ← run optimizer (level 6 is moderate/high)
         if (optimized && optimized.byteLength > 0) {  // ← if output produced
-          const candidate = new Blob([optimized], { type: 'image/png' }); // ← rewrap as Blob
+          const candidate = new Blob([optimized as BlobPart], { type: 'image/png' }); // ← rewrap as Blob
           if (candidate.size < rawBlob.size) {        // ← keep only if smaller
             finalBlob = candidate;
             // Test log: show optimization gains

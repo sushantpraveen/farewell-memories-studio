@@ -1,5 +1,12 @@
 import { useEffect } from 'react';
 
+// Extend Window interface
+declare global {
+  interface Window {
+    dataLayer: any[];
+  }
+}
+
 const Analytics = () => {
   useEffect(() => {
     // Initialize Google Analytics
@@ -9,7 +16,9 @@ const Analytics = () => {
     document.head.appendChild(script);
 
     window.dataLayer = window.dataLayer || [];
-    function gtag() { window.dataLayer.push(arguments); }
+    function gtag(...args: any[]) { 
+      window.dataLayer.push(args); 
+    }
     gtag('js', new Date());
     gtag('config', 'UA-XXXXXXX-X');
 

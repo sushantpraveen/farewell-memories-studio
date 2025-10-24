@@ -65,12 +65,18 @@ class StorageService {
   private initializeProject(project: Partial<Project>): Project {
     return {
       id: project.id || this.generateId(),
-      groupName: project.groupName || '',
-      occasion: project.occasion || '',
-      memberCount: project.memberCount || 0,
-      gridStyle: project.gridStyle || 'hexagonal',
-      schoolLogo: project.schoolLogo || undefined,
+      name: project.groupName || project.name || '',
+      year: project.year || '',
       createdAt: project.createdAt || new Date().toISOString(),
+      totalMembers: project.memberCount || project.totalMembers || 0,
+      submittedMembers: project.submittedMembers || 0,
+      gridType: project.gridStyle || project.gridType || 'hexagonal',
+      status: project.status || 'active',
+      groupName: project.groupName || project.name || '',
+      occasion: project.occasion || '',
+      memberCount: project.memberCount || project.totalMembers || 0,
+      gridStyle: project.gridStyle || project.gridType || 'hexagonal',
+      schoolLogo: project.schoolLogo || undefined,
       submissions: project.submissions || [],
       votes: project.votes || {
         hexagonal: 0,
