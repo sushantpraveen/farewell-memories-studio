@@ -122,13 +122,27 @@ const CreateGroup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const membersNum = parseInt(formData.totalMembers);
+    
+    // Validate squad size limits
+    if (membersNum < 33) {
+      toast.error("Add 10 more people to make your team complete");
+      return;
+    }
+    
+    if (membersNum > 97) {
+      toast.error("Oops, your team is too big to fit in a single tshirt. Reduce 3 more people. To make collage");
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
       const groupId = await createGroup({
         name: formData.name,
         yearOfPassing: formData.yearOfPassing,
-        totalMembers: parseInt(formData.totalMembers),
+        totalMembers: membersNum,
         gridTemplate: formData.gridTemplate
       });
 
@@ -181,7 +195,7 @@ const CreateGroup = () => {
       }
     } else {
       console.warn(`Component ${n}.tsx not found in available modules`);
-      setLoadError(`Template ${n} will be available soon.`);
+      console.log(`Template ${n} will be available soon.`);
     }
   };
 

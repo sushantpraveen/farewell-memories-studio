@@ -285,6 +285,12 @@ const GridBoard = () => {
     if (membersNum < 1) {
       return "Total members must be at least 1";
     }
+    if (membersNum < 33) {
+      return "Add 10 more people to make your team complete";
+    }
+    if (membersNum > 97) {
+      return "Oops, your team is too big to fit in a single tshirt. Reduce 3 more people. To make collage";
+    }
     if (membersNum > 1000) {
       return "Total members cannot exceed 1000";
     }
@@ -456,7 +462,7 @@ const GridBoard = () => {
       const LazyComp = lazy(loader);
       setPreviewComp(() => LazyComp);
     } else {
-      setLoadError(`Template ${n} will be available soon.`);
+      console.log(`Template ${n} will be available soon.`);
     }
   };
 
@@ -727,7 +733,7 @@ const GridBoard = () => {
           <Separator className="my-6" />
 
           {/* Quick actions */}
-          <motion.div 
+          {/* <motion.div 
             className="flex flex-wrap gap-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -751,7 +757,7 @@ const GridBoard = () => {
               <Layout className="mr-2 h-4 w-4 text-pink-500" />
               Load 37.tsx
             </Button>
-          </motion.div>
+          </motion.div> */}
 
           {loadError && (
             <motion.p 

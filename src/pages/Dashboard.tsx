@@ -449,16 +449,20 @@ const BackgroundDoodle = () => (
           </Card>
           
             {/* Vote Distribution */}
-            <Card className="bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
+            <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
+            <Badge className="absolute px-2 py-1 top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+                coming soon
+              </Badge>
               <CardHeader className="p-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <CardTitle>Vote Distribution</CardTitle>
                   </div>
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                  
+                  {/* <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                     {totalVotes} total votes
-              </Badge>
+              </Badge> */}
         </div>
             </CardHeader>
               <CardContent className="p-6 pt-0">
@@ -468,11 +472,11 @@ const BackgroundDoodle = () => (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="capitalize font-medium text-gray-700">{template}</span>
-                      {winningTemplate === template && (
+                      {/* {winningTemplate === template && (
                             <Badge className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
                               Winner
                             </Badge>
-                      )}
+                      )} */}
                     </div>
                         <span className="text-sm font-medium text-gray-900">{count as number} votes</span>
                       </div>
@@ -565,8 +569,8 @@ const BackgroundDoodle = () => (
                       <p className="text-xs text-purple-600">Members</p>
                     </div>
                     <div className="p-3 bg-pink-50 rounded-lg text-center">
-                      <p className="text-2xl font-bold text-pink-700">{totalVotes}</p>
-                      <p className="text-xs text-pink-600">Votes</p>
+                      <p className="text-2xl font-bold text-pink-700">{group.totalMembers-group.members.length}</p>
+                      <p className="text-xs text-pink-600">Remaining</p>
                     </div>
                   </div>
               </div>
@@ -580,7 +584,7 @@ const BackgroundDoodle = () => (
       <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
         <DialogContent className="w-[95vw] max-w-lg mx-auto bg-white backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
           <DialogHeader className="space-y-3 text-center sm:text-left">
-            <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+            2<DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
               Share with Your Class
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-gray-600">
