@@ -426,7 +426,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             return (
               <div
                 key={cellKey}
-                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+                className="grid-cell relative overflow-hidden"
                 style={{ ...(getCellStyle(cellKey) as any) }}
                 onClick={() => handleCellClick(cellKey)}
                 role="button"
@@ -617,7 +617,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               return (
                 <div
                   key={key}
-                  className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+                  className="grid-cell relative overflow-hidden"
                   style={getCellStyleWithFallback(key)}
                   onMouseDown={(e) => startDrag(e, key)}
                   onTouchStart={(e) => startDrag(e, key)}
@@ -646,11 +646,6 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       
       
 
-      <div className="hidden md:block mt-8 text-center max-w-md">
-        <p className="text-sm text-gray-500">
-          Click on any cell to upload an image. Images will be automatically clipped to fit each cell perfectly.
-        </p>
-      </div>
     </div>
   );
 };

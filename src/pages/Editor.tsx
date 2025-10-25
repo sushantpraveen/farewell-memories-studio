@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
 import { GridPreview } from "@/components/GridPreview";
 import { Suspense } from "react";
@@ -145,7 +146,7 @@ const Editor = () => {
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
-  const isGridComplete = group.members.length !== group.totalMembers;
+  const isGridComplete = group.members.length === group.totalMembers;
 
   return (
     <div className="min-h-screen relative">
@@ -328,6 +329,7 @@ const Editor = () => {
 
             {/* Voting Results */}
             <Card className="shadow-lg border-0 backdrop-blur-lg bg-white/80">
+              <Badge className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">coming soon</Badge>
               <CardHeader className="pb-3 sm:pb-6">
                 <CardTitle className="text-lg sm:text-xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Template Votes</CardTitle>
               </CardHeader>

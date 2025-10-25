@@ -51,32 +51,9 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
 }) => {
   const [cellImages, setCellImages] = useState<CellImages>({});
   const [cellOffsets, setCellOffsets] = useState<CellOffsets>({});
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dragRef = useRef<{ key: string | null; startX: number; startY: number; startOffsetX: number; startOffsetY: number; elW: number; elH: number; moved: boolean } | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-  const pendingOffsetRef = useRef<{ key: string; x: number; y: number } | null>(null);
-
-  const onFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedKey) return;
-    if (!file.type.startsWith('image/')) return;
-
-    try {
-      // No client-side face processing; use the original file as an object URL.
-      const url = URL.createObjectURL(file);
-      setCellImages(prev => ({ ...prev, [selectedKey]: url }));
-    } catch (e) {
-      // Fallback: store original file as object URL on error
-      const fallbackUrl = URL.createObjectURL(file);
-      setCellImages(prev => ({ ...prev, [selectedKey]: fallbackUrl }));
-    } finally {
-      event.target.value = '';
-      setSelectedKey(null);
-    }
-  }, [selectedKey, setCellImages]);
+  // File input and upload functionality removed - cells are now read-only
 
   const getCellStyle = useCallback((key: string) => {
     const image = cellImages[key];
@@ -93,73 +70,13 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
   }, [cellImages, cellOffsets]);
 
   const startDrag = useCallback((e: StartEvt, key: string) => {
-    if (!cellImages[key]) return;
-    const isTouch = 'touches' in e;
-    const point = isTouch ? e.touches[0] : (e as React.MouseEvent);
-    const target = e.currentTarget as HTMLDivElement;
-    const rect = target.getBoundingClientRect();
-    const current = cellOffsets[key] ?? { x: 50, y: 50 };
-
-    dragRef.current = {
-      key,
-      startX: point.pageX,
-      startY: point.pageY,
-      startOffsetX: current.x,
-      startOffsetY: current.y,
-      elW: rect.width,
-      elH: rect.height,
-      moved: false,
-    };
-
-    const onMove = (ev: MouseEvent | TouchEvent) => {
-      if (!dragRef.current) return;
-      const p = (ev as TouchEvent).touches ? (ev as TouchEvent).touches[0] : (ev as MouseEvent);
-      const dx = (p.pageX - dragRef.current.startX) / dragRef.current.elW * 100;
-      const dy = (p.pageY - dragRef.current.startY) / dragRef.current.elH * 100;
-      let nx = dragRef.current.startOffsetX + dx;
-      let ny = dragRef.current.startOffsetY + dy;
-      nx = Math.max(0, Math.min(100, nx));
-      ny = Math.max(0, Math.min(100, ny));
-      dragRef.current.moved = true;
-      if ((ev as any).cancelable) ev.preventDefault();
-      const k = dragRef.current.key as string;
-      pendingOffsetRef.current = { key: k, x: nx, y: ny };
-      if (rafIdRef.current == null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          const pending = pendingOffsetRef.current;
-          if (pending) setCellOffsets(prev => ({ ...prev, [pending.key]: { x: pending.x, y: pending.y } }));
-          rafIdRef.current = null;
-        });
-      }
-    };
-
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove as any);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove as any);
-      window.removeEventListener('touchend', onUp);
-      if (rafIdRef.current != null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      setTimeout(() => {
-        if (dragRef.current) dragRef.current = { ...dragRef.current, key: null } as any;
-      }, 0);
-    };
-
-    window.addEventListener('mousemove', onMove as any, { passive: false });
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove as any, { passive: false });
-    window.addEventListener('touchend', onUp);
-  }, [cellImages, cellOffsets]);
+    // Drag functionality removed - cells are now read-only
+    return;
+  }, []);
 
   const handleCellActivate = useCallback((key: string) => {
-    if (dragRef.current?.moved) {
-      dragRef.current.moved = false;
-      return;
-    }
-    setSelectedKey(key);
-    fileInputRef.current?.click();
+    // Click functionality removed - cells are now read-only
+    return;
   }, []);
 
   // helpers for canvas
@@ -317,13 +234,6 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
 
   return (
     <GridContext.Provider value={value}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={onFileChange}
-        className="hidden"
-      />
       {children}
     </GridContext.Provider>
   );

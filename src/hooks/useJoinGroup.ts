@@ -189,9 +189,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
         });
         toast.success("Successfully joined the group!");
         
-        // Add 3-second delay before navigation to show success animation
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
+        // Navigate immediately to prevent page reload issues
         navigate('/');
       } else {
         toast.error("Unable to join group. It might be full or not exist.");

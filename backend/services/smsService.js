@@ -21,6 +21,11 @@ export const sendOTP = async ({ phone, otp, source = 'generic' }) => {
       console.log(`[SMS Fallback][DEV] OTP for ${phone}: ${otp}`);
       return { success: true, message: 'OTP sent via fallback/log' };
     }
+
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     // MSG91 Flow API payload (example). Adjust flow/template variables as per MSG91 setup.
     const payload = {
       flow_id: MSG91_OTP_TEMPLATE_ID, // using env as flow id
@@ -45,19 +50,39 @@ export const sendOTP = async ({ phone, otp, source = 'generic' }) => {
         'authkey': MSG91_AUTH_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!resp.ok) {
       const text = await resp.text();
       console.warn('[SMS] MSG91 Flow API failed, trying fallback SMS. Response:', text);
+      
+      // Check if it's a rate limit error from MSG91
+      if (resp.status === 429) {
+        console.warn('[SMS] MSG91 rate limit hit, using fallback');
+        console.log(`[SMS Fallback][DEV] OTP for ${phone}: ${otp}`);
+        return { success: true, message: 'OTP sent via fallback (rate limited)', rateLimited: true };
+      }
+      
       // Fallback: try SendOTP or log
       console.log(`[SMS Fallback][DEV] OTP for ${phone}: ${otp}`);
       return { success: true, message: 'OTP sent via fallback/log' };
     }
 
-    return { success: true, message: 'OTP sent successfully' };
+    const responseData = await resp.json();
+    console.log('[SMS] MSG91 response:', responseData);
+    
+    return { success: true, message: 'OTP sent successfully', responseData };
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.error('[SMS] Request timeout while sending OTP:', err);
+      console.log(`[SMS Timeout Fallback][DEV] OTP for ${phone}: ${otp}`);
+      return { success: true, message: 'OTP sent via fallback (timeout)', timeout: true };
+    }
+    
     console.error('[SMS] Error sending OTP via MSG91:', err);
     console.log(`[SMS Fallback][DEV] OTP for ${phone}: ${otp}`);
     return { success: true, message: 'OTP sent via fallback/log' };

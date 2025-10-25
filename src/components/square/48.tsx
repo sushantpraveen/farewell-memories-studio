@@ -738,11 +738,6 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       
       
 
-      <div className="hidden md:block mt-8 text-center max-w-md">
-        <p className="text-sm text-gray-500">
-          Click on any cell to upload an image. Images will be automatically clipped to fit each cell perfectly.
-        </p>
-      </div>
     </div>
   );
 };

@@ -26,6 +26,7 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [hasAutoSent, setHasAutoSent] = useState(false); // Track if we've already auto-sent
 
   const disabled = success;
   const normalizedPhone = useMemo(() => normalizePhone(value), [value]);
@@ -48,6 +49,7 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
       if (resp.ok) {
         setCountdown(60);
         setOtpSent(true);
+        setHasAutoSent(true); // Mark that we've sent OTP
       } else {
         const data = await resp.json().catch(() => ({} as any));
         setError(data?.message || 'Failed to send code');
@@ -59,12 +61,12 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
     }
   };
 
-  // Auto-send OTP when valid phone number is entered
+  // Auto-send OTP when valid phone number is entered (only once)
   useEffect(() => {
-    if (!otpSent && !success && normalizedPhone && normalizedPhone.length >= 13 && countdown === 0 && !isSending) {
+    if (!otpSent && !success && !hasAutoSent && normalizedPhone && normalizedPhone.length >= 13 && countdown === 0 && !isSending) {
       handleSend();
     }
-  }, [normalizedPhone, otpSent, success, countdown, isSending]);
+  }, [normalizedPhone, otpSent, success, hasAutoSent, countdown, isSending]);
 
   const handleVerify = async () => {
     setError(null);
@@ -89,36 +91,55 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
     }
   };
 
-  // Auto-verify when 6-digit OTP is entered
+  // Auto-verify when 6-digit OTP is entered (only once per OTP value)
+  const [lastVerifiedOtp, setLastVerifiedOtp] = useState<string>('');
+  
   useEffect(() => {
-    if (otp.length === 6 && !success && !isVerifying && otpSent) {
+    // Clear error when OTP changes to allow retry
+    if (otp !== lastVerifiedOtp) {
+      setError(null);
+    }
+    
+    if (otp.length === 6 && !success && !isVerifying && otpSent && otp !== lastVerifiedOtp) {
+      setLastVerifiedOtp(otp);
       handleVerify();
     }
-  }, [otp, success, isVerifying, otpSent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, success, isVerifying, otpSent, lastVerifiedOtp]);
 
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <label className="text-sm font-medium text-gray-700">Mobile Number</label>
-        <div className="relative">
-          <input
-            type="tel"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-            placeholder="9876543210"
-            className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : success ? 'border-green-500' : 'border-gray-200'} focus:outline-none focus:ring-2 ${success ? 'focus:ring-green-200' : 'focus:ring-purple-200'}`}
-          />
-          {isSending && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
-          {otpSent && !success && countdown > 0 && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-              {countdown}s
-            </div>
-          )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="tel"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              disabled={disabled}
+              placeholder="9876543210"
+              className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : success ? 'border-green-500' : 'border-gray-200'} focus:outline-none focus:ring-2 ${success ? 'focus:ring-green-200' : 'focus:ring-purple-200'}`}
+            />
+            {isSending && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            {otpSent && !success && countdown > 0 && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                {countdown}s
+              </div>
+            )}
+          </div>
+          {/* <button
+            type="button"
+            onClick={handleSend}
+            disabled={disabled || isSending || countdown > 0 || !normalizedPhone || normalizedPhone.length < 13}
+            className="px-4 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSending ? 'Sending...' : countdown > 0 ? `${countdown}s` : 'Send OTP'}
+          </button> */}
         </div>
         {isSending && <p className="text-xs text-purple-600">Sending OTP...</p>}
         {otpSent && !success && <p className="text-xs text-green-600">OTP sent! Check your messages.</p>}
