@@ -701,7 +701,7 @@ const Index = () => {
                   size="lg"
                   variant="outline"
                   onClick={() => {
-                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('enhanced-how-it-works')?.scrollIntoView({ behavior: 'smooth' });
                   }}
                   className="border-2"
                 >
@@ -913,7 +913,7 @@ const Index = () => {
         </section>
 
          {/* Enhanced How It Works Process */}
-         <section className="container mx-auto px-4 py-16 lg:py-24 bg-muted/30">
+         <section id="enhanced-how-it-works" className="container mx-auto px-4 py-16 lg:py-24 bg-muted/30">
           <motion.div 
             className="text-center mb-16 max-w-3xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
@@ -921,9 +921,6 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
           >
-            <h2 className="text-3xl lg:text-4xl font-heading mb-4 bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
-              From Your Memories to Your T-Shirt — Here's How We Make It Happen
-            </h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
