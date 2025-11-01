@@ -146,7 +146,7 @@ const Editor = () => {
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
-  const isGridComplete = group.members.length === group.totalMembers;
+  const isGridComplete = group.members.length !== group.totalMembers;
 
   return (
     <div className="min-h-screen relative">

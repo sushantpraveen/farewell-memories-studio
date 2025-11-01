@@ -13,6 +13,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import otpRoutes from './routes/otpRoutes.js';
+import shippingQuoteRoutes from './routes/shippingQuoteRoutes.js';
 
 // Passport config
 import { configurePassport } from './config/passport.js';
@@ -104,6 +105,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api', shippingQuoteRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

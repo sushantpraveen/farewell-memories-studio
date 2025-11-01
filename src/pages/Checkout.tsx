@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus, MapPin, Loader2 } from 'lucide-react';
 import { useCollage } from '@/context/CollageContext';
 import type { Group } from '@/context/CollageContext';
 import { ordersApi, paymentsApi } from '@/lib/api';
 import type { Order, AdminMember } from '@/types/admin';
+import { toast } from 'sonner';
 
 // Subtle animated background consistent with GridBoard/Dashboard
 const AnimatedBackground = () => (
@@ -90,6 +91,13 @@ const Checkout = () => {
       setQuantity(group.members.length || 1);
     }
   }, [group]);
+
+  // Update shipping quote when quantity changes
+  useEffect(() => {
+    if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
+      updateShippingQuote(shippingForm.zipCode, quantity);
+    }
+  }, [quantity]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
@@ -104,12 +112,25 @@ const Checkout = () => {
     phone: ''
   });
 
-  // Pricing & totals
+  // Shipping quote state - single source of truth
+  const [zipStatus, setZipStatus] = useState<{
+    loading: boolean;
+    serviceable: boolean | null; // null = unknown, true = ok, false = bad
+    message: string;
+  }>({
+    loading: false,
+    serviceable: null,
+    message: ""
+  });
+  const [shippingCharge, setShippingCharge] = useState<number | null>(null);
+  const [codAvailable, setCodAvailable] = useState(false);
+
+  // Pricing & totals (dynamic shipping)
   const tshirtPrice = 299; // ₹299 per t-shirt
   const printPrice = 99; // ₹99 per print
   const itemTotal = (tshirtPrice + printPrice) * quantity;
-  const shipping = itemTotal > 999 ? 0 : 99; // Free shipping above ₹999
-  const tax = Math.round(itemTotal * 0.18); // 18% GST
+  const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
+  const tax = Math.round(itemTotal * 0.5); // 5% GST
   const finalTotal = itemTotal + shipping + tax;
 
   // Quantity handlers
@@ -120,6 +141,104 @@ const Checkout = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setShippingForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Update shipping quote - single source of truth
+  const updateShippingQuote = async (pincode: string, qty: number) => {
+    // Clear state when ZIP is less than 6 digits
+    if (pincode.length < 6) {
+      setZipStatus({ loading: false, serviceable: null, message: "" });
+      setShippingCharge(null);
+      setCodAvailable(false);
+      return;
+    }
+
+    // Only check if pincode is 6 digits
+    if (pincode.length !== 6 || !/^\d{6}$/.test(pincode)) {
+      return;
+    }
+
+    setZipStatus({ loading: true, serviceable: null, message: "" });
+
+    try {
+      // Calculate weight (assume ~200g per t-shirt)
+      const weightGrams = 200 * qty;
+
+      const response = await fetch('/api/shipping-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          destPincode: pincode,
+          weightGrams: weightGrams,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Backend error
+        setZipStatus({
+          loading: false,
+          serviceable: false,
+          message: data.message || 'Unable to validate pincode'
+        });
+        setShippingCharge(0);
+        setCodAvailable(false);
+        toast.error(data.message || 'Could not validate pincode');
+        return;
+      }
+
+      if (data.serviceable === false) {
+        // Real not-serviceable case
+        setZipStatus({
+          loading: false,
+          serviceable: false,
+          message: data.message || 'Pincode not serviceable'
+        });
+        setShippingCharge(0);
+        setCodAvailable(false);
+        toast.error(data.message || 'Cannot deliver to this pincode');
+        return;
+      }
+
+      // serviceable === true
+      setZipStatus({
+        loading: false,
+        serviceable: true,
+        message: ""
+      });
+      setShippingCharge(data.shipping_charge || 0);
+      setCodAvailable(data.cod_available === true);
+
+      // Autofill city/state from response
+      if (data.city) {
+        setShippingForm(prev => ({ ...prev, city: data.city }));
+      }
+
+      toast.success(`Shipping available! Rate: ₹${data.shipping_charge}`);
+    } catch (error) {
+      console.error('Shipping quote error:', error);
+      setZipStatus({
+        loading: false,
+        serviceable: false,
+        message: 'Network error'
+      });
+      setShippingCharge(0);
+      setCodAvailable(false);
+      toast.error('Could not check shipping. Please try again.');
+    }
+  };
+
+  // Handle pincode input change
+  const handlePincodeChange = (zipCode: string) => {
+    handleInputChange('zipCode', zipCode);
+  };
+
+  // Handle pincode blur - validate on blur
+  const handlePincodeBlur = () => {
+    updateShippingQuote(shippingForm.zipCode, quantity);
   };
 
   const loadRazorpayScript = (): Promise<boolean> => {
@@ -245,7 +364,16 @@ const Checkout = () => {
     }
   };
 
-  const isFormValid = Object.values(shippingForm).every(value => value.trim() !== '');
+  // Check if all form fields are filled
+  const allFieldsFilled = Object.values(shippingForm).every(value => value.trim() !== '');
+  
+  // For serviceability: only block if we've checked AND it's not serviceable
+  // Allow form submission if ZIP is empty, being validated, or validated as serviceable
+  const isZipValid = !shippingForm.zipCode || // ZIP not entered yet
+                     zipStatus.serviceable === true || // ZIP validated and serviceable
+                     zipStatus.serviceable === null; // ZIP validation pending
+  
+  const isFormValid = allFieldsFilled && isZipValid;
 
   // Guard: missing groupId in route
   if (!groupId) {
@@ -429,7 +557,7 @@ return (
                     <span>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>GST (18%)</span>
+                    <span>GST (5%)</span>
                     <span>₹{tax}</span>
                   </div>
                 </div>
@@ -526,13 +654,44 @@ return (
                   </div>
                   <div>
                     <Label htmlFor="zipCode">ZIP Code *</Label>
-                    <Input 
-                      id="zipCode" 
-                      value={shippingForm.zipCode}
-                      onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                      placeholder="110001"
-                      required 
-                    />
+                    <div className="relative">
+                      <Input 
+                        id="zipCode" 
+                        value={shippingForm.zipCode}
+                        onChange={(e) => handlePincodeChange(e.target.value)}
+                        onBlur={handlePincodeBlur}
+                        placeholder="110001"
+                        maxLength={6}
+                        required 
+                        className={zipStatus.serviceable === false ? 'border-red-500' : ''}
+                      />
+                      {zipStatus.loading && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                        </div>
+                      )}
+                      {zipStatus.serviceable === true && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <MapPin className="h-4 w-4 text-green-600" />
+                        </div>
+                      )}
+                    </div>
+                    {zipStatus.loading && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Checking serviceability...
+                      </p>
+                    )}
+                    {zipStatus.serviceable === true && (
+                      <p className="mt-1 text-xs text-green-600">
+                        ✓ Shipping: ₹{shippingCharge}
+                        {!codAvailable && ' • COD not available'}
+                      </p>
+                    )}
+                    {zipStatus.serviceable === false && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {zipStatus.message || 'Cannot deliver to this pincode'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -566,7 +725,9 @@ return (
                 
                 {!isFormValid && (
                   <p className="text-sm text-red-600 mt-2 text-center">
-                    Please fill in all required fields
+                    {zipStatus.serviceable === false
+                      ? 'Please enter a valid serviceable pincode'
+                      : 'Please fill in all required fields'}
                   </p>
                 )}
                 
