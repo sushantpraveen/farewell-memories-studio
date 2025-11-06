@@ -44,9 +44,10 @@ let transporter = null;
  * @param {string} params.subject
  * @param {string} [params.html]
  * @param {string} [params.text]
+ * @param {Array} [params.attachments] - Array of attachment objects { filename, content, contentType }
  */
 export async function sendMail(params) {
-  const { to, subject, html, text } = params || {};
+  const { to, subject, html, text, attachments } = params || {};
   
   // Create transporter if it doesn't exist
   if (!transporter) {
@@ -54,7 +55,14 @@ export async function sendMail(params) {
   }
   
   const from = process.env.MAIL_FROM || process.env.EMAIL_USER || 'noreply@signatureday.com';
-  const info = await transporter.sendMail({ from, to, subject, html, text });
+  const mailOptions = { from, to, subject, html, text };
+  
+  // Add attachments if provided
+  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+    mailOptions.attachments = attachments;
+  }
+  
+  const info = await transporter.sendMail(mailOptions);
   
   // Log preview URL for development
   if (info.messageId && !process.env.EMAIL_USER) {

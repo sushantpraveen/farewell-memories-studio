@@ -9,6 +9,7 @@ import { GridTemplate } from "@/context/CollageContext";
 import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LazyImage } from "@/components/LazyImage";
+import { calculatePricing } from "@/lib/pricing";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 import PhoneOtpBlock from "@/components/otp/PhoneOtpBlock";
 
@@ -47,7 +48,11 @@ const JoinGroup = () => {
     phone,
     setPhone,
     isPhoneVerified,
-    setIsPhoneVerified
+    setIsPhoneVerified,
+    authToken,
+    setAuthToken,
+    // Payment
+    isProcessingPayment
   } = useJoinGroup(groupId);
 
 
@@ -59,12 +64,7 @@ const JoinGroup = () => {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4 animate-fadeIn">
         <AnimatedBackground />
-        { isSubmitting ?  <div className="mb-6">
-              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
-                <img src="/congrats.gif" alt="success" width={400} />
-              </div>
-            </div>
-          : 
+        { isSubmitting &&
         <Card className="w-full max-w-md text-center animate-slideUp backdrop-blur-lg bg-white/80 border-none shadow-xl">
           <CardContent className="pt-6">
             <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
@@ -101,6 +101,9 @@ const JoinGroup = () => {
   const isGroupFull = group.members.length >= group.totalMembers;
   const remainingSpots = group.totalMembers - group.members.length;
   const isCloudinaryPhoto = typeof memberData.photo === 'string' && memberData.photo.includes('/image/upload');
+
+  // Pricing for a single member order on join
+  const joinPricing = calculatePricing({ quantity: 1, tshirtPrice: 299, printPrice: 99, gstRate: 0.05 });
 
   return (
     <div className="min-h-screen w-full mx-auto p-3 sm:p-4 md:p-6 relative animate-fadeIn" key="main-container">
@@ -169,9 +172,10 @@ const JoinGroup = () => {
                   <PhoneOtpBlock
                     value={phone}
                     onChange={(v) => setPhone(v)}
-                    onVerified={(std) => {
+                    onVerified={(std, token) => {
                       setPhone(std);
                       setIsPhoneVerified(true);
+                      if (token) setAuthToken(token);
                     }}
                     source="joinGroup"
                   />
@@ -191,6 +195,23 @@ const JoinGroup = () => {
                       className={errors.name ? "border-red-300 focus:border-red-500" : ""}
                       aria-invalid={!!errors.name}
                       aria-describedby={errors.name ? "name-error" : undefined}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                      <span className="text-sm sm:text-base font-medium">Email</span>
+                      {errors.email && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.email}</span>}
+                      {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                    </Label>
+                    <Input
+                      id="email"
+                      placeholder="Enter your email"
+                      value={memberData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className={errors.email ? "border-red-300 focus:border-red-500" : ""}
+                      aria-invalid={!!errors.email}
+                      aria-describedby={errors.email ? "email-error" : undefined}
                     />
                   </div>
 
@@ -282,29 +303,40 @@ const JoinGroup = () => {
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3"
+                    className="w-full mt-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm sm:text-base py-2 sm:py-3 font-semibold shadow-lg"
                     disabled={
                       !memberData.name || 
+                      !memberData.email ||
                       !memberData.memberRollNumber || 
                       !memberData.size || 
                       !submitPhotoUrl ||
                       isUploadingPhoto ||
                       isSubmitting || 
                       Object.values(errors).some(error => error) ||
-                      !isPhoneVerified
+                      !isPhoneVerified ||
+                      isProcessingPayment
                     }
                   >
-                    {isSubmitting ? (
-                      <span className="flex items-center">
+                    {isProcessingPayment ? (
+                      <span className="flex items-center justify-center">
+                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+                        Processing Payment...
+                      </span>
+                    ) : isSubmitting ? (
+                      <span className="flex items-center justify-center">
                         <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
                         Joining Group...
                       </span>
                     ) : isUploadingPhoto ? (
-                      <span className="flex items-center">
+                      <span className="flex items-center justify-center">
                         <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
                         Uploading photo...
                       </span>
-                    ) : "Join Group"}
+                    ) : (
+                      <span className="flex items-center justify-center">
+                        💳 Pay ₹{joinPricing.perItemTotal} & Join Group
+                      </span>
+                    )}
                   </Button>
                 </form>
               </CardContent>

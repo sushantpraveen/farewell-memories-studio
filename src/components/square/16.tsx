@@ -89,23 +89,23 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   const getKeysForIndex = (index: number): string[] => {
     const keys: string[] = [];
     // Top row 0-7
-    if (index >= 0 && index <= 4) {
+    if (index >= 0 && index <= 3) {
       keys.push(cid('top', 0, index));
       return keys;
     }
     // Left side 8-13 (rows 1..6)
-    if (index >= 5 && index <= 9) {
-      keys.push(cid('left', index - 5, 0));
+    if (index >= 4 && index <= 7) {
+      keys.push(cid('left', index - 3, 0));
       return keys;
     }
     // Right side 14-19 (rows 1..6)
-    if (index >= 10 && index <= 14) {
-      keys.push(cid('right', index - 10, 7));
+    if (index >= 8 && index <= 11) {
+      keys.push(cid('right', index - 7, 7));
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 15 && index <= 19) {
-      keys.push(cid('bottom', 7, index - 15));
+    if (index >= 12 && index <= 15) {
+      keys.push(cid('bottom', index - 11, 7));
       return keys;
     }
   
@@ -127,13 +127,13 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return col;
     } else if (section === 'left') {
       // Left side: 8-13
-      return 5 + (row - 1);
+      return 4 + (row - 1);
     } else if (section === 'right') {
       // Right side: 14-19
-      return 10 + (row - 1);
+      return 8 + (row - 1);
     } else if (section === 'bottom') {
       // Bottom row: 18-25
-      return 15 + col;
+      return 12 + col;
     }
     
     return -1;
@@ -365,7 +365,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6">
 
       <div
-        className="grid grid-cols-7 bg-white rounded-xl shadow-2xl p-1 md:p-3"
+        className="grid grid-cols-6 bg-white rounded-xl shadow-2xl p-1 md:p-3"
         style={{
           gap: 'var(--gap)',
           // 7 gaps across 8 cols/rows
@@ -380,7 +380,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           ['--ratio' as any]: '1.2',
           ['--row' as any]: 'calc(var(--cell) * var(--ratio))',
           gridAutoRows: 'var(--row)',
-          gridTemplateColumns: 'repeat(7, var(--cell))'
+          gridTemplateColumns: 'repeat(6, var(--cell))'
         } as React.CSSProperties}
       >
         
@@ -426,7 +426,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         </div> */}
 
         {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-        <div className="col-span-7">
+        <div className="col-span-6">
          <div
             className="grid"
             style={{
@@ -438,7 +438,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 5 }, (_, colIndex) => {
+          {Array.from({ length: 4 }, (_, colIndex) => {
             const cellKey = cid('top', 0, colIndex );
             return (
               <div
@@ -495,13 +495,13 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         })} */}
 
         {/* Middle rows with left border, center cell, and right border */}
-        {Array.from({ length: 5 }, (_, rowIndex) => (
+        {Array.from({ length: 4 }, (_, rowIndex) => (
           <React.Fragment key={`middle-row-${rowIndex}`}>
             {/* Left border cell */}
             <div
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-              style={getCellStyleWithFallback(cid('left', rowIndex , 0))}
-              onClick={() => handleCellClick(cid('left', rowIndex , 0))}
+              style={getCellStyleWithFallback(cid('left', rowIndex + 1, 0))}
+              onClick={() => handleCellClick(cid('left', rowIndex + 1, 0))}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
@@ -521,7 +521,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             {/* Center cell - only render once and span 6 columns */}
             {rowIndex === 0 && (
               <div
-                className="col-span-5 row-span-5 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
+                className="col-span-4 row-span-4 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
                 style={(() => {
                   // 1) If user has uploaded a preview photo, show it
                   if (previewMember?.photo) {
@@ -567,8 +567,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             {/* Right border cell */}
             <div
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-              style={getCellStyleWithFallback(cid('right', rowIndex , 7))}
-              onClick={() => handleCellClick(cid('right', rowIndex , 7))}
+              style={getCellStyleWithFallback(cid('right', rowIndex + 1, 7))}
+              onClick={() => handleCellClick(cid('right', rowIndex + 1, 7))}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
@@ -588,7 +588,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         ))}
 
         {/* Bottom extension - centered on all sizes, same size as grid cells */}
-        <div className="col-span-7">
+        <div className="col-span-6">
           <div
             className="grid"
             style={{
@@ -600,7 +600,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 5 }, (_, colIndex) => {
+            {Array.from({ length: 4 }, (_, colIndex) => {
               const key = cid('bottom', 0, colIndex );
               
               return (

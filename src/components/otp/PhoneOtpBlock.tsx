@@ -4,7 +4,7 @@ import { sendOtp, verifyOtp } from '@/lib/otpClient';
 interface Props {
   value: string;
   onChange: (val: string) => void;
-  onVerified: (standardizedPhone: string) => void;
+  onVerified: (standardizedPhone: string, token?: string) => void;
   source: 'joinGroup' | 'createGroup';
 }
 
@@ -78,8 +78,13 @@ export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, so
       setIsVerifying(true);
       const resp = await verifyOtp(normalizedPhone, otp);
       if (resp.ok) {
+        const data = await resp.json();
         setSuccess(true);
-        onVerified(normalizedPhone);
+        // Store JWT token in sessionStorage
+        if (data.token) {
+          sessionStorage.setItem('otp_auth_token', data.token);
+        }
+        onVerified(normalizedPhone, data.token);
       } else {
         const data = await resp.json().catch(() => ({} as any));
         setError(data?.message || 'Invalid code');

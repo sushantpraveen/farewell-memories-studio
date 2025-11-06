@@ -1,5 +1,7 @@
 import Group from '../models/groupModel.js';
 import User from '../models/userModel.js';
+import Order from '../models/orderModel.js';
+import crypto from 'crypto';
 import { validationResult } from 'express-validator';
 
 /**
@@ -53,6 +55,94 @@ export const createGroup = async (req, res) => {
   } catch (error) {
     console.error('Create group error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * @desc    Join a group after successful payment (deposit)
+ * @route   POST /api/groups/:id/join-paid
+ * @access  Private (JWT)
+ */
+export const joinGroupPaid = async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const { member, payment } = req.body || {};
+    if (!member || !payment) {
+      return res.status(400).json({ message: 'Missing member or payment payload' });
+    }
+
+    const { name, email, memberRollNumber, photo, vote, size, phone } = member;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment;
+
+    if (!name || !memberRollNumber || !photo || !vote) {
+      return res.status(400).json({ message: 'Invalid member payload' });
+    }
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing payment verification fields' });
+    }
+
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) return res.status(500).json({ message: 'Razorpay secret not configured' });
+
+    const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(payload)
+      .digest('hex');
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Invalid payment signature' });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+
+    // Idempotency: prevent duplicate paid joins by same roll or phone
+    const dupe = group.members.find(m => m.memberRollNumber === memberRollNumber || (phone && m.phone === phone));
+    if (dupe && dupe.paidDeposit) {
+      return res.status(200).json({ message: 'Already joined with deposit', groupId: group._id, member: dupe });
+    }
+
+    // Capacity check
+    if (group.members.length >= group.totalMembers) {
+      return res.status(409).json({ message: 'Group is already full' });
+    }
+
+    // Compute server-authoritative deposit amount (keep in paise)
+    const tshirt = Number(process.env.TSHIRT_PRICE || 299);
+    const print = Number(process.env.PRINT_PRICE || 99);
+    const depositAmountPaise = (tshirt + print) * 100;
+
+    const newMember = {
+      name,
+      email,
+      memberRollNumber,
+      photo,
+      vote,
+      size: size || 'm',
+      phone: phone || undefined,
+      paidDeposit: true,
+      depositAmountPaise,
+      depositOrderId: razorpay_order_id,
+      depositPaymentId: razorpay_payment_id,
+      depositPaidAt: new Date(),
+      joinedAt: new Date(),
+    };
+
+    // Atomic push via update with capacity constraint
+    const updated = await Group.findOneAndUpdate(
+      { _id: groupId, $expr: { $lt: [{ $size: '$members' }, '$totalMembers'] } },
+      { $push: { members: newMember }, $inc: { [`votes.${vote}`]: 1 } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(409).json({ message: 'Group became full. Please contact support for refund.' });
+    }
+
+    return res.status(201).json({ groupId: updated._id, member: newMember, message: 'Joined with deposit' });
+  } catch (err) {
+    console.error('joinGroupPaid error:', err);
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
@@ -281,11 +371,17 @@ export const joinGroup = async (req, res) => {
     group.members.push(newMember);
     group.votes[vote] = (group.votes[vote] || 0) + 1;
 
-    // Update user's group association - members are not leaders
+    // Update user's group association
+    // Preserve leader status if user is already the leader of this group
     if (req.user) {
+      const user = await User.findById(req.user._id);
+      const isCurrentLeader = user?.isLeader && user?.groupId === group._id.toString();
+      
       await User.findByIdAndUpdate(req.user._id, { 
         groupId: group._id,
-        isLeader: false  // Explicitly set to false for group members
+        // Only set isLeader to false if user is not already the leader
+        // This allows leaders to join their own group without losing leader status
+        isLeader: isCurrentLeader ? true : false
       });
     }
 

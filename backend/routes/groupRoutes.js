@@ -6,6 +6,7 @@ import {
   getGroupById,
   getGroupMembers,
   joinGroup,
+  joinGroupPaid,
   updateGroupTemplate,
   updateGroup,
   deleteGroup
@@ -35,6 +36,7 @@ router.get('/', protect, isLeader, getGroups);
 router.get('/:id', getGroupById); // Public for sharing
 router.get('/:id/members', getGroupMembers); // Get paginated members
 router.post('/:id/join', joinGroupValidation, joinGroup);
+router.post('/:id/join-paid', protect, joinGroupPaid);
 // Make template update accessible without auth for better performance
 router.put('/:id/template', updateGroupTemplate);
 router.put('/:id', protect, isLeader, updateGroup);

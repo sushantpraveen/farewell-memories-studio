@@ -287,7 +287,8 @@ const Index = () => {
               <div className="relative aspect-square max-w-lg mx-auto">
                 {/* Main Card */}
                 <div className="absolute inset-0 bg-white opacity-10 rounded-3xl shadow-2xl" />
-                <img src="/images/sign_1.png" alt="Signature Day T-Shirt" className="w-full h-full object-cover rounded-3xl" />
+                {/* <img src="/images/sign_1.png" alt="Signature Day T-Shirt" className="w-full h-full object-cover rounded-3xl" /> */}
+                <img src="/images/signing_group_cutout.png" alt="Signature Day T-Shirt" className="w-full h-full object-cover rounded-3xl" />
               </div>
             </motion.div>
           </div>
@@ -439,7 +440,7 @@ const Index = () => {
 
         <section className="container mx-auto px-4 py-16 lg:py-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
-          <img src="/images/sign_2.png" alt="Signature Day" className="w-full h-full object-cover" />
+          <img src="/images/friends_with_tee_cutout .png" alt="Signature Day" className="w-full h-full object-cover" />
           <div className="flex flex-col gap-4">
           <h2 className="text-4xl lg:text-5xl font-heading mb-4 text-start bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold w-fit">
           Why Students Love SignatureDayTshirt for Signature Day?
@@ -541,25 +542,29 @@ const Index = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {[
               {
-                img: "/images/classroom.png",  
+                // img: "/images/classroom.png",  
+                img: "/images/classroom_cutout.png",
                 title: "From Classroom to Closet",
                 description: "Every design tells your story. We turn school & college memories into meaningful apparel that stays with you forever.",
                 gradient: "from-purple-500 to-purple-600"
               },
               {
-                img: "/images/premium.png",
+                // img: "/images/premium.png",
+                img: "/images/premium_cutout.png",
                 title: "Premium Prints",
                 description: "We use premium fabrics to print your memories, making every Signature Day T-shirt look great, feel special, and last long.",
                 gradient: "from-pink-500 to-pink-600"
               },
               {
-                img: "/images/designs.png",
+                // img: "/images/designs.png",
+                img: "/images/designs_cutout.png",
                 title: "Designed to Stand Out",
                 description: "Add names, photos, and batch details. Your Signature Tee is created to turn heads and spark conversations on your farewell day.",
                 gradient: "from-yellow-500 to-yellow-600"
               },
               {
-                img: "/images/shared.png",
+                // img: "/images/shared.png",
+                img: "/images/shared_cutout.png",
                 title: "Shared Moments",
                 description: "More than just a T-shirt. It's a forever keepsake signed by friends, filled with memories, and a bond you'll never outgrow.",
                 gradient: "from-purple-600 to-pink-600"

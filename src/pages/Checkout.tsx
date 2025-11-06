@@ -11,6 +11,8 @@ import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus, MapPin, Loader
 import { useCollage } from '@/context/CollageContext';
 import type { Group } from '@/context/CollageContext';
 import { ordersApi, paymentsApi } from '@/lib/api';
+import { calculatePricing } from '@/lib/pricing';
+import { generateInvoicePdfBase64, downloadInvoice } from '@/lib/invoice';
 import type { Order, AdminMember } from '@/types/admin';
 import { toast } from 'sonner';
 
@@ -25,10 +27,11 @@ const AnimatedBackground = () => (
 const Checkout = () => {
   const navigate = useNavigate();
   const { groupId } = useParams<{ groupId?: string }>();
-  const { getGroup } = useCollage();
+  const { getGroup, updateGroup, updateGroupTemplate } = useCollage();
   
   // Load group data (getGroup is async)
   const [group, setGroup] = useState<Group | null>(null);
+  const [isUpdatingGrid, setIsUpdatingGrid] = useState(false);
 
   // Helper functions for group storage
   const saveLastActiveGroup = (groupId: string) => {
@@ -85,6 +88,26 @@ const Checkout = () => {
       group.votes[a] > group.votes[b] ? a : b
     ) : 'square';
 
+  const handleUpdateGrid = async () => {
+    if (!group) return;
+    const current = group.members.length;
+    setIsUpdatingGrid(true);
+    try {
+      await updateGroup(group.id, { totalMembers: current });
+      await updateGroupTemplate(group.id);
+      const updatedGroup = await getGroup(group.id, true);
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+        toast.success('Grid updated to fit current members');
+      }
+    } catch (error) {
+      console.error('Failed to update grid:', error);
+      toast.error('Failed to update grid size');
+    } finally {
+      setIsUpdatingGrid(false);
+    }
+  };
+
   const [quantity, setQuantity] = useState(1);
   useEffect(() => {
     if (group) {
@@ -127,11 +150,12 @@ const Checkout = () => {
 
   // Pricing & totals (dynamic shipping)
   const tshirtPrice = 299; // ₹299 per t-shirt
-  const printPrice = 99; // ₹99 per print
-  const itemTotal = (tshirtPrice + printPrice) * quantity;
+  const printPrice = 99;  // ₹99 per print
+  const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
+  const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
-  const tax = Math.round(itemTotal * 0.5); // 5% GST
-  const finalTotal = itemTotal + shipping + tax;
+  const tax = pricing.gst; // 5% GST correctly applied
+  const finalTotal = pricing.total + shipping;
 
   // Quantity handlers
   const handleQuantityChange = (change: number) => {
@@ -285,6 +309,32 @@ const Checkout = () => {
         handler: async (response: any) => {
           try {
             // 4) Verify payment signature on backend and send email confirmation
+            // Prepare invoice PDF
+            const invoiceBase64 = await generateInvoicePdfBase64(
+              {
+                name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+                gstin: '36AAHCC5155C1ZW',
+                cin: 'U74999TG2018PTC123754',
+                logoUrl: '/chitlu-logo.png',
+              },
+              {
+                invoiceId: `INV-${Date.now()}`,
+                dateISO: new Date().toISOString(),
+                customerName: `${shippingForm.firstName} ${shippingForm.lastName}`.trim() || 'Customer',
+                customerEmail: shippingForm.email,
+                shippingAddress: `${shippingForm.address}, ${shippingForm.city} ${shippingForm.zipCode}`,
+              },
+              [
+                {
+                  description: `${group?.name || 'Group'} T-Shirt + Print (${group?.yearOfPassing || ''})`,
+                  quantity,
+                  unitPrice: tshirtPrice,
+                  printPrice: printPrice,
+                  gstRate: 0.05,
+                },
+              ]
+            );
+
             const verify = await paymentsApi.verify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -293,6 +343,9 @@ const Checkout = () => {
               email: shippingForm.email,
               name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
               amount: finalTotal * 100,
+              // optional fields backend can use to attach/send invoice
+              invoicePdfBase64: invoiceBase64,
+              invoiceFileName: `Invoice-${group?.name || 'Order'}-${Date.now()}.pdf`,
             });
             if (!verify.valid) throw new Error('Payment verification failed');
 
@@ -340,6 +393,13 @@ const Checkout = () => {
             };
 
             await ordersApi.createOrder(newOrder);
+            // Offer invoice download for the user immediately
+            try {
+              await downloadInvoice(invoiceBase64, `Invoice-${newOrder.id}.pdf`);
+            } catch (e) {
+              // non-blocking
+              console.warn('Invoice download failed:', e);
+            }
             setShowSuccess(true);
             setTimeout(() => { setShowSuccess(false); navigate('/'); }, 3200);
           } catch (err) {
@@ -450,7 +510,9 @@ const BackgroundDoodle = () => (
   </div>
 );
 
-return (
+  const hasMismatch = group && group.members.length !== group.totalMembers;
+
+  return (
     <div className="min-h-screen relative">
       <BackgroundDoodle />
       {/* Navigation Header */}
@@ -473,6 +535,37 @@ return (
           </div>
         </div>
       </div>
+
+      {hasMismatch && (
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-sm text-yellow-800">
+                  Group has {group!.members.length} members but grid is set to {group!.totalMembers}. 
+                  Update grid to fit all current members?
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUpdateGrid}
+                disabled={isUpdatingGrid}
+                className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+              >
+                {isUpdatingGrid ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  `Update grid to ${group!.members.length}`
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -550,7 +643,7 @@ return (
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Subtotal ({quantity} items)</span>
-                    <span>₹{itemTotal}</span>
+                    <span><strong className="text-green-500">PAID</strong> - ₹{itemTotal}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>

@@ -5,9 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { debounce } from 'lodash';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { generateInvoicePdfBase64 } from '@/lib/invoice';
+import { calculatePricing } from '@/lib/pricing';
 
 interface MemberData {
   name: string;
+  email: string;
   memberRollNumber: string;
   photo: string;
   vote: GridTemplate;
@@ -16,6 +19,7 @@ interface MemberData {
 
 interface Errors {
   name: string;
+  email: string;
   memberRollNumber: string;
   photo: string;
   size: string;
@@ -27,11 +31,12 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
   // Context
   const { getGroup, joinGroup, updateGroupTemplate, isLoading } = useCollage();
-  const { updateUser } = useAuth();
+  const { updateUser, user } = useAuth();
 
   // State
   const [memberData, setMemberData] = useState<MemberData>({
     name: "",
+    email: "",
     memberRollNumber: "",
     photo: "",
     vote: "square",
@@ -40,6 +45,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
   const [errors, setErrors] = useState<Errors>({
     name: "",
+    email: "",
     memberRollNumber: "",
     photo: "",
     size: ""
@@ -60,11 +66,16 @@ export const useJoinGroup = (groupId: string | undefined) => {
   // OTP phone verification state (optional)
   const [phone, setPhone] = useState<string>("");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
+  const [authToken, setAuthToken] = useState<string>("");
+  
+  // Payment state
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Validation
   const validateForm = useCallback((data: MemberData) => {
     const newErrors = {
       name: "",
+      email: "",
       memberRollNumber: "",
       photo: "",
       size: ""
@@ -74,6 +85,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
       newErrors.name = "Name is required";
     } else if (data.name.length < 2) {
       newErrors.name = "Name must be at least 2 characters";
+    }
+
+    if(!data.email){
+      newErrors.email = "Email is required";
     }
     
     if (!data.memberRollNumber) {
@@ -150,6 +165,19 @@ export const useJoinGroup = (groupId: string | undefined) => {
     }
   }, []);
 
+  // Load Razorpay script
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (document.getElementById('razorpay-sdk')) return resolve(true);
+      const script = document.createElement('script');
+      script.id = 'razorpay-sdk';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupId) return;
@@ -162,45 +190,193 @@ export const useJoinGroup = (groupId: string | undefined) => {
       return;
     }
 
+    if (!isPhoneVerified) {
+      toast.error("Please verify your phone number first");
+      return;
+    }
+
     setIsSubmitting(true);
+    setIsProcessingPayment(true);
 
     try {
-      // Prefer Cloudinary URL if available to keep payload small and preserve original quality
-      const payload: any = {
-        ...memberData,
-        photo: submitPhotoUrl || memberData.photo,
-      };
-      if (isPhoneVerified && phone) {
-        payload.phone = phone;
-        payload.phoneVerified = true;
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay');
       }
-      console.log('[JoinGroup] Submitting join payload:', payload);
-      console.log('[JoinGroup] Phone verified:', isPhoneVerified);
-      console.log('[JoinGroup] Phone value:', phone);
-      console.debug('[JoinGroup] Additional info:', {
-        usesCloudinary: Boolean(submitPhotoUrl),
-        photoPreviewType: memberData.photo?.slice(0, 15),
-      });
-      const success = await joinGroup(groupId, payload);
-      if (success) {
-        await updateUser({ 
-          groupId,
-          isLeader: false  // Explicitly set to false for group members
-        });
-        toast.success("Successfully joined the group!");
-        
-        // Navigate immediately to prevent page reload issues
-        navigate('/');
-      } else {
-        toast.error("Unable to join group. It might be full or not exist.");
+
+      // Get auth token from sessionStorage if not already set
+      const token = authToken || sessionStorage.getItem('otp_auth_token');
+      if (!token) {
+        toast.error("Authentication token not found. Please verify your phone again.");
         setIsSubmitting(false);
+        setIsProcessingPayment(false);
+        return;
       }
+
+      // Create Razorpay order
+      // Generate short receipt ID (max 40 chars for Razorpay)
+      const timestamp = Date.now().toString().slice(-10); // Last 10 digits
+      const shortGroupId = groupId?.slice(-8) || 'unknown'; // Last 8 chars of groupId
+      const receipt = `join_${shortGroupId}_${timestamp}`; // ~25 chars total
+      
+      const orderResponse = await fetch('/api/payments/join/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: 39800, // ₹398 in paise
+          currency: 'INR',
+          receipt,
+          notes: { groupId, phone }
+        })
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create payment order');
+      }
+
+      const razorpayOrder = await orderResponse.json();
+
+      // Get Razorpay key (public endpoint)
+      const keyResponse = await fetch('/api/payments/key');
+      
+      if (!keyResponse.ok) {
+        throw new Error('Failed to get Razorpay key');
+      }
+
+      const { keyId } = await keyResponse.json();
+
+      // Prepare member data for payment verification
+      const memberPayload = {
+        name: memberData.name,
+        email: memberData.email,
+        memberRollNumber: memberData.memberRollNumber,
+        photo: submitPhotoUrl || memberData.photo,
+        vote: memberData.vote,
+        size: memberData.size,
+        phone
+      };
+
+      // Open Razorpay Checkout
+      const options = {
+        key: keyId,
+        amount: razorpayOrder.amount,
+        currency: 'INR',
+        name: group?.name || 'Signature Day',
+        description: `Join ${group?.name} - Class of ${group?.yearOfPassing}`,
+        order_id: razorpayOrder.id,
+        prefill: {
+          name: memberData.name,
+          email: memberData.email,
+          contact: phone
+        },
+        notes: { groupId },
+        handler: async (response: any) => {
+          try {
+            // Generate invoice PDF before verification
+            const joinPricing = calculatePricing({ quantity: 1, tshirtPrice: 299, printPrice: 99, gstRate: 0.05 });
+            let invoiceBase64 = '';
+            let invoiceFileName = '';
+            
+            try {
+              invoiceBase64 = await generateInvoicePdfBase64(
+                {
+                  name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+                  gstin: '36AAHCC5155C1ZW',
+                  cin: 'U74999TG2018PTC123754',
+                  logoUrl: '/chitlu-logo.png',
+                },
+                {
+                  invoiceId: `INV-JOIN-${Date.now()}`,
+                  dateISO: new Date().toISOString(),
+                  customerName: memberData.name || 'Customer',
+                  customerEmail: memberData.email,
+                },
+                [
+                  {
+                    description: `${group?.name || 'Group'} T-Shirt + Print (${group?.yearOfPassing || ''})`,
+                    quantity: 1,
+                    unitPrice: 299,
+                    printPrice: 99,
+                    gstRate: 0.05,
+                  },
+                ]
+              );
+              invoiceFileName = `Invoice-${group?.name || 'Join'}-${Date.now()}.pdf`;
+            } catch (invoiceErr) {
+              console.warn('Failed to generate invoice PDF:', invoiceErr);
+              // Continue without invoice - non-blocking
+            }
+
+            // Verify payment and join group
+            const verifyResponse = await fetch('/api/payments/join/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                groupId,
+                memberData: memberPayload,
+                invoicePdfBase64: invoiceBase64,
+                invoiceFileName: invoiceFileName
+              })
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(verifyData.message || 'Payment verification failed');
+            }
+
+            // Check if user is already the leader of this group
+            const isCurrentLeader = user?.isLeader && user?.groupId === groupId;
+            
+            // Only update user if they're not already the leader
+            if (!isCurrentLeader) {
+              await updateUser({ 
+                groupId,
+                isLeader: false
+              });
+            }
+
+            toast.success("Payment successful! Welcome to the group!");
+            
+            // Navigate to success page
+            navigate(`/success?groupId=${groupId}`);
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.error('Payment verification failed. Please contact support.');
+          } finally {
+            setIsSubmitting(false);
+            setIsProcessingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.info('Payment cancelled');
+            setIsSubmitting(false);
+            setIsProcessingPayment(false);
+          }
+        },
+        theme: { color: '#6d28d9' }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (error) {
-      console.error("Join group error:", error);
-      toast.error("Failed to join group. Please try again.");
+      console.error("Payment error:", error);
+      toast.error("Failed to initiate payment. Please try again.");
       setIsSubmitting(false);
+      setIsProcessingPayment(false);
     }
-  }, [groupId, memberData, submitPhotoUrl, validateForm, joinGroup, updateUser, navigate, isPhoneVerified, phone]);
+  }, [groupId, memberData, submitPhotoUrl, validateForm, updateUser, navigate, isPhoneVerified, phone, authToken, group, user]);
 
   // Effects
   // Memoize validation effect to prevent unnecessary reruns
@@ -301,6 +477,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
     phone,
     setPhone,
     isPhoneVerified,
-    setIsPhoneVerified
+    setIsPhoneVerified,
+    authToken,
+    setAuthToken,
+    // Payment
+    isProcessingPayment
   };
 };

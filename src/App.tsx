@@ -20,6 +20,7 @@ import JoinGroup from "./pages/JoinGroup";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import Checkout from "./pages/Checkout";
+import Success from "./pages/success";
 import NotFound from "./pages/NotFound";
 import { GoogleAuthCallback } from "./pages/GoogleAuthCallback";
 
@@ -51,6 +52,7 @@ const App = () => (
                   <JoinGroup />
                 // </ProtectedRoute>
               } />
+              <Route path="/success" element={<Success />} />
               {/* Legacy routes without groupId - redirect to group selection */}
               <Route path="/dashboard" element={
                 <ProtectedRoute requiresLeader>

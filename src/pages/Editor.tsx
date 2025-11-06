@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { GridPreview } from "@/components/GridPreview";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -26,11 +28,12 @@ const BackgroundDoodle = () => (
 
 const Editor = () => {
   const { groupId } = useParams<{ groupId?: string }>();
-  const { getGroup, isLoading, groups } = useCollage();
+  const { getGroup, isLoading, groups, updateGroup, updateGroupTemplate } = useCollage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [group, setGroup] = useState<CollageGroup | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
+  const [showCurrentMembers, setShowCurrentMembers] = useState(false);
 
   // Helper functions for group storage
   const saveLastActiveGroup = (groupId: string) => {
@@ -135,18 +138,73 @@ const Editor = () => {
     toast.success("Share link copied to clipboard!");
   };
 
-  const handleCheckout = () => {
-    // Navigate to a dedicated checkout page for this group
-    if (groupId) {
-      navigate(`/checkout/${groupId}`);
-    } else if (group?.id) {
-      navigate(`/checkout/${group.id}`);
+  const handleCheckout = async () => {
+    if (!group) return;
+    
+    // Use the currently displayed member count (based on toggle)
+    const targetMemberCount = showCurrentMembers ? group.members.length : group.totalMembers;
+    const current = group.members.length;
+    const planned = group.totalMembers;
+    const targetGroupId = groupId || group.id;
+    
+    if (!targetGroupId) return;
+    
+    // If showing current members grid, checkout uses current count
+    // If showing expected grid, use the original checkout logic
+    if (showCurrentMembers) {
+      // Checkout based on current members view
+      if (current < planned) {
+        const confirmed = window.confirm(
+          `Proceed with ${current} existing members? The grid will be reduced from ${planned} to ${current}.`
+        );
+        if (confirmed) {
+          try {
+            await updateGroup(group.id, { totalMembers: current });
+            await updateGroupTemplate(group.id);
+            const updatedGroup = await getGroup(group.id, true);
+            if (updatedGroup) {
+              setGroup(updatedGroup);
+            }
+            navigate(`/checkout/${targetGroupId}`);
+          } catch (error) {
+            console.error('Failed to update group:', error);
+            toast.error('Failed to update group size');
+          }
+        }
+      } else if (current > planned) {
+        const confirmed = window.confirm(
+          `There are ${current} members, exceeding the grid of ${planned}. Update the grid to ${current} to fit all current members?`
+        );
+        if (confirmed) {
+          try {
+            await updateGroup(group.id, { totalMembers: current });
+            await updateGroupTemplate(group.id);
+            const updatedGroup = await getGroup(group.id, true);
+            if (updatedGroup) {
+              setGroup(updatedGroup);
+            }
+            navigate(`/checkout/${targetGroupId}`);
+          } catch (error) {
+            console.error('Failed to update group:', error);
+            toast.error('Failed to update group size');
+          }
+        }
+      } else {
+        navigate(`/checkout/${targetGroupId}`);
+      }
+    } else {
+      // Showing expected grid - proceed with original planned count
+      navigate(`/checkout/${targetGroupId}`);
     }
   };
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
   const winningTemplate = getWinningTemplate(group.votes);
-  const isGridComplete = group.members.length !== group.totalMembers;
+  const isGridComplete = group.members.length === group.totalMembers;
+  
+  // Determine which member count to use based on toggle
+  const displayMemberCount = showCurrentMembers ? group.members.length : group.totalMembers;
+  const displayMembers = showCurrentMembers ? group.members : group.members;
 
   return (
     <div className="min-h-screen relative">
@@ -226,6 +284,35 @@ const Editor = () => {
           </div> */}
         </div>
 
+        {/* Grid View Toggle */}
+        {group.members.length !== group.totalMembers && (
+          <Card className="mb-4 sm:mb-6 shadow-lg border-0 backdrop-blur-lg bg-white/80">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="grid-toggle" className="text-sm sm:text-base font-medium text-gray-700">
+                    Grid View
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    {showCurrentMembers 
+                      ? `Showing current members (${group.members.length})`
+                      : `Showing expected grid (${group.totalMembers})`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs sm:text-sm text-gray-600">Expected</span>
+                  <Switch
+                    id="grid-toggle"
+                    checked={showCurrentMembers}
+                    onCheckedChange={setShowCurrentMembers}
+                  />
+                  <span className="text-xs sm:text-sm text-gray-600">Current</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Progress */}
         <Card className="mb-6 sm:mb-8 shadow-lg border-0 backdrop-blur-lg bg-white/80">
           <CardContent className="pt-4 sm:pt-6">
@@ -256,7 +343,12 @@ const Editor = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                   <div>
                     <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Live Collage Preview</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm lg:text-base">Grid template: {group.totalMembers} members • {group.gridTemplate} layout</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm lg:text-base">
+                      Grid template: {displayMemberCount} members • {group.gridTemplate} layout
+                      {showCurrentMembers && group.members.length !== group.totalMembers && (
+                        <span className="text-amber-600 ml-1">(Current view)</span>
+                      )}
+                    </CardDescription>
                   </div>
                   <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
@@ -264,10 +356,10 @@ const Editor = () => {
               <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
                 <div className="relative">
                   <GridPreview 
-                    key={`${group.id}-${group.members.length}`}
+                    key={`${group.id}-${displayMemberCount}-${showCurrentMembers}`}
                     template={group.gridTemplate}
-                    memberCount={group.totalMembers}
-                    members={group.members}
+                    memberCount={displayMemberCount}
+                    members={displayMembers}
                     size="large"
                   />
                   {group.members.length === 0 && (
@@ -376,14 +468,29 @@ const Editor = () => {
                 </Button>
 
                 <Button 
-                  className={`w-full text-sm sm:text-base py-2 sm:py-3 ${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'}`}
+                  className={`w-full text-sm sm:text-base py-2 sm:py-3 ${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-pink-500 hover:bg-pink-800'}`}
                   onClick={handleCheckout}
-                  disabled={!isGridComplete}
-                  title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
+                  title={
+                    showCurrentMembers 
+                      ? `Checkout with ${group.members.length} current members` 
+                      : `Checkout with ${group.totalMembers} expected members`
+                  }
                 >
                   <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                  <span className="hidden sm:inline">{isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}</span>
-                  <span className="sm:hidden">{isGridComplete ? 'Checkout' : `(${group.members.length}/${group.totalMembers})`}</span>
+                  <span className="hidden sm:inline">
+                    {showCurrentMembers 
+                      ? `Checkout (${group.members.length} members)`
+                      : isGridComplete 
+                        ? 'Checkout' 
+                        : `Checkout (${group.members.length}/${group.totalMembers})`}
+                  </span>
+                  <span className="sm:hidden">
+                    {showCurrentMembers 
+                      ? `(${group.members.length})`
+                      : isGridComplete 
+                        ? 'Checkout' 
+                        : `(${group.members.length}/${group.totalMembers})`}
+                  </span>
                 </Button>
       
                 <Button className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>

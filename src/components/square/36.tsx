@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-36';
+  const COMP_ID = 'grid-37';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -103,31 +103,24 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       keys.push(cid('right', index - 13, 7));
       return keys;
     }
-    // Bottom row 18-25 (row 9, cols 0..7)
+    // Bottom row 20-27 (row 9, cols 0..7)
     if (index >= 20 && index <= 27) {
       keys.push(cid('bottom', 9, index - 20));
       return keys;
     }
-    // Bottom extension 26-33 (centered 8 cells)
-    if (index >= 28 && index <= 33) {
-      const col = index - 28; // 0..7
+    // Bottom extension 28-32 (5 cells centered)
+    if (index >= 28 && index <= 32) {
+      const col = index - 28; // 0..4
       // Preview variant (row 0) and download variant (row -1)
       keys.push(cid('bottom-extension', 0, col + 2));
       keys.push(cid('bottom-extension', -1, col + 2));
       return keys;
     }
-    // Bottom-most extension 34-36 (3 cells)
-    if (index >= 34 && index <= 36) {
-      const col = index - 34; // 0..2
-      keys.push(cid('bottom-most-extension', 0, col + 2));
-      keys.push(cid('bottom-most-extension', -1, col + 2));
-      return keys;
-    }
-    // Top extension most 37-44 (8 cells)
-    if (index >= 37 && index <= 44) {
-      const col = index - 37; // 0..7
-      keys.push(cid('topExt-most', 0, col + 2));
-      keys.push(cid('topExt-most', -1, col + 2));
+    // Top extension 33-36 (4 cells centered)
+    if (index >= 33 && index <= 36) {
+      const col = index - 33; // 0..3
+      keys.push(cid('topExt', 0, col + 2));
+      keys.push(cid('topExt', -1, col + 2));
       return keys;
     }
     return keys;
@@ -153,11 +146,18 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       // Right side: 14-19
       return 14 + (row - 1);
     } else if (section === 'bottom') {
-      // Bottom row: 18-25
-      return 18 + col;
-    }else if (section === 'bottom-extension') {
-      console.log("bottom-extension mapping → row:", row, "col:", col, "index:", 26 + col);
-      return 26 + col;
+      // Bottom row: 20-27
+      return 20 + col;
+    } else if (section === 'bottom-extension') {
+      // Bottom extension: 5 cells (indices 28-32)
+      // col ranges from 2-6 (colIndex + 2), so we need col - 2
+      console.log("bottom-extension mapping → row:", row, "col:", col, "index:", 28 + (col - 2));
+      return 28 + (col - 2);
+    } else if (section === 'topExt') {
+      // Top extension: 4 cells (indices 33-36)  
+      // col ranges from 2-5 (colIndex + 2), so we need col - 2
+      console.log("topExt mapping → row:", row, "col:", col, "index:", 33 + (col - 2));
+      return 33 + (col - 2);
     }
     
     return -1;
@@ -272,7 +272,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
 
     try {
-      await downloadImage('template-45.png', {
+      await downloadImage('template-37.png', {
         cols: 8,
         rows: 9, // Increased to include both top extension rows and both bottom extension rows
         // Target physical size for print within requested ranges
@@ -290,7 +290,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           const endCol = 3.5;  // For centered cells
 
           // 1. Draw first top extension row (8 cells)
-          // await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
+          // await Promise.all(Array.from({ length: 4 }, (_, i) => 
           //   drawKey(
           //     cid('topExt-most', -1, i + 2),
           //     0,  // First row
@@ -301,15 +301,25 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           // ));
 
           // 2. Draw second top extension row (8 cells)
-          // await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
+          // await Promise.all(Array.from({ length: 4 }, (_, i) => 
           //   drawKey(
           //     cid('topExt', -1, i + 2),
-          //     1,  // Second row
+          //     0,  // Second row
           //     i,
           //     1,
           //     1
           //   )
           // ));
+
+          await Promise.all(Array.from({ length: 4 }, (_, i) => 
+            drawKey(
+              cid('topExt', -1, i + 2),
+              0,  // First row
+              0 + i,
+              1,
+              1
+            )
+          ));
 
           // 3. Draw main top row (8 cells)
           for (let c = 0; c < 8; c++) {
@@ -335,12 +345,12 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             await drawKey(cid('bottom', 9, c), bottomRow, c, 1, 1);
           }
 
-          // 8. Draw first bottom extension row (8 cells)
-          await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
+          // 8. Draw bottom extension row (5 cells)
+          await Promise.all(Array.from({ length: 5 }, (_, i) => 
             drawKey(
               cid('bottom-extension', -1, i + 2),
-              8,  // First bottom extension row
-              1+i,
+              8,  // Bottom extension row
+              1.5+i,  // Centered for 5 cells
               1,
               1
             )
@@ -409,7 +419,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       >
         
          {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-         {/* <div className="col-span-8">
+         <div className="col-span-8">
          <div
             className="grid"
             style={{
@@ -421,7 +431,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 8 }, (_, colIndex) => {
+          {Array.from({ length: 4 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -447,7 +457,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             );
           })}
           </div>
-        </div> */}
+        </div>
 
         {/* Top row - 9 cells */}
         {Array.from({ length: 8 }, (_, colIndex) => {
@@ -611,7 +621,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 8 }, (_, colIndex) => {
+            {Array.from({ length: 4 }, (_, colIndex) => {
               const key = cid('bottom-extension', 0, colIndex + 2);
               
               return (
@@ -646,11 +656,11 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       
       
 
-      <div className="hidden md:block mt-8 text-center max-w-md">
+      {/* <div className="hidden md:block mt-8 text-center max-w-md">
         <p className="text-sm text-gray-500">
           Click on any cell to upload an image. Images will be automatically clipped to fit each cell perfectly.
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };

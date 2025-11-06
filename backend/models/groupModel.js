@@ -6,6 +6,11 @@ const memberSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  email: {
+    type: String,
+    required: false,
+    trim: true
+  },
   memberRollNumber: {
     type: String,
     required: true,
@@ -27,6 +32,26 @@ const memberSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    required: false
+  },
+  paidDeposit: {
+    type: Boolean,
+    default: false
+  },
+  depositAmountPaise: {
+    type: Number,
+    required: false
+  },
+  depositOrderId: {
+    type: String,
+    required: false
+  },
+  depositPaymentId: {
+    type: String,
+    required: false
+  },
+  depositPaidAt: {
+    type: Date,
     required: false
   },
   joinedAt: {

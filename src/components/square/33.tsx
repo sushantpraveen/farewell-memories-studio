@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-33';
+  const COMP_ID = 'grid-28';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -108,8 +108,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       keys.push(cid('bottom', 9, index - 20));
       return keys;
     }
-    // Bottom extension 26-33 (centered 8 cells)
-    if (index >= 28 && index <= 33) {
+    // Bottom extension 26-28 (centered 8 cells)
+    if (index >= 28 && index <= 28) {
       const col = index - 28; // 0..7
       // Preview variant (row 0) and download variant (row -1)
       keys.push(cid('bottom-extension', 0, col + 2));
@@ -389,7 +389,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6">
 
       <div
-        className="grid grid-cols-8 bg-white rounded-xl shadow-2xl p-1 md:p-3"
+        className="grid grid-cols-7 bg-white rounded-xl shadow-2xl p-1 md:p-3"
         style={{
           gap: 'var(--gap)',
           // 7 gaps across 8 cols/rows
@@ -404,12 +404,12 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           ['--ratio' as any]: '1.2',
           ['--row' as any]: 'calc(var(--cell) * var(--ratio))',
           gridAutoRows: 'var(--row)',
-          gridTemplateColumns: 'repeat(8, var(--cell))'
+          gridTemplateColumns: 'repeat(7, var(--cell))'
         } as React.CSSProperties}
       >
         
          {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-         {/* <div className="col-span-8">
+         <div className="col-span-7">
          <div
             className="grid"
             style={{
@@ -421,7 +421,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 8 }, (_, colIndex) => {
+          {Array.from({ length: 4 }, (_, colIndex) => {
             const cellKey = cid('topExt', -1, colIndex + 2);
             return (
               <div
@@ -447,10 +447,10 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             );
           })}
           </div>
-        </div> */}
+        </div>
 
         {/* Top row - 9 cells */}
-        {Array.from({ length: 8 }, (_, colIndex) => {
+        {Array.from({ length: 7 }, (_, colIndex) => {
           const cellKey = cid('top', 0, colIndex);
           
           return (
@@ -478,7 +478,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         })}
 
         {/* Middle rows with left border, center cell, and right border */}
-        {Array.from({ length: 6 }, (_, rowIndex) => (
+        {Array.from({ length: 5 }, (_, rowIndex) => (
           <React.Fragment key={`middle-row-${rowIndex}`}>
             {/* Left border cell */}
             <div
@@ -504,7 +504,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             {/* Center cell - only render once and span 6 columns */}
             {rowIndex === 0 && (
               <div
-                className="col-span-6 row-span-6 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
+                className="col-span-5 row-span-5 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
                 style={(() => {
                   // 1) If user has uploaded a preview photo, show it
                   if (previewMember?.photo) {
@@ -571,7 +571,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         ))}
 
         {/* Bottom row - 8 cells */}
-        {Array.from({ length: 8 }, (_, colIndex) => {
+        {Array.from({ length: 7 }, (_, colIndex) => {
           const cellKey = cid('bottom', 9, colIndex); // This matches our download cell ID
           
           return (
@@ -599,7 +599,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
         })}
 
         {/* Bottom extension - centered on all sizes, same size as grid cells */}
-        <div className="col-span-8">
+        <div className="col-span-7">
           <div
             className="grid"
             style={{

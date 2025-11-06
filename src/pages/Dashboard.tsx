@@ -2,9 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Award, TrendingUp, Users, Share, Eye, LogOut, RefreshCw } from 'lucide-react';
+import { Award, TrendingUp, Users, Share, Eye, LogOut, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCollage, Member } from '@/context/CollageContext'
 import { MemberDetailsModal } from '@/components/MemberDetailsModal';
@@ -12,11 +14,12 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { LazyImage } from '@/components/LazyImage';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const { getGroup, getAllGroups, isLoading, groups } = useCollage();
+  const { user, logout, updateUser } = useAuth();
+  const { getGroup, getAllGroups, isLoading, groups, deleteGroup, updateGroup } = useCollage();
   const navigate = useNavigate();
   const { groupId } = useParams<{ groupId?: string }>();
   const [selectedMember, setSelectedMember] = useState<Member | null>(null); 
@@ -25,6 +28,12 @@ const Dashboard = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadingGroup, setLoadingGroup] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
+  const [newCapacity, setNewCapacity] = useState<number | ''>('');
+  const [newTemplate, setNewTemplate] = useState<'square' | 'hexagonal' | 'circle' | ''>('');
+  const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
 
   // Helper functions for group storage
   const saveLastActiveGroup = (groupId: string) => {
@@ -224,6 +233,65 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    if (!groupId) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteGroup(groupId);
+      
+      // Update user to remove groupId and leader status
+      if (user) {
+        await updateUser({
+          groupId: null as any,
+          isLeader: false
+        });
+      }
+      
+      toast.success('Group deleted successfully');
+      setIsDeleteModalOpen(false);
+      navigate('/create-group');
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast.error('Failed to delete group. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleOpenCapacityModal = () => {
+    if (!group) return;
+    setNewCapacity(Math.max(group.totalMembers + 1, group.members.length + 1));
+    setNewTemplate(group.gridTemplate);
+    setIsCapacityModalOpen(true);
+  };
+
+  const handleUpdateCapacity = async () => {
+    if (!group || !groupId) return;
+    const capacityValue = typeof newCapacity === 'number' ? newCapacity : parseInt(String(newCapacity), 10);
+    if (!capacityValue || capacityValue <= group.members.length) {
+      toast.error(`Capacity must be greater than current members (${group.members.length}).`);
+      return;
+    }
+
+    setIsUpdatingCapacity(true);
+    try {
+      await updateGroup(groupId, {
+        totalMembers: capacityValue as any,
+        gridTemplate: (newTemplate || group.gridTemplate) as any
+      });
+      const refreshed = await getGroup(groupId, true);
+      if (refreshed) setGroup(refreshed);
+      toast.success('Group capacity updated');
+      setIsCapacityModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update capacity');
+    } finally {
+      setIsUpdatingCapacity(false);
+    }
+  };
+
 
   if (!group) {
     // Redirect to create group if no group found
@@ -282,8 +350,17 @@ const BackgroundDoodle = () => (
                 <span className="text-sm text-green-700 font-medium">Live</span>
               </div>
               <div className="h-6 w-px bg-gray-200" />
-              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-700">Welcome, {user?.name}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  title="Delete Group"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="text-gray-700">
                   <LogOut className="h-4 w-4" />
             </Button>
@@ -313,7 +390,7 @@ const BackgroundDoodle = () => (
             <Button 
               variant="outline" 
                       size="sm"
-                      onClick={handleShare}
+                      onClick={() => setIsShareModalOpen(true)}
                       className="text-purple-600 border-purple-200 hover:bg-purple-50"
                     >
                       <Share className="h-4 w-4 mr-2" />
@@ -514,6 +591,7 @@ const BackgroundDoodle = () => (
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 <div className="space-y-4">
+                 
                   <div className="p-3 bg-purple-50 rounded-lg">
                     <p className="text-sm text-purple-900 font-medium mb-2">Invite Link</p>
                     <code className="text-xs bg-white p-2 rounded block break-all border border-purple-100">
@@ -536,6 +614,14 @@ const BackgroundDoodle = () => (
                         Open Editor
                       </Button>
                     </Link>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Group
+                    </Button>
                   </div>
               </div>
             </CardContent>
@@ -573,6 +659,14 @@ const BackgroundDoodle = () => (
                       <p className="text-xs text-pink-600">Remaining</p>
                     </div>
                   </div>
+                  {group.members.length >= group.totalMembers && (
+                    <Button 
+                      onClick={handleOpenCapacityModal}
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                    >
+                      Increase Capacity
+                    </Button>
+                  )}
               </div>
             </CardContent>
           </Card>
@@ -584,7 +678,7 @@ const BackgroundDoodle = () => (
       <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
         <DialogContent className="w-[95vw] max-w-lg mx-auto bg-white backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
           <DialogHeader className="space-y-3 text-center sm:text-left">
-            2<DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+            <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
               Share with Your Class
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base text-gray-600">
@@ -678,6 +772,121 @@ const BackgroundDoodle = () => (
                   </Carousel>
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Group Confirmation Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto bg-white backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
+          <DialogHeader className="space-y-3 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+              Delete Group
+            </DialogTitle>
+            <DialogDescription className="text-sm sm:text-base text-gray-600">
+              Are you sure you want to delete <strong>{group?.name}</strong>? This action cannot be undone. All members and their data will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteGroup}
+              className="flex-1 bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Group
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Increase Capacity Modal */}
+      <Dialog open={isCapacityModalOpen} onOpenChange={setIsCapacityModalOpen}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto bg-white backdrop-blur-lg border-none shadow-xl p-4 sm:p-6 rounded-xl">
+          <DialogHeader className="space-y-3 text-center">
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+              Increase Group Capacity
+            </DialogTitle>
+            <DialogDescription className="text-sm sm:text-base text-gray-600">
+              Allow more members to join and optionally update the grid template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="capacity">New Total Members</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={group?.members.length ? group.members.length + 1 : 1}
+                value={newCapacity}
+                onChange={(e) => setNewCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+              {group && (
+                <p className="text-xs text-gray-500">Current: {group.members.length}/{group.totalMembers}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Grid Template</Label>
+              <Select value={newTemplate} onValueChange={(v) => setNewTemplate(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="square">Square</SelectItem>
+                  <SelectItem value="hexagonal">Hexagonal</SelectItem>
+                  <SelectItem value="circle">Circle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCapacityModalOpen(false)}
+              className="flex-1"
+              disabled={isUpdatingCapacity}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateCapacity}
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
+              disabled={isUpdatingCapacity}
+            >
+              {isUpdatingCapacity ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update'
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

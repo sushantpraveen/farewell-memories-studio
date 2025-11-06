@@ -1,6 +1,7 @@
 import OTPVerification from '../models/OTPVerification.js';
 import { generateOTP, hashOTP, generateExpiryTime, standardizePhoneNumber } from '../utils/otpUtils.js';
 import { sendOTP as sendSMS } from '../services/smsService.js';
+import jwt from 'jsonwebtoken';
 
 const RATE_LIMIT_MS = 30 * 1000; // 30 seconds - more reasonable for user experience
 const MAX_ATTEMPTS = 3; // Allow only 3 attempts before requiring new OTP
@@ -126,7 +127,18 @@ export const verifyOtp = async (req, res) => {
     record.verified = true;
     await record.save();
 
-    return res.status(200).json({ success: true, verifiedAt: new Date() });
+    // Generate JWT token for authenticated session
+    const token = jwt.sign(
+      { phone: stdPhone, verified: true },
+      process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production',
+      { expiresIn: '1h' } // Token expires in 1 hour
+    );
+
+    return res.status(200).json({ 
+      success: true, 
+      verifiedAt: new Date(),
+      token // Return JWT token to client
+    });
   } catch (err) {
     console.error('[OTP] verify error', err);
     return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
