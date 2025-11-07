@@ -126,7 +126,7 @@ const CreateGroup = () => {
     const membersNum = parseInt(formData.totalMembers);
     
     // Validate squad size limits
-    if (membersNum < 33) {
+    if (membersNum < 8) {
       toast.error("Add 10 more people to make your team complete");
       return;
     }

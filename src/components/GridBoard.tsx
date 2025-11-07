@@ -285,7 +285,7 @@ const GridBoard = () => {
     if (membersNum < 1) {
       return "Total members must be at least 1";
     }
-    if (membersNum < 10) {
+    if (membersNum < 8) {
       return "Add 10 more people to make your team complete";
     }
     if (membersNum > 97) {
