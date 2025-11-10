@@ -1,6 +1,5 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
-import { verifyOtpToken, verifyOtpTokenOptional } from '../middleware/otpAuthMiddleware.js';
 import { 
   getKey, 
   createRazorpayOrder, 
@@ -19,9 +18,9 @@ router.get('/key', getKey); // Get Razorpay public key (safe to be public)
 router.post('/order', protect, createRazorpayOrder);
 router.post('/verify', protect, verifyPayment);
 
-// Join group flow routes (requires OTP auth)
-router.post('/join/order', verifyOtpToken, createRazorpayOrder); // Create order for joining
-router.post('/join/verify', verifyOtpTokenOptional, verifyPaymentAndJoin); // Verify payment and join group
+// Join group flow routes (public)
+router.post('/join/order', createRazorpayOrder); // Create order for joining
+router.post('/join/verify', verifyPaymentAndJoin); // Verify payment and join group
 
 export default router;
 

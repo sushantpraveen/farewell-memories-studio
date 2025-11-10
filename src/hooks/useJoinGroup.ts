@@ -66,8 +66,6 @@ export const useJoinGroup = (groupId: string | undefined) => {
   // OTP phone verification state (optional)
   const [phone, setPhone] = useState<string>("");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
-  const [authToken, setAuthToken] = useState<string>("");
-  
   // Payment state
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -206,14 +204,6 @@ export const useJoinGroup = (groupId: string | undefined) => {
       }
 
       // Get auth token from sessionStorage if not already set
-      const token = authToken || sessionStorage.getItem('otp_auth_token');
-      if (!token) {
-        toast.error("Authentication token not found. Please verify your phone again.");
-        setIsSubmitting(false);
-        setIsProcessingPayment(false);
-        return;
-      }
-
       // Create Razorpay order
       // Generate short receipt ID (max 40 chars for Razorpay)
       const timestamp = Date.now().toString().slice(-10); // Last 10 digits
@@ -223,8 +213,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
       const orderResponse = await fetch('/api/payments/join/order', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           amount: 39800, // ₹398 in paise
@@ -315,8 +304,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
             const verifyResponse = await fetch('/api/payments/join/verify', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
@@ -376,7 +364,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
       setIsSubmitting(false);
       setIsProcessingPayment(false);
     }
-  }, [groupId, memberData, submitPhotoUrl, validateForm, updateUser, navigate, isPhoneVerified, phone, authToken, group, user]);
+  }, [groupId, memberData, submitPhotoUrl, validateForm, updateUser, navigate, isPhoneVerified, phone, group, user]);
 
   // Effects
   // Memoize validation effect to prevent unnecessary reruns
@@ -478,8 +466,6 @@ export const useJoinGroup = (groupId: string | undefined) => {
     setPhone,
     isPhoneVerified,
     setIsPhoneVerified,
-    authToken,
-    setAuthToken,
     // Payment
     isProcessingPayment
   };

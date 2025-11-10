@@ -50,7 +50,6 @@ const JoinGroup = () => {
     isPhoneVerified,
     setIsPhoneVerified,
     authToken,
-    setAuthToken,
     // Payment
     isProcessingPayment
   } = useJoinGroup(groupId);
@@ -175,7 +174,6 @@ const JoinGroup = () => {
                     onVerified={(std, token) => {
                       setPhone(std);
                       setIsPhoneVerified(true);
-                      if (token) setAuthToken(token);
                     }}
                     source="joinGroup"
                   />
