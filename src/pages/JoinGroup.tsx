@@ -3,15 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle } from "lucide-react";
-import { GridTemplate } from "@/context/CollageContext";
 import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LazyImage } from "@/components/LazyImage";
-import { calculatePricing } from "@/lib/pricing";
-import { useJoinGroup } from "@/hooks/useJoinGroup";
 import PhoneOtpBlock from "@/components/otp/PhoneOtpBlock";
+import { useJoinGroup } from "@/hooks/useJoinGroup";
 
 // Subtle animated background to match GridBoard/Dashboard look
 const AnimatedBackground = () => (
@@ -44,14 +40,12 @@ const JoinGroup = () => {
     handleSubmit,
     submitPhotoUrl,
     isUploadingPhoto,
-    // OTP
+    isProcessingPayment,
     phone,
     setPhone,
     isPhoneVerified,
-    setIsPhoneVerified,
-    authToken,
-    // Payment
-    isProcessingPayment
+    onPhoneVerified,
+    joinPricing
   } = useJoinGroup(groupId);
 
 
@@ -63,7 +57,12 @@ const JoinGroup = () => {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4 animate-fadeIn">
         <AnimatedBackground />
-        { isSubmitting &&
+        { isSubmitting ?  <div className="mb-6">
+              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
+                <img src="/congrats.gif" alt="success" width={400} />
+              </div>
+            </div>
+          : 
         <Card className="w-full max-w-md text-center animate-slideUp backdrop-blur-lg bg-white/80 border-none shadow-xl">
           <CardContent className="pt-6">
             <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
@@ -100,9 +99,6 @@ const JoinGroup = () => {
   const isGroupFull = group.members.length >= group.totalMembers;
   const remainingSpots = group.totalMembers - group.members.length;
   const isCloudinaryPhoto = typeof memberData.photo === 'string' && memberData.photo.includes('/image/upload');
-
-  // Pricing for a single member order on join
-  const joinPricing = calculatePricing({ quantity: 1, tshirtPrice: 299, printPrice: 99, gstRate: 0.05 });
 
   return (
     <div className="min-h-screen w-full mx-auto p-3 sm:p-4 md:p-6 relative animate-fadeIn" key="main-container">
@@ -167,18 +163,15 @@ const JoinGroup = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="mb-4 sm:mb-6">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   <PhoneOtpBlock
                     value={phone}
-                    onChange={(v) => setPhone(v)}
-                    onVerified={(std, token) => {
-                      setPhone(std);
-                      setIsPhoneVerified(true);
-                    }}
-                    source="joinGroup"
+                    onChange={setPhone}
+                    onVerified={onPhoneVerified}
+                    className="bg-slate-50/70"
+                    disabled={isSubmitting || isProcessingPayment}
                   />
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+
                   <div className="space-y-2">
                     <Label htmlFor="memberName" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                       <span className="text-sm sm:text-base font-medium">Your Name</span>
@@ -197,13 +190,13 @@ const JoinGroup = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                    <Label htmlFor="memberEmail" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                       <span className="text-sm sm:text-base font-medium">Email</span>
                       {errors.email && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.email}</span>}
                       {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
                     </Label>
                     <Input
-                      id="email"
+                      id="memberEmail"
                       placeholder="Enter your email"
                       value={memberData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
@@ -282,26 +275,10 @@ const JoinGroup = () => {
                     )} */}
                   </div>
 
-                  {/* <div className="space-y-4">
-                    <Label>Vote for Grid Template</Label>
-                    <RadioGroup
-                      value={memberData.vote}
-                      onValueChange={(value: GridTemplate) => setMemberData({ ...memberData, vote: value })}
-                    >
-                      {(['square', 'hexagonal', 'circle'] as GridTemplate[]).map((template) => (
-                        <div key={template} className="flex items-center space-x-2">
-                          <RadioGroupItem value={template} id={`vote-${template}`} />
-                          <Label htmlFor={`vote-${template}`} className="capitalize">
-                            {template} ({group.votes[template]} votes)
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div> */}
-
+                 
                   <Button 
                     type="submit" 
-                    className="w-full mt-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm sm:text-base py-2 sm:py-3 font-semibold shadow-lg"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3"
                     disabled={
                       !memberData.name || 
                       !memberData.email ||
@@ -309,24 +286,19 @@ const JoinGroup = () => {
                       !memberData.size || 
                       !submitPhotoUrl ||
                       isUploadingPhoto ||
-                      isSubmitting || 
+                      isSubmitting ||
+                      isProcessingPayment ||
                       Object.values(errors).some(error => error) ||
-                      !isPhoneVerified ||
-                      isProcessingPayment
+                      !isPhoneVerified
                     }
                   >
                     {isProcessingPayment ? (
-                      <span className="flex items-center justify-center">
+                      <span className="flex items-center">
                         <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
                         Processing Payment...
                       </span>
-                    ) : isSubmitting ? (
-                      <span className="flex items-center justify-center">
-                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
-                        Joining Group...
-                      </span>
                     ) : isUploadingPhoto ? (
-                      <span className="flex items-center justify-center">
+                      <span className="flex items-center">
                         <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
                         Uploading photo...
                       </span>

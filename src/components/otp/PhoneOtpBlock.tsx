@@ -1,193 +1,224 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { sendOtp, verifyOtp } from '@/lib/otpClient';
+import { cn } from '@/lib/utils';
 
-interface Props {
+interface PhoneOtpBlockProps {
   value: string;
-  onChange: (val: string) => void;
-  onVerified: (standardizedPhone: string, token?: string) => void;
-  source: 'joinGroup' | 'createGroup';
+  onChange: (value: string) => void;
+  onVerified: (normalizedPhone: string) => void;
+  source?: string;
+  className?: string;
+  disabled?: boolean;
 }
 
-// Simple +91 standardization to mirror backend behaviour
-const normalizePhone = (raw: string) => {
-  const digits = (raw || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('91') && digits.length === 12) return `+${digits}`;
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
-  return raw.startsWith('+') ? raw : `+${digits}`;
+const normalizePhone = (raw: string) => raw.replace(/[^0-9+]/g, '');
+const phoneDigits = (value: string) => value.replace(/[^0-9]/g, '');
+
+const isValidPhone = (normalized: string) => {
+  const digits = normalized.replace(/[^0-9]/g, '');
+  return digits.length >= 10;
 };
 
-export const PhoneOtpBlock: React.FC<Props> = ({ value, onChange, onVerified, source }) => {
-  const [otp, setOtp] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [countdown, setCountdown] = useState(0); // seconds
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [hasAutoSent, setHasAutoSent] = useState(false); // Track if we've already auto-sent
+const OTP_LENGTH = 6;
+const MAX_ATTEMPTS = 5;
 
-  const disabled = success;
+const PhoneOtpBlock: React.FC<PhoneOtpBlockProps> = ({
+  value,
+  onChange,
+  onVerified,
+  source = 'joinGroup',
+  className,
+  disabled
+}) => {
+  const [otp, setOtp] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'waiting' | 'verifying' | 'verified' | 'locked'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [resendCountdown, setResendCountdown] = useState<number>(0);
+  const [lastPhoneDigits, setLastPhoneDigits] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState<number>(0);
+  const [otpSent, setOtpSent] = useState<boolean>(false);
+
   const normalizedPhone = useMemo(() => normalizePhone(value), [value]);
 
   useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
-    return () => clearInterval(t);
-  }, [countdown]);
+    if (resendCountdown <= 0) return;
+    const timer = setInterval(() => setResendCountdown((prev) => Math.max(prev - 1, 0)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
 
-  const handleSend = async () => {
-    setError(null);
-    if (!normalizedPhone || normalizedPhone.length < 10) {
-      setError('Enter a valid phone number');
-      return;
-    }
-    try {
-      setIsSending(true);
-      const resp = await sendOtp(normalizedPhone, source);
-      if (resp.ok) {
-        setCountdown(60);
-        setOtpSent(true);
-        setHasAutoSent(true); // Mark that we've sent OTP
-      } else {
-        const data = await resp.json().catch(() => ({} as any));
-        setError(data?.message || 'Failed to send code');
-      }
-    } catch (e) {
-      setError('Failed to send code');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  // Auto-send OTP when valid phone number is entered (only once)
   useEffect(() => {
-    if (!otpSent && !success && !hasAutoSent && normalizedPhone && normalizedPhone.length >= 13 && countdown === 0 && !isSending) {
-      handleSend();
-    }
-  }, [normalizedPhone, otpSent, success, hasAutoSent, countdown, isSending]);
-
-  const handleVerify = async () => {
-    setError(null);
-    if (!otp || otp.length !== 6) {
-      setError('Enter 6-digit code');
-      return;
-    }
-    try {
-      setIsVerifying(true);
-      const resp = await verifyOtp(normalizedPhone, otp);
-      if (resp.ok) {
-        const data = await resp.json();
-        setSuccess(true);
-        // Store JWT token in sessionStorage
-        if (data.token) {
-          sessionStorage.setItem('otp_auth_token', data.token);
-        }
-        onVerified(normalizedPhone, data.token);
-      } else {
-        const data = await resp.json().catch(() => ({} as any));
-        setError(data?.message || 'Invalid code');
-      }
-    } catch (e) {
-      setError('Invalid code');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // Auto-verify when 6-digit OTP is entered (only once per OTP value)
-  const [lastVerifiedOtp, setLastVerifiedOtp] = useState<string>('');
-  
-  useEffect(() => {
-    // Clear error when OTP changes to allow retry
-    if (otp !== lastVerifiedOtp) {
+    const currentDigits = phoneDigits(normalizedPhone);
+    if (currentDigits !== lastPhoneDigits) {
+      setStatus('idle');
+      setOtp('');
       setError(null);
+      setInfo(null);
+      setLastPhoneDigits(currentDigits);
+      setAttempts(0);
+      setOtpSent(false);
     }
-    
-    if (otp.length === 6 && !success && !isVerifying && otpSent && otp !== lastVerifiedOtp) {
-      setLastVerifiedOtp(otp);
-      handleVerify();
+  }, [normalizedPhone, lastPhoneDigits]);
+
+  const sendOtpIfNeeded = useCallback(async () => {
+    if (disabled) return;
+    if (!isValidPhone(normalizedPhone)) return;
+    if (otpSent) return;
+    if (status === 'sending' || status === 'waiting' || status === 'verified') return;
+    if (resendCountdown > 0) return;
+    if (attempts >= MAX_ATTEMPTS) return;
+
+    try {
+      setStatus('sending');
+      setError(null);
+      setInfo(null);
+      const result = await sendOtp(normalizedPhone, source);
+      const retryAfter = typeof result?.retryAfter === 'number' && result.retryAfter > 0 ? result.retryAfter : 30;
+      setStatus('waiting');
+      setResendCountdown(retryAfter);
+      setInfo(result?.message || 'OTP sent. Enter the 6-digit code.');
+      setOtpSent(true);
+    } catch (err) {
+      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Failed to send OTP. Try again later.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp, success, isVerifying, otpSent, lastVerifiedOtp]);
+  }, [normalizedPhone, source, status, resendCountdown, disabled, attempts, otpSent]);
+
+  useEffect(() => {
+    sendOtpIfNeeded();
+  }, [sendOtpIfNeeded]);
+
+  useEffect(() => {
+    if (!otp || otp.length !== OTP_LENGTH) {
+      return;
+    }
+
+    const verifyOtpCode = async () => {
+      try {
+        setStatus('verifying');
+        setError(null);
+        await verifyOtp(normalizedPhone, otp);
+        setStatus('verified');
+        setInfo('Phone number verified successfully.');
+        onVerified(normalizedPhone.startsWith('+') ? normalizedPhone : `+${normalizedPhone}`);
+      } catch (err) {
+        const nextAttempts = attempts + 1;
+        setAttempts(nextAttempts);
+        setError(
+          nextAttempts >= MAX_ATTEMPTS
+            ? 'Too many incorrect attempts. Please request a new OTP.'
+            : err instanceof Error
+              ? err.message
+              : 'Invalid OTP. Please try again.'
+        );
+        setOtp('');
+        if (nextAttempts >= MAX_ATTEMPTS) {
+          setStatus('locked');
+        } else {
+          setStatus('waiting');
+        }
+      }
+    };
+
+    verifyOtpCode();
+  }, [otp, normalizedPhone, onVerified, attempts]);
+
+  const handlePhoneChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = event.target.value;
+    onChange(raw);
+    setError(null);
+    setInfo(null);
+  }, [onChange]);
+
+  const handleOtpChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.value.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
+    setOtp(next);
+    if (error) setError(null);
+  }, [error]);
+
+  const handleManualResend = useCallback(async () => {
+    if (disabled) return;
+    if (!isValidPhone(normalizedPhone)) return;
+    if (resendCountdown > 0) return;
+
+    try {
+      setStatus('sending');
+      setError(null);
+      setInfo(null);
+      const result = await sendOtp(normalizedPhone, source);
+      const retryAfter = typeof result?.retryAfter === 'number' && result.retryAfter > 0 ? result.retryAfter : 30;
+      setStatus('waiting');
+      setResendCountdown(retryAfter);
+      setInfo(result?.message || 'OTP sent. Enter the 6-digit code.');
+      setAttempts(0);
+      setOtp('');
+      setOtpSent(true);
+    } catch (err) {
+      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP. Try again later.');
+    }
+  }, [disabled, normalizedPhone, resendCountdown, source]);
+
+  const canEditPhone = status !== 'verifying' && status !== 'sending';
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">Mobile Number</label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="tel"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              disabled={disabled}
-              placeholder="9876543210"
-              className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : success ? 'border-green-500' : 'border-gray-200'} focus:outline-none focus:ring-2 ${success ? 'focus:ring-green-200' : 'focus:ring-purple-200'}`}
-            />
-            {isSending && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-            {otpSent && !success && countdown > 0 && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                {countdown}s
-              </div>
-            )}
-          </div>
-          {/* <button
-            type="button"
-            onClick={handleSend}
-            disabled={disabled || isSending || countdown > 0 || !normalizedPhone || normalizedPhone.length < 13}
-            className="px-4 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSending ? 'Sending...' : countdown > 0 ? `${countdown}s` : 'Send OTP'}
-          </button> */}
-        </div>
-        {isSending && <p className="text-xs text-purple-600">Sending OTP...</p>}
-        {otpSent && !success && <p className="text-xs text-green-600">OTP sent! Check your messages.</p>}
+    <div className={cn('space-y-3 rounded-lg border border-slate-200 p-4 bg-white/70', className)}>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-700" htmlFor="join-phone">
+          Phone Number
+        </label>
+        <Input
+          id="join-phone"
+          type="tel"
+          placeholder="Enter phone number"
+          value={value}
+          onChange={handlePhoneChange}
+          disabled={!canEditPhone || disabled}
+        />
+        {!isValidPhone(normalizedPhone) && (
+          <p className="text-xs text-slate-500">We’ll send an OTP automatically when you enter a valid number.</p>
+        )}
       </div>
 
-      {otpSent && !success && (
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Enter OTP</label>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0,6))}
-              disabled={disabled}
-              placeholder="Enter 6-digit OTP"
-              className={`w-full px-3 py-2 rounded-md border ${error ? 'border-red-500' : 'border-gray-200'} focus:outline-none focus:ring-2 focus:ring-pink-200 tracking-widest text-center text-lg`}
-              autoFocus
-            />
-            {isVerifying && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-          </div>
-          {isVerifying && <p className="text-xs text-pink-600">Verifying...</p>}
+      {(status === 'waiting' || status === 'verifying' || status === 'verified') && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700" htmlFor="join-otp">
+            Enter OTP
+          </label>
+          <Input
+            id="join-otp"
+            type="text"
+            inputMode="numeric"
+            maxLength={OTP_LENGTH}
+            placeholder="6-digit code"
+            value={otp}
+            onChange={handleOtpChange}
+            disabled={disabled || status === 'verified' || status === 'locked'}
+          />
         </div>
       )}
 
-      {success && (
-        <div className="text-sm inline-flex items-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-md">
-          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-          <span className="font-medium">Phone Verified ✓</span>
-        </div>
-      )}
-
-      {error && (
-        <p className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">{error}</p>
+      {info && !error && <p className="text-xs text-green-600">{info}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {status === 'verified' && <p className="text-xs text-green-700">Phone verified ✔️</p>}
+      {status === 'locked' && (
+        <p className="text-xs text-slate-600">
+          Need another try?{' '}
+          <button
+            type="button"
+            className="text-purple-600 underline"
+            onClick={handleManualResend}
+            disabled={resendCountdown > 0 || disabled}
+          >
+            {resendCountdown > 0 ? `Resend available in ${resendCountdown}s` : 'Send a new OTP'}
+          </button>
+        </p>
       )}
     </div>
   );
 };
 
 export default PhoneOtpBlock;
+
+

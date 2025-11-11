@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { GridPreview } from "@/components/GridPreview";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -13,6 +11,14 @@ import { GridTemplate, Member, Group as CollageGroup } from "@/context/CollageCo
 import { useCollage } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
 import { GridProvider } from "@/components/square/context/GridContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Background doodle component
 const BackgroundDoodle = () => (
@@ -34,6 +40,8 @@ const Editor = () => {
   const [group, setGroup] = useState<CollageGroup | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
   const [showCurrentMembers, setShowCurrentMembers] = useState(false);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [isCheckoutUpdating, setIsCheckoutUpdating] = useState(false);
 
   // Helper functions for group storage
   const saveLastActiveGroup = (groupId: string) => {
@@ -140,62 +148,56 @@ const Editor = () => {
 
   const handleCheckout = async () => {
     if (!group) return;
-    
-    // Use the currently displayed member count (based on toggle)
-    const targetMemberCount = showCurrentMembers ? group.members.length : group.totalMembers;
+
     const current = group.members.length;
-    const planned = group.totalMembers;
+    const expected = group.totalMembers;
     const targetGroupId = groupId || group.id;
-    
+
     if (!targetGroupId) return;
-    
-    // If showing current members grid, checkout uses current count
-    // If showing expected grid, use the original checkout logic
-    if (showCurrentMembers) {
-      // Checkout based on current members view
-      if (current < planned) {
-        const confirmed = window.confirm(
-          `Proceed with ${current} existing members? The grid will be reduced from ${planned} to ${current}.`
-        );
-        if (confirmed) {
-          try {
-            await updateGroup(group.id, { totalMembers: current });
-            await updateGroupTemplate(group.id);
-            const updatedGroup = await getGroup(group.id, true);
-            if (updatedGroup) {
-              setGroup(updatedGroup);
-            }
-            navigate(`/checkout/${targetGroupId}`);
-          } catch (error) {
-            console.error('Failed to update group:', error);
-            toast.error('Failed to update group size');
-          }
-        }
-      } else if (current > planned) {
-        const confirmed = window.confirm(
-          `There are ${current} members, exceeding the grid of ${planned}. Update the grid to ${current} to fit all current members?`
-        );
-        if (confirmed) {
-          try {
-            await updateGroup(group.id, { totalMembers: current });
-            await updateGroupTemplate(group.id);
-            const updatedGroup = await getGroup(group.id, true);
-            if (updatedGroup) {
-              setGroup(updatedGroup);
-            }
-            navigate(`/checkout/${targetGroupId}`);
-          } catch (error) {
-            console.error('Failed to update group:', error);
-            toast.error('Failed to update group size');
-          }
-        }
-      } else {
-        navigate(`/checkout/${targetGroupId}`);
-      }
-    } else {
-      // Showing expected grid - proceed with original planned count
-      navigate(`/checkout/${targetGroupId}`);
+
+    if (current === 0) {
+      toast.error('No members have joined yet. Share the link to start collecting photos.');
+      return;
     }
+
+    if (current === expected) {
+      navigate(`/checkout/${targetGroupId}`);
+      return;
+    }
+
+    setCheckoutModalOpen(true);
+  };
+
+  const proceedWithCurrentTemplate = async () => {
+    if (!group) return;
+
+    const current = group.members.length;
+    const targetGroupId = groupId || group.id;
+
+    if (!targetGroupId) return;
+
+    setIsCheckoutUpdating(true);
+    try {
+      await updateGroup(group.id, { totalMembers: current });
+      await updateGroupTemplate(group.id);
+      const updatedGroup = await getGroup(group.id, true);
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+      }
+      setCheckoutModalOpen(false);
+      navigate(`/checkout/${targetGroupId}`);
+    } catch (error) {
+      console.error('Failed to update group:', error);
+      toast.error('Failed to update group size');
+    } finally {
+      setIsCheckoutUpdating(false);
+    }
+  };
+
+  const handleCancelCheckout = () => {
+    if (isCheckoutUpdating) return;
+    setCheckoutModalOpen(false);
+    toast.info('Checkout postponed. Waiting for the expected member count.');
   };
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
@@ -205,8 +207,11 @@ const Editor = () => {
   // Determine which member count to use based on toggle
   const displayMemberCount = showCurrentMembers ? group.members.length : group.totalMembers;
   const displayMembers = showCurrentMembers ? group.members : group.members;
+  const currentMembersCount = group.members.length;
+  const expectedMembersCount = group.totalMembers;
 
   return (
+    <>
     <div className="min-h-screen relative">
       <BackgroundDoodle />
 
@@ -222,29 +227,28 @@ const Editor = () => {
               <ArrowLeft className="h-4 w-4" />
               <span className="text-sm sm:text-base">Back to Dashboard</span>
             </Button>
-            
-             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div className="hidden sm:flex flex-wrap gap-2 sm:space-x-2">
-            <Button 
-              className={`${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'} text-xs sm:text-sm px-3 sm:px-4 py-2`}
-              onClick={handleCheckout}
-              disabled={!isGridComplete}
-              title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
-            >
-              <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">{isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}</span>
-              <span className="sm:hidden">{isGridComplete ? 'Checkout' : `(${group.members.length}/${group.totalMembers})`}</span>
-            </Button>
-            <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 sm:px-4 py-2">
-              <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              Share
-            </Button>
-            <Button className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm px-3 sm:px-4 py-2" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
-              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Download</span>
-            </Button>
-          </div>
-          </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <div className="hidden sm:flex flex-wrap gap-2 sm:space-x-2">
+                <Button
+                  className={`${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-gray-400 cursor-not-allowed'} text-xs sm:text-sm px-3 sm:px-4 py-2`}
+                  onClick={handleCheckout}
+                  disabled={!isGridComplete}
+                  title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
+                >
+                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">{isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}</span>
+                  <span className="sm:hidden">{isGridComplete ? 'Checkout' : `(${group.members.length}/${group.totalMembers})`}</span>
+                </Button>
+                <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 sm:px-4 py-2">
+                  <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Share
+                </Button>
+                <Button className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm px-3 sm:px-4 py-2" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
+                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Download</span>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -284,35 +288,6 @@ const Editor = () => {
           </div> */}
         </div>
 
-        {/* Grid View Toggle */}
-        {group.members.length !== group.totalMembers && (
-          <Card className="mb-4 sm:mb-6 shadow-lg border-0 backdrop-blur-lg bg-white/80">
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="grid-toggle" className="text-sm sm:text-base font-medium text-gray-700">
-                    Grid View
-                  </Label>
-                  <p className="text-xs text-gray-500">
-                    {showCurrentMembers 
-                      ? `Showing current members (${group.members.length})`
-                      : `Showing expected grid (${group.totalMembers})`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs sm:text-sm text-gray-600">Expected</span>
-                  <Switch
-                    id="grid-toggle"
-                    checked={showCurrentMembers}
-                    onCheckedChange={setShowCurrentMembers}
-                  />
-                  <span className="text-xs sm:text-sm text-gray-600">Current</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Progress */}
         <Card className="mb-6 sm:mb-8 shadow-lg border-0 backdrop-blur-lg bg-white/80">
           <CardContent className="pt-4 sm:pt-6">
@@ -350,7 +325,20 @@ const Editor = () => {
                       )}
                     </CardDescription>
                   </div>
-                  <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 text-xs sm:text-sm"
+                    onClick={() => setShowCurrentMembers(prev => !prev)}
+                    disabled={group.members.length === group.totalMembers}
+                  >
+                    <Eye className="h-4 w-4 text-purple-600" />
+                    {group.members.length === group.totalMembers
+                      ? 'Showing complete grid'
+                      : showCurrentMembers
+                        ? `Viewing current grid (${group.members.length})`
+                        : `Viewing expected grid (${group.totalMembers})`}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
@@ -503,6 +491,41 @@ const Editor = () => {
         </div>
       </div>
     </div>
+
+    <Dialog
+      open={checkoutModalOpen}
+      onOpenChange={(open) => {
+        if (isCheckoutUpdating) return;
+        setCheckoutModalOpen(open);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Proceed with current template?</DialogTitle>
+          <DialogDescription>
+            Only {currentMembersCount} of {expectedMembersCount} members have joined. You can proceed now and lock the grid at {currentMembersCount} seats, or keep waiting for everyone to join.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+          <Button
+            variant="outline"
+            onClick={handleCancelCheckout}
+            disabled={isCheckoutUpdating}
+            className="sm:flex-1"
+          >
+            Wait for members
+          </Button>
+          <Button
+            onClick={proceedWithCurrentTemplate}
+            disabled={isCheckoutUpdating}
+            className="sm:flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            {isCheckoutUpdating ? 'Updating...' : `Proceed with ${currentMembersCount} members`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 

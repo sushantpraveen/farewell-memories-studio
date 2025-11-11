@@ -141,5 +141,9 @@ All colors MUST be HSL.
     @apply absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 transition-opacity duration-200;
   }
   
+  .grid-cell > div[class~="absolute"] {
+    display: none;
+  }
+
 
 }

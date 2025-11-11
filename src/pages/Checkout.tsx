@@ -400,8 +400,11 @@ const Checkout = () => {
               // non-blocking
               console.warn('Invoice download failed:', e);
             }
-            setShowSuccess(true);
-            setTimeout(() => { setShowSuccess(false); navigate('/'); }, 3200);
+            if (group) {
+              navigate(`/success?groupId=${group.id}`);
+            } else {
+              navigate('/success');
+            }
           } catch (err) {
             console.error('Payment finalize error:', err);
           } finally {

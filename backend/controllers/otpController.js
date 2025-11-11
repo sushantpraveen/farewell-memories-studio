@@ -1,159 +1,138 @@
 import OTPVerification from '../models/OTPVerification.js';
-import { generateOTP, hashOTP, generateExpiryTime, standardizePhoneNumber } from '../utils/otpUtils.js';
-import { sendOTP as sendSMS } from '../services/smsService.js';
-import jwt from 'jsonwebtoken';
+import {
+  generateOTP,
+  hashOTP,
+  generateExpiryTime,
+  standardizePhoneNumber
+} from '../utils/otpUtils.js';
+import { sendOTP } from '../services/smsService.js';
 
-const RATE_LIMIT_MS = 30 * 1000; // 30 seconds - more reasonable for user experience
-const MAX_ATTEMPTS = 3; // Allow only 3 attempts before requiring new OTP
-const MAX_REQUESTS_PER_HOUR = 10; // Limit to 10 OTP requests per hour per phone
+const RATE_LIMIT_SECONDS = 30;
+const OTP_EXPIRY_MINUTES = 10;
+const MAX_ATTEMPTS = 5;
+const VERIFIED_MAX_AGE_MINUTES = Number(process.env.OTP_VERIFIED_MAX_AGE_MINUTES || 30);
 
 export const sendOtp = async (req, res) => {
   try {
-    const { phone, source } = req.body || {};
-    const stdPhone = standardizePhoneNumber(phone);
-
-    if (!stdPhone) {
+    const { phone, source = 'generic' } = req.body || {};
+    const standardized = standardizePhoneNumber(phone);
+    if (!standardized) {
       return res.status(400).json({ success: false, message: 'Invalid phone number' });
     }
 
-    // Check recent OTP requests for this phone
-    const recentOtps = await OTPVerification.find({ 
-      phone: stdPhone,
-      createdAt: { $gte: new Date(Date.now() - RATE_LIMIT_MS) }
+    const recent = await OTPVerification.findOne({
+      phone: standardized,
+      createdAt: { $gte: new Date(Date.now() - RATE_LIMIT_SECONDS * 1000) }
     }).sort({ createdAt: -1 });
 
-    // Check hourly rate limit
-    const hourlyOtps = await OTPVerification.find({ 
-      phone: stdPhone,
-      createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
-    });
-
-    if (hourlyOtps.length >= MAX_REQUESTS_PER_HOUR) {
-      return res.status(429).json({ 
-        success: false, 
-        message: 'Too many requests. Please try again in an hour.',
-        retryAfter: 3600 // 1 hour in seconds
+    if (recent) {
+      const wait = RATE_LIMIT_SECONDS - Math.floor((Date.now() - recent.createdAt.getTime()) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${wait > 0 ? wait : 1} seconds before requesting another OTP.`,
+        retryAfter: wait > 0 ? wait : 1
       });
     }
 
-    // Check immediate rate limit
-    if (recentOtps.length > 0) {
-      const lastOtp = recentOtps[0];
-      const waitTime = RATE_LIMIT_MS - (Date.now() - new Date(lastOtp.createdAt).getTime());
-      const waitSec = Math.ceil(waitTime / 1000);
-      
-      return res.status(429).json({ 
-        success: false, 
-        message: `Please wait ${waitSec} seconds before requesting a new OTP.`,
-        retryAfter: waitSec
-      });
-    }
-
-    // Generate new OTP
     const otp = generateOTP(6);
-    const otpHash = hashOTP(otp);
-    const expiresAt = generateExpiryTime(10);
+    const expiresAt = generateExpiryTime(OTP_EXPIRY_MINUTES);
 
-    // Save OTP record
     await OTPVerification.create({
-      phone: stdPhone,
-      otp: otpHash,
-      type: 'sms',
-      verified: false,
+      phone: standardized,
+      otpHash: hashOTP(otp),
       expiresAt,
-      attempts: 0
+      attempts: 0,
+      verified: false
     });
 
-    // Send SMS with retry mechanism
-    let smsResp;
-    try {
-      smsResp = await sendSMS({ phone: stdPhone, otp, source });
-    } catch (smsError) {
-      console.error('[OTP] SMS sending failed:', smsError);
-      // Still return success but log the error for monitoring
-      smsResp = { success: true, message: 'OTP generated successfully' };
-    }
+    await sendOTP({ phone: standardized, otp, source });
 
-    return res.status(200).json({ 
-      success: true, 
-      message: smsResp.message || 'OTP sent successfully',
-      expiresAt,
-      retryAfter: RATE_LIMIT_MS / 1000 // Tell client when they can request again
+    return res.status(200).json({
+      success: true,
+      message: 'OTP sent successfully',
+      expiresAt
     });
-  } catch (err) {
-    console.error('[OTP] send error', err);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to send OTP. Please try again later.' 
-    });
+  } catch (error) {
+    console.error('[OTP] send error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send OTP' });
   }
 };
 
 export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body || {};
-    const stdPhone = standardizePhoneNumber(phone);
-
-    if (!stdPhone || !otp) {
-      return res.status(400).json({ success: false, message: 'Invalid request' });
+    const standardized = standardizePhoneNumber(phone);
+    if (!standardized || !otp) {
+      return res.status(400).json({ success: false, message: 'Phone number and OTP are required' });
     }
 
-    const record = await OTPVerification.findOne({ phone: stdPhone }).sort({ createdAt: -1 });
+    const record = await OTPVerification.findOne({ phone: standardized })
+      .sort({ createdAt: -1 });
+
     if (!record) {
-      return res.status(400).json({ success: false, message: 'No OTP found for this phone' });
+      return res.status(400).json({ success: false, message: 'No OTP found for this phone number' });
     }
 
-    if (record.verified) {
-      return res.status(200).json({ success: true, verifiedAt: new Date() });
-    }
-
-    if (new Date(record.expiresAt).getTime() < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
+    if (record.expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'OTP has expired' });
     }
 
     if (record.attempts >= MAX_ATTEMPTS) {
-      return res.status(429).json({ success: false, message: 'Too many attempts. Please request a new OTP.' });
+      return res.status(429).json({ success: false, message: 'Too many incorrect attempts. Please request a new OTP.' });
     }
 
-    const submittedHash = hashOTP(otp);
-    const isMatch = submittedHash === record.otp;
-
-    if (!isMatch) {
+    const incomingHash = hashOTP(otp);
+    if (incomingHash !== record.otpHash) {
       record.attempts += 1;
       await record.save();
       return res.status(400).json({ success: false, message: 'Incorrect OTP' });
     }
 
     record.verified = true;
+    record.verifiedAt = new Date();
+    record.attempts = 0;
     await record.save();
 
-    // Generate JWT token for authenticated session
-    const token = jwt.sign(
-      { phone: stdPhone, verified: true },
-      process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production',
-      { expiresIn: '1h' } // Token expires in 1 hour
-    );
-
-    return res.status(200).json({ 
-      success: true, 
-      verifiedAt: new Date(),
-      token // Return JWT token to client
+    return res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully',
+      verifiedAt: record.verifiedAt
     });
-  } catch (err) {
-    console.error('[OTP] verify error', err);
+  } catch (error) {
+    console.error('[OTP] verify error:', error);
     return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
   }
 };
 
 export const statusByPhone = async (req, res) => {
   try {
-    const raw = req.params.phone;
-    const stdPhone = standardizePhoneNumber(raw);
-    const record = await OTPVerification.findOne({ phone: stdPhone }).sort({ createdAt: -1 });
-    if (!record) return res.status(404).json({ success: false, verified: false });
-    return res.status(200).json({ success: true, verified: !!record.verified, createdAt: record.createdAt, expiresAt: record.expiresAt });
-  } catch (err) {
-    console.error('[OTP] status error', err);
+    const standardized = standardizePhoneNumber(req.params.phone);
+    if (!standardized) {
+      return res.status(400).json({ success: false, verified: false });
+    }
+
+    const record = await OTPVerification.findOne({ phone: standardized })
+      .sort({ verifiedAt: -1 });
+
+    if (!record || !record.verified) {
+      return res.status(404).json({ success: false, verified: false });
+    }
+
+    if (!record.verifiedAt || (Date.now() - record.verifiedAt.getTime()) > VERIFIED_MAX_AGE_MINUTES * 60 * 1000) {
+      return res.status(404).json({ success: false, verified: false });
+    }
+
+    return res.status(200).json({
+      success: true,
+      verified: true,
+      verifiedAt: record.verifiedAt,
+      usedAt: record.usedAt || null
+    });
+  } catch (error) {
+    console.error('[OTP] status error:', error);
     return res.status(500).json({ success: false });
   }
 };
+
+
+

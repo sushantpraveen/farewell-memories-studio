@@ -12,8 +12,8 @@ import groupRoutes from './routes/groupRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import otpRoutes from './routes/otpRoutes.js';
 import shippingQuoteRoutes from './routes/shippingQuoteRoutes.js';
+import otpRoutes from './routes/otpRoutes.js';
 
 // Passport config
 import { configurePassport } from './config/passport.js';

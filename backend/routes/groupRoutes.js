@@ -27,7 +27,8 @@ const joinGroupValidation = [
   check('name', 'Name is required').not().isEmpty(),
   check('memberRollNumber', 'Member roll number is required').not().isEmpty(),
   check('photo', 'Photo is required').not().isEmpty(),
-  check('vote', 'Vote must be one of: hexagonal, square, circle').isIn(['hexagonal', 'square', 'circle'])
+  check('vote', 'Vote must be one of: hexagonal, square, circle').isIn(['hexagonal', 'square', 'circle']),
+  check('phone', 'Phone number is required').not().isEmpty()
 ];
 
 // Protected routes that require authentication

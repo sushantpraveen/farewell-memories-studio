@@ -8,3 +8,6 @@ router.post('/verify', verifyOtp);
 router.get('/status/:phone', statusByPhone);
 
 export default router;
+
+
+

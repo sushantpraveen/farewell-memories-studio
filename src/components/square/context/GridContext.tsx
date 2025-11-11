@@ -1,4 +1,15 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+const PLACEHOLDER_IMAGES = ['/placeholders/placeholder-male.jpg', '/placeholders/placeholder-female.jpg'];
+
+const hashKey = (key: string) => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
 
 export type CellImages = Record<string, string>;
 export type CellOffsets = Record<string, { x: number; y: number }>;
@@ -66,7 +77,14 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
         backgroundRepeat: 'no-repeat',
       } as React.CSSProperties;
     }
-    return {} as React.CSSProperties;
+    const placeholder = PLACEHOLDER_IMAGES[hashKey(key) % PLACEHOLDER_IMAGES.length];
+    return {
+      backgroundImage: `url(${placeholder})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      filter: 'grayscale(15%)',
+    } as React.CSSProperties;
   }, [cellImages, cellOffsets]);
 
   const startDrag = useCallback((e: StartEvt, key: string) => {

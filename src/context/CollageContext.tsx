@@ -9,6 +9,7 @@ export type GridTemplate = 'hexagonal' | 'square' | 'circle';
 export interface Member {
   id: string;
   name: string;
+  email?: string;
   photo: string;
   vote: GridTemplate;
   joinedAt: Date;

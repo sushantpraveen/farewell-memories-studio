@@ -1,8 +1,10 @@
 import Group from '../models/groupModel.js';
 import User from '../models/userModel.js';
 import Order from '../models/orderModel.js';
+import OTPVerification from '../models/OTPVerification.js';
 import crypto from 'crypto';
 import { validationResult } from 'express-validator';
+import { standardizePhoneNumber } from '../utils/otpUtils.js';
 
 /**
  * @desc    Create a new group
@@ -332,10 +334,24 @@ export const joinGroup = async (req, res) => {
     }
 
     const { name, memberRollNumber, photo, vote, size, phone } = req.body;
-    const group = await Group.findById(req.params.id);
+    const normalizedPhone = standardizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({ message: 'Valid phone number is required' });
+    }
 
+    const otpRecord = await OTPVerification.findOne({ phone: normalizedPhone, verified: true })
+      .sort({ verifiedAt: -1 });
+
+    const verifiedWindowMs = Number(process.env.OTP_VERIFIED_MAX_AGE_MINUTES || 30) * 60 * 1000;
+    const now = Date.now();
+
+    if (!otpRecord || !otpRecord.verifiedAt || (now - otpRecord.verifiedAt.getTime()) > verifiedWindowMs || otpRecord.usedAt) {
+      return res.status(400).json({ message: 'Phone number has not been verified. Please complete OTP verification.' });
+    }
+
+    const group = await Group.findById(req.params.id);
     console.log('Join group request body:', req.body);
-    console.log('Phone from join request:', phone);
+    console.log('Phone from join request (normalized):', normalizedPhone);
 
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
@@ -362,7 +378,7 @@ export const joinGroup = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
-      phone: phone || undefined,
+      phone: normalizedPhone,
       joinedAt: new Date()
     };
 
@@ -387,6 +403,10 @@ export const joinGroup = async (req, res) => {
 
     // Save group
     const updatedGroup = await group.save();
+
+    otpRecord.usedAt = new Date();
+    otpRecord.verified = false;
+    await otpRecord.save();
 
     console.log('Group saved. Last member added:', updatedGroup.members[updatedGroup.members.length - 1]);
     console.log('Last member phone:', updatedGroup.members[updatedGroup.members.length - 1]?.phone);
