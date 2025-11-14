@@ -16,6 +16,8 @@ import { generateInvoicePdfBase64, downloadInvoice } from '@/lib/invoice';
 import type { Order, AdminMember } from '@/types/admin';
 import { toast } from 'sonner';
 
+import { claimToteBag } from '@/services/totebagClaimService';
+
 // Subtle animated background consistent with GridBoard/Dashboard
 const AnimatedBackground = () => (
   <div className="fixed inset-0 -z-10 overflow-hidden">
@@ -124,6 +126,11 @@ const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
+  // ToteBag claim state
+  const [wantsToteBag, setWantsToteBag] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimStatus, setClaimStatus] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
+  
   // Form state
   const [shippingForm, setShippingForm] = useState({
     firstName: '',
@@ -131,9 +138,57 @@ const Checkout = () => {
     email: '',
     address: '',
     city: '',
+    state: '',
     zipCode: '',
     phone: ''
   });
+
+  // Automatically fetch shipping info when ZIP code is filled (e.g. via browser autofill)
+  useEffect(() => {
+    if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
+      updateShippingQuote(shippingForm.zipCode, quantity);
+    }
+  }, [shippingForm.zipCode]);
+
+  // Map state codes to full state names
+  const stateCodeToName: Record<string, string> = {
+    'AP': 'Andhra Pradesh',
+    'AR': 'Arunachal Pradesh',
+    'AS': 'Assam',
+    'BR': 'Bihar',
+    'CT': 'Chhattisgarh',
+    'GA': 'Goa',
+    'GJ': 'Gujarat',
+    'HR': 'Haryana',
+    'HP': 'Himachal Pradesh',
+    'JK': 'Jammu and Kashmir',
+    'JH': 'Jharkhand',
+    'KA': 'Karnataka',
+    'KL': 'Kerala',
+    'LA': 'Ladakh',
+    'MP': 'Madhya Pradesh',
+    'MH': 'Maharashtra',
+    'MN': 'Manipur',
+    'ML': 'Meghalaya',
+    'MZ': 'Mizoram',
+    'NL': 'Nagaland',
+    'OR': 'Odisha',
+    'PB': 'Punjab',
+    'RJ': 'Rajasthan',
+    'SK': 'Sikkim',
+    'TN': 'Tamil Nadu',
+    'TG': 'Telangana',
+    'TR': 'Tripura',
+    'UP': 'Uttar Pradesh',
+    'UT': 'Uttarakhand',
+    'WB': 'West Bengal',
+    'AN': 'Andaman and Nicobar Islands',
+    'CH': 'Chandigarh',
+    'DH': 'Dadra and Nagar Haveli and Daman and Diu',
+    'DL': 'Delhi',
+    'LD': 'Lakshadweep',
+    'PY': 'Puducherry'
+  };
 
   // Shipping quote state - single source of truth
   const [zipStatus, setZipStatus] = useState<{
@@ -149,8 +204,8 @@ const Checkout = () => {
   const [codAvailable, setCodAvailable] = useState(false);
 
   // Pricing & totals (dynamic shipping)
-  const tshirtPrice = 299; // ₹299 per t-shirt
-  const printPrice = 99;  // ₹99 per print
+  const tshirtPrice = 1; // ₹299 per t-shirt
+  const printPrice = 1;  // ₹99 per print
   const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
   const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
@@ -240,6 +295,13 @@ const Checkout = () => {
       if (data.city) {
         setShippingForm(prev => ({ ...prev, city: data.city }));
       }
+      
+      // Autofill state from state_code
+      if (data.state_code) {
+        const stateName = stateCodeToName[data.state_code] || data.state_code;
+        setShippingForm(prev => ({ ...prev, state: stateName }));
+        console.log('[Checkout] Autofilled state:', stateName, 'from code:', data.state_code);
+      }
 
       toast.success(`Shipping available! Rate: ₹${data.shipping_charge}`);
     } catch (error) {
@@ -277,9 +339,182 @@ const Checkout = () => {
     });
   };
 
+  // Handle totebag claim before payment
+  const handleToteBagClaim = async (): Promise<{ success: boolean; claim?: any; error?: string } | null> => {
+    if (!wantsToteBag) {
+      console.log('[Checkout] ToteBag claim skipped - user did not request totebag');
+      return null;
+    }
+
+    console.log('[Checkout] 🎁 Starting totebag claim process...');
+    console.log('[Checkout] Form data:', {
+      firstName: shippingForm.firstName,
+      lastName: shippingForm.lastName,
+      email: shippingForm.email,
+      phone: shippingForm.phone,
+      address: shippingForm.address,
+      city: shippingForm.city,
+      zipCode: shippingForm.zipCode
+    });
+
+    setClaiming(true);
+    setClaimStatus(null);
+
+    try {
+      const fullName = `${shippingForm.firstName} ${shippingForm.lastName}`.trim();
+      
+      // Validate form data before sending
+      if (!shippingForm.firstName || !shippingForm.lastName) {
+        throw new Error('First name and last name are required');
+      }
+      if (!shippingForm.email) {
+        throw new Error('Email is required');
+      }
+      if (!shippingForm.phone) {
+        throw new Error('Phone number is required');
+      }
+      if (!shippingForm.address) {
+        throw new Error('Address is required');
+      }
+      if (!shippingForm.city) {
+        throw new Error('City is required');
+      }
+      if (!shippingForm.zipCode) {
+        throw new Error('ZIP code is required');
+      }
+      
+      // State should be autofilled from shipping quote
+      // If not available, we need to get it from the shipping quote response or use a valid default
+      let stateValue = shippingForm.state?.trim() || '';
+      
+      if (!stateValue) {
+        console.warn('[Checkout] State not available in form. This may cause claim to fail.');
+        console.warn('[Checkout] Please ensure pincode has been validated to autofill state.');
+        // Use a generic state name that should be accepted (Telangana as default since it's common)
+        stateValue = 'Telangana';
+        console.warn('[Checkout] Using fallback state:', stateValue);
+      }
+
+      const claimData = {
+        fullName,
+        email: shippingForm.email,
+        phone: shippingForm.phone,
+        address: shippingForm.address,
+        city: shippingForm.city,
+        state: stateValue, // Use state from form (autofilled from shipping quote)
+        zipCode: shippingForm.zipCode,
+        purpose: 'Personal use'
+      };
+      
+      console.log('[Checkout] Claim data with state:', claimData);
+      
+      // Final validation - ensure state is not empty
+      if (!claimData.state || claimData.state.trim() === '') {
+        throw new Error('State is required. Please validate your pincode first to autofill state information.');
+      }
+
+      console.log('[Checkout] Sending claim request with data:', claimData);
+      
+      const result = await claimToteBag(claimData);
+
+      console.log('[Checkout] Claim result received:', {
+        success: result.success,
+        hasClaim: !!result.claim,
+        message: result.message,
+        error: result.error
+      });
+
+      // Store claim result in localStorage for tracking
+      const claimRecord = {
+        success: result.success,
+        claim: result.claim,
+        message: result.message,
+        error: result.error,
+        timestamp: new Date().toISOString(),
+        formData: {
+          fullName,
+          email: shippingForm.email,
+          phone: shippingForm.phone
+        }
+      };
+      localStorage.setItem('lastToteBagClaim', JSON.stringify(claimRecord));
+      console.log('[Checkout] Claim record saved to localStorage');
+
+      if (result.success) {
+        console.log('[Checkout] ✅ ToteBag claim successful!');
+        console.log('[Checkout] Claim details:', result.claim);
+        
+        setClaimStatus({
+          type: 'success',
+          message: '✅ Free totebag claim submitted!'
+        });
+        toast.success('Free totebag claim submitted!');
+        
+        return { success: true, claim: result.claim };
+      } else {
+        console.warn('[Checkout] ⚠️ ToteBag claim failed:', result.message);
+        console.warn('[Checkout] Error details:', result.error);
+        
+        setClaimStatus({
+          type: 'warning',
+          message: `⚠️ ${result.message}. Order will still be processed.`
+        });
+        toast.warning(result.message || 'ToteBag claim failed, but order will continue');
+        
+        return { success: false, error: result.error || result.message };
+      }
+    } catch (error: any) {
+      console.error('[Checkout] ❌ ToteBag claim exception:', error);
+      console.error('[Checkout] Exception details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+
+      const errorRecord = {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        exception: error.name
+      };
+      localStorage.setItem('lastToteBagClaim', JSON.stringify(errorRecord));
+
+      setClaimStatus({
+        type: 'error',
+        message: `❌ ${error.message || 'Failed to claim totebag'}. Order will still be processed.`
+      });
+      toast.error('ToteBag claim failed, but order will continue');
+      
+      return { success: false, error: error.message };
+    } finally {
+      setClaiming(false);
+      console.log('[Checkout] ToteBag claim process completed');
+    }
+  };
+
   const handleRazorpayPayment = async () => {
     if (!group) return;
+    
+    console.log('[Checkout] 💳 Starting payment process...');
+    console.log('[Checkout] ToteBag requested:', wantsToteBag);
+    
     setIsProcessing(true);
+
+    // If user wants totebag, submit claim first (non-blocking)
+    let claimResult: { success: boolean; claim?: any; error?: string } | null = null;
+    if (wantsToteBag) {
+      console.log('[Checkout] Submitting totebag claim before payment...');
+      claimResult = await handleToteBagClaim();
+      console.log('[Checkout] ToteBag claim completed. Result:', claimResult);
+      
+      if (claimResult?.success) {
+        console.log('[Checkout] ✅ ToteBag claim was successful - proceeding with payment');
+      } else {
+        console.warn('[Checkout] ⚠️ ToteBag claim failed but continuing with payment:', claimResult?.error);
+      }
+    } else {
+      console.log('[Checkout] No totebag claim requested - proceeding directly to payment');
+    }
 
     try {
       const ok = await loadRazorpayScript();
@@ -308,6 +543,33 @@ const Checkout = () => {
         notes: { groupId: group.id },
         handler: async (response: any) => {
           try {
+            console.log('[Checkout] 💳 Payment successful! Processing order...');
+            console.log('[Checkout] Payment response:', {
+              order_id: response.razorpay_order_id,
+              payment_id: response.razorpay_payment_id
+            });
+            
+            // Check claim status from localStorage
+            const claimDataStr = localStorage.getItem('lastToteBagClaim');
+            const claimData = claimDataStr ? JSON.parse(claimDataStr) : null;
+            
+            if (claimData) {
+              console.log('[Checkout] ToteBag claim status at payment completion:', {
+                success: claimData.success,
+                hasClaim: !!claimData.claim,
+                timestamp: claimData.timestamp
+              });
+              
+              if (claimData.success) {
+                console.log('[Checkout] ✅ ToteBag claim was successfully created and sent!');
+                console.log('[Checkout] Claim ID:', claimData.claim?.id || claimData.claim?._id || 'N/A');
+              } else {
+                console.warn('[Checkout] ⚠️ ToteBag claim was not successful:', claimData.error);
+              }
+            } else {
+              console.log('[Checkout] No totebag claim data found in localStorage');
+            }
+            
             // 4) Verify payment signature on backend and send email confirmation
             // Prepare invoice PDF
             const invoiceBase64 = await generateInvoicePdfBase64(
@@ -392,18 +654,46 @@ const Checkout = () => {
               },
             };
 
+            // Add claim information to order notes/metadata if available
+            if (claimData?.success) {
+              console.log('[Checkout] Adding totebag claim info to order');
+              // Store in order notes or metadata if your Order type supports it
+              // You may need to extend the Order type to include metadata
+            }
+            
+            console.log('[Checkout] Creating order:', newOrder.id);
             await ordersApi.createOrder(newOrder);
+            console.log('[Checkout] ✅ Order created successfully');
+            
             // Offer invoice download for the user immediately
             try {
               await downloadInvoice(invoiceBase64, `Invoice-${newOrder.id}.pdf`);
             } catch (e) {
               // non-blocking
-              console.warn('Invoice download failed:', e);
+              console.warn('[Checkout] Invoice download failed:', e);
             }
+            
+            // Update claim record with order ID
+            if (claimData) {
+              claimData.orderId = newOrder.id;
+              localStorage.setItem('lastToteBagClaim', JSON.stringify(claimData));
+              console.log('[Checkout] Updated claim record with order ID:', newOrder.id);
+            }
+            
+            // Navigate with claim status
+            const claimParam = claimData?.success ? '&toteBagClaimed=true' : 
+                              claimData ? '&toteBagClaimed=false' : '';
+            
+            console.log('[Checkout] Navigating to success page...');
+            console.log('[Checkout] Claim status for success page:', {
+              claimed: !!claimData?.success,
+              param: claimParam
+            });
+            
             if (group) {
-              navigate(`/success?groupId=${group.id}`);
+              navigate(`/success?groupId=${group.id}${claimParam}`);
             } else {
-              navigate('/success');
+              navigate(`/success${claimParam}`);
             }
           } catch (err) {
             console.error('Payment finalize error:', err);
@@ -790,6 +1080,42 @@ const BackgroundDoodle = () => (
                     )}
                   </div>
                 </div>
+
+                {/* ToteBag Claim Section */}
+                {/* <Separator />
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={wantsToteBag}
+                      onChange={(e) => setWantsToteBag(e.target.checked)}
+                      disabled={claiming}
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      🎁 Claim a free totebag (development mode)
+                    </span>
+                  </label>
+
+                  {claimStatus && (
+                    <div className={`text-sm p-3 rounded-lg ${
+                      claimStatus.type === 'success' 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : claimStatus.type === 'warning'
+                        ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                      {claimStatus.message}
+                    </div>
+                  )}
+
+                  {claiming && (
+                    <div className="flex items-center gap-2 text-sm text-purple-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Submitting totebag claim...</span>
+                    </div>
+                  )}
+                </div> */}
               </CardContent>
             </Card>
 
@@ -804,12 +1130,12 @@ const BackgroundDoodle = () => (
                 <Button 
                   onClick={handleRazorpayPayment}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg font-semibold shadow"
-                  disabled={isProcessing || !isFormValid}
+                  disabled={isProcessing || claiming || !isFormValid}
                 >
-                  {isProcessing ? (
+                  {isProcessing || claiming ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Processing Payment...
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      {claiming ? 'Submitting Claim...' : 'Processing Payment...'}
                     </>
                   ) : (
                     <>

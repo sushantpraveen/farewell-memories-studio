@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-28';
+  const COMP_ID = 'grid-19';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -89,45 +89,23 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   const getKeysForIndex = (index: number): string[] => {
     const keys: string[] = [];
     // Top row 0-7
-    if (index >= 0 && index <= 7) {
+    if (index >= 0 && index <= 3) {
       keys.push(cid('top', 0, index));
       return keys;
     }
     // Left side 8-13 (rows 1..6)
-    if (index >= 8 && index <= 13) {
-      keys.push(cid('left', index - 7, 0));
+    if (index >= 4 && index <= 8) {
+      keys.push(cid('left', index - 3, 0));
       return keys;
     }
     // Right side 14-19 (rows 1..6)
-    if (index >= 14 && index <= 19) {
-      keys.push(cid('right', index - 13, 7));
+    if (index >= 9 && index <= 13) {
+      keys.push(cid('right', index - 8, 5));
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 20 && index <= 27) {
-      keys.push(cid('bottom', 9, index - 20));
-      return keys;
-    }
-    // Bottom extension 26-28 (centered 8 cells)
-    if (index >= 28 && index <= 28) {
-      const col = index - 28; // 0..7
-      // Preview variant (row 0) and download variant (row -1)
-      keys.push(cid('bottom-extension', 0, col + 2));
-      keys.push(cid('bottom-extension', -1, col + 2));
-      return keys;
-    }
-    // Bottom-most extension 34-36 (3 cells)
-    if (index >= 34 && index <= 36) {
-      const col = index - 34; // 0..2
-      keys.push(cid('bottom-most-extension', 0, col + 2));
-      keys.push(cid('bottom-most-extension', -1, col + 2));
-      return keys;
-    }
-    // Top extension most 37-44 (8 cells)
-    if (index >= 37 && index <= 44) {
-      const col = index - 37; // 0..7
-      keys.push(cid('topExt-most', 0, col + 2));
-      keys.push(cid('topExt-most', -1, col + 2));
+    if (index >= 14 && index <= 18) {
+      keys.push(cid('bottom', 6, index - 13));
       return keys;
     }
     return keys;
@@ -144,22 +122,18 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     const [row, col] = position.split('-').map(Number);
     
     if (section === 'top') {
-      // Top row: 0-7
+      // Top row: 0-3
       return col;
     } else if (section === 'left') {
-      // Left side: 8-13
-      return 8 + (row - 1);
+      // Left side: 4-8
+      return 4 + (row - 1);
     } else if (section === 'right') {
-      // Right side: 14-19
-      return 14 + (row - 1);
+      // Right side: 9-13
+      return 9 + (row - 1);
     } else if (section === 'bottom') {
-      // Bottom row: 18-25
-      return 18 + col;
-    }else if (section === 'bottom-extension') {
-      console.log("bottom-extension mapping → row:", row, "col:", col, "index:", 26 + col);
-      return 26 + col;
+      // Bottom row: 14-18
+      return 14 + col;
     }
-    
     return -1;
   };
 
@@ -463,7 +437,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
           {Array.from({ length: 4 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('top', 0, colIndex );
             return (
               <div
                 key={cellKey}
@@ -591,18 +565,18 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             {/* Right border cell */}
             <div
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-              style={getCellStyleWithFallback(cid('right', rowIndex + 1, 7))}
-              onClick={() => handleCellClick(cid('right', rowIndex + 1, 7))}
+              style={getCellStyleWithFallback(cid('right', rowIndex + 1, 5))}
+              onClick={() => handleCellClick(cid('right', rowIndex + 1, 5))}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleCellClick(cid('right', rowIndex + 1, 7));
+                  handleCellClick(cid('right', rowIndex + 1, 5));
                 }
               }}
             >
-              {!cellImages[cid('right', rowIndex + 1, 7)] && (
+              {!cellImages[cid('right', rowIndex + 1, 5)] && (
                 <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
                   +
                 </div>
@@ -625,7 +599,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 5 }, (_, colIndex) => {
-              const key = cid('bottom-extension', 0, colIndex + 2);
+              const key = cid('bottom', 6, colIndex + 1);
               
               return (
                 <div

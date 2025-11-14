@@ -83,7 +83,17 @@ export function getTemplateLayout(template: string, memberCount: number): Templa
   // For square templates, we need to match the exact layout logic
   if (template === 'square') {
     // These are the specific layouts used by the square templates
-    if (memberCount === 34) {
+    if (memberCount === 19 || memberCount === 20) {
+      // Template 19: 6x7 grid with 4x5 center cell, border cells around it
+      // 19 border cells + 1 center = 20 total, but center is not indexed
+      // Center is typically at the middle position in the member array
+      return {
+        centerIndex: Math.floor(memberCount / 2), // Center position in member array (9 for 19 members, 10 for 20)
+        totalCells: 19,
+        gridDimensions: { cols: 6, rows: 7 },
+        description: '6x7 grid with 4x5 center cell, top/bottom rows, left/right sides'
+      };
+    } else if (memberCount === 34) {
       return {
         centerIndex: 8, // Center cell in 8x10 grid (row 1, col 1, spanning 6x6)
         totalCells: 34,

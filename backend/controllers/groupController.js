@@ -110,8 +110,8 @@ export const joinGroupPaid = async (req, res) => {
     }
 
     // Compute server-authoritative deposit amount (keep in paise)
-    const tshirt = Number(process.env.TSHIRT_PRICE || 299);
-    const print = Number(process.env.PRINT_PRICE || 99);
+    const tshirt = Number(process.env.TSHIRT_PRICE || 1);
+    const print = Number(process.env.PRINT_PRICE || 1);
     const depositAmountPaise = (tshirt + print) * 100;
 
     const newMember = {

@@ -2,7 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import { enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74, enumerate75, enumerate76, enumerate77, enumerate78, enumerate79, enumerate80, enumerate81, enumerate82, enumerate83, enumerate84, enumerate85, enumerate86, enumerate87, enumerate88, enumerate89, enumerate90, enumerate91, enumerate92, enumerate93, enumerate94, enumerate95, enumerate96 } from '@/templates/layouts';
+import {enumerate19, enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74, enumerate75, enumerate76, enumerate77, enumerate78, enumerate79, enumerate80, enumerate81, enumerate82, enumerate83, enumerate84, enumerate85, enumerate86, enumerate87, enumerate88, enumerate89, enumerate90, enumerate91, enumerate92, enumerate93, enumerate94, enumerate95, enumerate96 } from '@/templates/layouts';
+import * as layouts from '@/templates/layouts';
 
 interface VariantRendererProps {
   order: Order;
@@ -154,18 +155,20 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const count = order.members.length;
         let effectiveKey = templateKey;
         if (order.gridTemplate === 'square') {
-          if (count === 33) effectiveKey = '33';
+          if (count === 19 || count === 20) effectiveKey = '19';
+          else if (count === 33) effectiveKey = '33';
           else if (count === 45) effectiveKey = '45';
         }
+        const is8to19 = effectiveKey === '8' || effectiveKey === '9' || effectiveKey === '10' || effectiveKey === '11' || effectiveKey === '12' || effectiveKey === '13' || effectiveKey === '14' || effectiveKey === '15' || effectiveKey === '16' || effectiveKey === '17' || effectiveKey === '18' || effectiveKey === '19';
         const is29to34 = effectiveKey === '20' || effectiveKey === '21' || effectiveKey === '22' || effectiveKey === '23' || effectiveKey === '29' || effectiveKey === '30' || effectiveKey === '31' || effectiveKey === '32' || effectiveKey === '33' || effectiveKey === '34';
         const is37to50 = effectiveKey === '24' || effectiveKey === '25' || effectiveKey === '26' || effectiveKey === '27' || effectiveKey === '28' || effectiveKey === '35' || effectiveKey === '36' || effectiveKey === '37' || effectiveKey === '38' || effectiveKey === '39' || effectiveKey === '40' || effectiveKey === '41' || effectiveKey === '42' || effectiveKey === '43' || effectiveKey === '44' || effectiveKey === '45' || effectiveKey === '46' || effectiveKey === '47' || effectiveKey === '48' || effectiveKey === '49' || effectiveKey === '50';
         const is51to56 = effectiveKey === '51' || effectiveKey === '52' || effectiveKey === '53' || effectiveKey === '54' || effectiveKey === '55' || effectiveKey === '56';
         const is57to74 = effectiveKey === '57' || effectiveKey === '58' || effectiveKey === '59' || effectiveKey === '60' || effectiveKey === '61' || effectiveKey === '62' || effectiveKey === '63' || effectiveKey === '64' || effectiveKey === '65' || effectiveKey === '66' || effectiveKey === '67' || effectiveKey === '68' || effectiveKey === '69' || effectiveKey === '70' || effectiveKey === '71' || effectiveKey === '72' || effectiveKey === '73' || effectiveKey === '74';
         const is75to92 = effectiveKey === '75' || effectiveKey === '76' || effectiveKey === '77' || effectiveKey === '78' || effectiveKey === '79' || effectiveKey === '80' || effectiveKey === '81' || effectiveKey === '82' || effectiveKey === '83' || effectiveKey === '84' || effectiveKey === '85' || effectiveKey === '86' || effectiveKey === '87' || effectiveKey === '88' || effectiveKey === '89' || effectiveKey === '90' || effectiveKey === '91' || effectiveKey === '92';
-        const TARGET_W_IN = is37to50 ? 8 : 8.5;
-        const TARGET_H_IN = 13.5;
-        const COLS = is51to56 || is57to74 ? 9 : is75to92 ? 11 : 8;
-        const ROWS = is57to74 ? 9 : is75to92 ? 11 : 10
+        const TARGET_W_IN = is37to50 || is8to19 ? 8 : 8.5;
+        const TARGET_H_IN = is8to19 ? 13.0 : 13.5;
+        const COLS = is51to56 || is57to74 ? 9 : is75to92 ? 11 : is8to19 ? 6 : 8;
+        const ROWS = is57to74 ? 9 : is75to92 ? 11 : is8to19 ? 7 : 10
         const gap = 4; // align with desiredGapPx used in downloads
         canvas.width = Math.round(TARGET_W_IN * DPI);
         canvas.height = Math.round(TARGET_H_IN * DPI);
@@ -232,7 +235,25 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
               await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
             }
           });
-        } else if (effectiveKey === '33') {
+        } else if (effectiveKey === '19') {
+          await enumerate19(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        }
+        else if (effectiveKey === '33') {
           await enumerate33(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
@@ -1409,7 +1430,32 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           });
         }
         else {
-          // Fallback: do nothing for unknown template (future templates will be added here)
+          // Fallback: Try to dynamically call the enumerate function if it exists
+          const enumerateFnName = `enumerate${effectiveKey}`;
+          const enumerateFn = (layouts as any)[enumerateFnName];
+          
+          if (typeof enumerateFn === 'function') {
+            console.log(`[VariantRenderer] Using dynamic enumerate function: ${enumerateFnName}`);
+            await enumerateFn(async (slot: any) => {
+              if (slot.kind === 'center') {
+                if (variant.centerMember?.photo) {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } else {
+                  const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                  ctx.fillStyle = '#f3f4f6';
+                  ctx.fillRect(x, y, w, h);
+                }
+                return;
+              }
+              const m = slot.index >= 0 ? memberAt(slot.index) : null;
+              if (m?.photo) {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              }
+            });
+          } else {
+            console.warn(`[VariantRenderer] No enumerate function found for template key: ${effectiveKey}`);
+            console.warn(`[VariantRenderer] Available enumerate functions:`, Object.keys(layouts).filter(k => k.startsWith('enumerate')));
+          }
         }
         // Export with embedded 300 DPI (pHYs chunk)
         const rawPng = canvas.toDataURL('image/png');

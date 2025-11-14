@@ -8,6 +8,12 @@ export default defineConfig({
     host: "::",
     port: 8080,
     proxy: {
+      "/api/partner": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path // Keep the path as is
+      },
       "/api": {
         target: "http://localhost:4000",
         changeOrigin: true,

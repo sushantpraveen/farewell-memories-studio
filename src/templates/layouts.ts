@@ -62,6 +62,34 @@ export async function enumerate45(cb: EnumerateCallback) {
   }
 }
 
+// 19 template: 6 columns x 7 rows (virtual), center spans 6x6
+// Indices mapping:
+// 0..7   -> top row (8)
+// 8..13  -> left border (6)
+// 14..19 -> right border (6)
+// 20..27 -> bottom row (8)
+// 28..32 -> bottom extension (5 centered)
+export async function enumerate19(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 5; r++) {
+    await cb({ kind: 'left', index: 4 + r, r: 1 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 5, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 5; r++) {
+    await cb({ kind: 'right', index: 9 + r, r: 1 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 5; c++) {
+    await cb({ kind: 'bottom', index: 13 + c, r: 6, c: 0.5 + c });
+  }
+}
+
 // 33 template: 8 columns x 10 rows (virtual), center spans 6x6
 // Indices mapping:
 // 0..7   -> top row (8)
