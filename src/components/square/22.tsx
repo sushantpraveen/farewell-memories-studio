@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-28';
+  const COMP_ID = 'grid-22';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -89,47 +89,26 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   const getKeysForIndex = (index: number): string[] => {
     const keys: string[] = [];
     // Top row 0-7
-    if (index >= 0 && index <= 7) {
+    if (index >= 0 && index <= 5) {
       keys.push(cid('top', 0, index));
       return keys;
     }
     // Left side 8-13 (rows 1..6)
-    if (index >= 8 && index <= 13) {
-      keys.push(cid('left', index - 7, 0));
+    if (index >= 6 && index <= 10) {
+      keys.push(cid('left', index - 5, 0));
       return keys;
     }
     // Right side 14-19 (rows 1..6)
-    if (index >= 14 && index <= 19) {
-      keys.push(cid('right', index - 13, 7));
+    if (index >= 11 && index <= 15) {
+      keys.push(cid('right', index - 10, 7));
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 20 && index <= 27) {
-      keys.push(cid('bottom', 9, index - 20));
+    if (index >= 16 && index <= 21) {
+      keys.push(cid('bottom', 6, index - 16));
       return keys;
     }
-    // Bottom extension 26-28 (centered 8 cells)
-    if (index >= 28 && index <= 28) {
-      const col = index - 28; // 0..7
-      // Preview variant (row 0) and download variant (row -1)
-      keys.push(cid('bottom-extension', 0, col + 2));
-      keys.push(cid('bottom-extension', -1, col + 2));
-      return keys;
-    }
-    // Bottom-most extension 34-36 (3 cells)
-    if (index >= 34 && index <= 36) {
-      const col = index - 34; // 0..2
-      keys.push(cid('bottom-most-extension', 0, col + 2));
-      keys.push(cid('bottom-most-extension', -1, col + 2));
-      return keys;
-    }
-    // Top extension most 37-44 (8 cells)
-    if (index >= 37 && index <= 44) {
-      const col = index - 37; // 0..7
-      keys.push(cid('topExt-most', 0, col + 2));
-      keys.push(cid('topExt-most', -1, col + 2));
-      return keys;
-    }
+  
     return keys;
   };
 
@@ -148,16 +127,13 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return col;
     } else if (section === 'left') {
       // Left side: 8-13
-      return 8 + (row - 1);
+      return 6 + (row - 1);
     } else if (section === 'right') {
       // Right side: 14-19
-      return 14 + (row - 1);
+      return 11 + (row - 1);
     } else if (section === 'bottom') {
       // Bottom row: 18-25
-      return 18 + col;
-    }else if (section === 'bottom-extension') {
-      console.log("bottom-extension mapping → row:", row, "col:", col, "index:", 26 + col);
-      return 26 + col;
+      return 16 + col;
     }
     
     return -1;
@@ -463,7 +439,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
           {Array.from({ length: 6 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('top', 0, colIndex);
             return (
               <div
                 key={cellKey}
@@ -625,7 +601,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 6 }, (_, colIndex) => {
-              const key = cid('bottom-extension', 0, colIndex + 2);
+              const key = cid('bottom', 6, colIndex);
               
               return (
                 <div

@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-28';
+  const COMP_ID = 'grid-20';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -314,7 +314,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
           // 8. Draw first bottom extension row (8 cells)
           await Promise.all(Array.from({ length: extensionCells }, (_, i) => 
             drawKey(
-              cid('bottom-extension', -1, i + 2),
+              cid('bottom', 6, i + 2),
               8,  // First bottom extension row
               1.5+i,
               1,
@@ -601,7 +601,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 5 }, (_, colIndex) => {
-              const key = cid('bottom', 0, colIndex );
+              const key = cid('bottom', 7, colIndex );
               
               return (
                 <div
