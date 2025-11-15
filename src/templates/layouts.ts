@@ -62,7 +62,91 @@ export async function enumerate45(cb: EnumerateCallback) {
   }
 }
 
-export async function enumerate17(cb: EnumerateCallback) {
+export async function enumerate12(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1.5 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 3; r++) {
+    await cb({ kind: 'left', index: 3 + r, r: 1.5 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 4, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 3; r++) {
+    await cb({ kind: 'right', index: 6 + r, r: 1.5 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'bottom', index: 9 + c, r: 5, c: 1.5 + c });
+  }
+}
+
+export async function enumerate13(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1.5 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 3; r++) {
+    await cb({ kind: 'left', index: 3 + r, r: 1.5 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 4, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 3; r++) {
+    await cb({ kind: 'right', index: 6 + r, r: 1.5 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'bottom', index: 9 + c, r: 5, c: 1 + c });
+  }
+}
+
+export async function enumerate14(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1.5 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'left', index: 3 + r, r: 1 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 4, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'right', index: 7 + r, r: 1 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'bottom', index: 11 + c, r: 5, c: 1.5 + c });
+  }
+}
+
+export async function enumerate15(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 3; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1.5 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'left', index: 3 + r, r: 1 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 4, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'right', index: 7 + r, r: 1 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'bottom', index: 11 + c, r: 5, c: 1 + c });
+  }
+}
+
+export async function enumerate16(cb: EnumerateCallback) {
   // 1) Top row (4 cells) – row 0
   for (let c = 0; c < 4; c++) {
     await cb({ kind: 'top', index: c, r: 0, c: 1 + c });
@@ -79,6 +163,27 @@ export async function enumerate17(cb: EnumerateCallback) {
   }
   // 5) Bottom row (8 cells) – row 7
   for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'bottom', index: 12 + c, r: 5, c: 1 + c });
+  }
+}
+
+export async function enumerate17(cb: EnumerateCallback) {
+  // 1) Top row (4 cells) – row 0
+  for (let c = 0; c < 4; c++) {
+    await cb({ kind: 'top', index: c, r: 0, c: 1 + c });
+  }
+  // 2) Left side (6 cells) – rows 1..6 at col 0
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'left', index: 4 + r, r: 1 + r, c: 0 });
+  }
+  // 3) Center (spans 6x6) – starts at row 1, col 1
+  await cb({ kind: 'center', index: -1, r: 1, c: 1, rspan: 4, cspan: 4 });
+  // 4) Right side (6 cells) – rows 1..6 at col 7
+  for (let r = 0; r < 4; r++) {
+    await cb({ kind: 'right', index: 8 + r, r: 1 + r, c: 5 });
+  }
+  // 5) Bottom row (8 cells) – row 7
+  for (let c = 0; c < 5; c++) {
     await cb({ kind: 'bottom', index: 12 + c, r: 5, c: 0.5 + c });
   }
 }

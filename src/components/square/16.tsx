@@ -600,8 +600,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 5 }, (_, colIndex) => {
-              const key = cid('bottom', 5, colIndex);
+            {Array.from({ length: 4 }, (_, colIndex) => {
+              const key = cid('bottom', 5, colIndex+1);
               
               return (
                 <div

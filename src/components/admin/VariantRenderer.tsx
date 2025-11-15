@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Order } from '@/types/admin';
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import * as faceapi from 'face-api.js';
-import {enumerate17, enumerate18, enumerate19, enumerate20, enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74, enumerate75, enumerate76, enumerate77, enumerate78, enumerate79, enumerate80, enumerate81, enumerate82, enumerate83, enumerate84, enumerate85, enumerate86, enumerate87, enumerate88, enumerate89, enumerate90, enumerate91, enumerate92, enumerate93, enumerate94, enumerate95, enumerate96 } from '@/templates/layouts';
+import {enumerate12, enumerate13, enumerate14, enumerate15, enumerate16, enumerate17, enumerate18, enumerate19, enumerate20, enumerate33, enumerate34, enumerate35, enumerate36, enumerate37, enumerate38, enumerate39, enumerate40, enumerate41, enumerate42, enumerate43, enumerate44, enumerate45, enumerate46, enumerate47, enumerate48, enumerate49, enumerate50, enumerate51, enumerate52, enumerate53, enumerate54, enumerate55, enumerate56, enumerate57, enumerate58, enumerate59, enumerate60, enumerate61, enumerate62, enumerate63, enumerate64, enumerate65, enumerate66, enumerate67, enumerate68, enumerate69, enumerate70, enumerate71, enumerate72, enumerate73, enumerate74, enumerate75, enumerate76, enumerate77, enumerate78, enumerate79, enumerate80, enumerate81, enumerate82, enumerate83, enumerate84, enumerate85, enumerate86, enumerate87, enumerate88, enumerate89, enumerate90, enumerate91, enumerate92, enumerate93, enumerate94, enumerate95, enumerate96 } from '@/templates/layouts';
 import * as layouts from '@/templates/layouts';
 
 interface VariantRendererProps {
@@ -155,7 +155,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const count = order.members.length;
         let effectiveKey = templateKey;
         if (order.gridTemplate === 'square') {
-          if (count === 17) effectiveKey = '17';
+          if (count === 12) effectiveKey = '12';
+          else if (count === 13) effectiveKey = '13';
+          else if (count === 14) effectiveKey = '14';
+          else if (count === 15) effectiveKey = '15';
+          else if (count === 16) effectiveKey = '16';
+          else if (count === 17) effectiveKey = '17';
           else if (count === 18) effectiveKey = '18';
           else if (count === 19) effectiveKey = '19';
           else if (count === 20) effectiveKey = '20';
@@ -243,6 +248,96 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
           });
         } 
+        else if (effectiveKey === '12') {
+          await enumerate12(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } 
+        else if (effectiveKey === '13') {
+          await enumerate13(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } 
+        else if (effectiveKey === '14') {
+          await enumerate14(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } 
+        else if (effectiveKey === '15') {
+          await enumerate15(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } 
+        else if (effectiveKey === '16') {
+          await enumerate16(async (slot) => {
+            if (slot.kind === 'center') {
+              if (variant.centerMember?.photo) {
+                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } else {
+                const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x, y, w, h);
+              }
+              return;
+            }
+            const m = slot.index >= 0 ? memberAt(slot.index) : null;
+            if (m?.photo) {
+              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+            }
+          });
+        } 
         else if (effectiveKey === '17') {
           await enumerate17(async (slot) => {
             if (slot.kind === 'center') {
@@ -261,8 +356,8 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
           });
         } 
-        else if (efectiveKey === '18'){
-          await enumerate17(async (slot) => {
+        else if (effectiveKey === '18'){
+          await enumerate18(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
                 await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
