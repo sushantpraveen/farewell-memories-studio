@@ -32,9 +32,12 @@ export const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ message: 'Amount (in paise) is required' });
     }
 
+    // Convert amount to integer (Razorpay requires integer values)
+    const amountPaise = Math.round(amount);
+
     const razorpay = getRazorpayInstance();
     const order = await razorpay.orders.create({
-      amount, // paise
+      amount: amountPaise, // paise (must be integer)
       currency,
       receipt: receipt || `rcpt_${Date.now()}`,
       notes: notes || {},

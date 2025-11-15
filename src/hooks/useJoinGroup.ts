@@ -210,11 +210,13 @@ export const useJoinGroup = (groupId: string | undefined) => {
       }
 
       const receipt = `grp_join_${groupId.slice(-6)}_${Date.now()}`;
+      // Calculate amount in paise (must be integer for Razorpay)
+      const amountPaise = Math.round(joinPricing.total * 100);
       const orderResponse = await fetch('/api/payments/join/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: joinPricing.total * 100,
+          amount: amountPaise,
           currency: 'INR',
           receipt,
           notes: { groupId, phone: verifiedPhone }

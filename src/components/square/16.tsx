@@ -104,11 +104,11 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 12 && index <= 15) {
-      keys.push(cid('bottom', index - 11, 5));
+    if (index >= 12 && index <= 16) {
+      keys.push(cid('bottom', 5, index - 11));
       return keys;
     }
-  
+   
     return keys;
   };
 
@@ -600,8 +600,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 4 }, (_, colIndex) => {
-              const key = cid('bottom', 5, colIndex );
+            {Array.from({ length: 5 }, (_, colIndex) => {
+              const key = cid('bottom', 5, colIndex);
               
               return (
                 <div

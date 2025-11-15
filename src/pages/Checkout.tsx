@@ -520,8 +520,8 @@ const Checkout = () => {
       const ok = await loadRazorpayScript();
       if (!ok) throw new Error('Failed to load Razorpay');
 
-      // 1) Create a Razorpay order (amount in paise)
-      const amountPaise = finalTotal * 100;
+      // 1) Create a Razorpay order (amount in paise, must be integer)
+      const amountPaise = Math.round(finalTotal * 100);
       const rpOrder = await paymentsApi.createOrder(amountPaise, `grp_${group.id}`);
 
       // 2) Get public key
