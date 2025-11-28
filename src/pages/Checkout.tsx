@@ -605,9 +605,6 @@ const Checkout = () => {
               email: shippingForm.email,
               name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
               amount: finalTotal * 100,
-              // optional fields backend can use to attach/send invoice
-              invoicePdfBase64: invoiceBase64,
-              invoiceFileName: `Invoice-${group?.name || 'Order'}-${Date.now()}.pdf`,
             });
             if (!verify.valid) throw new Error('Payment verification failed');
 
@@ -664,6 +661,27 @@ const Checkout = () => {
             console.log('[Checkout] Creating order:', newOrder.id);
             await ordersApi.createOrder(newOrder);
             console.log('[Checkout] ✅ Order created successfully');
+            
+            // Create ambassador reward if group was created via referral
+            try {
+              const { AmbassadorStorageService } = await import('@/lib/ambassadorStorage');
+              const ambassadorId = localStorage.getItem(`group-${group.id}-ambassador`);
+              
+              if (ambassadorId) {
+                const memberCount = group.members.length;
+                const reward = AmbassadorStorageService.createReward(
+                  group.id,
+                  group.name,
+                  ambassadorId,
+                  memberCount,
+                  finalTotal
+                );
+                console.log('[Checkout] ✅ Ambassador reward created:', reward);
+              }
+            } catch (err) {
+              console.error('[Checkout] Failed to create ambassador reward:', err);
+              // Non-blocking error
+            }
             
             // Offer invoice download for the user immediately
             try {
