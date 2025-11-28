@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import { GoogleAuthCallback } from "./pages/GoogleAuthCallback";
 import AmbassadorSignup from "./pages/AmbassadorSignup";
 import AmbassadorDashboard from "./pages/AmbassadorDashboard";
+import AmbassadorAdmin from "./pages/AmbassadorAdmin";
 import ReferralRedirect from "./pages/ReferralRedirect";
 
 const queryClient = new QueryClient();
@@ -94,9 +95,17 @@ const App = () => (
                   <AdminOrders />
                 </ProtectedRoute>
             } />
-              <Route path="/ambassador/signup" element={<AmbassadorSignup />} />
-              <Route path="/ambassador/:ambassadorId" element={<AmbassadorDashboard />} />
-              <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
+            <Route path="/ambassador/signup" element={<AmbassadorSignup />} />
+            <Route path="/ambassador/:ambassadorId" element={<AmbassadorDashboard />} />
+            <Route 
+              path="/admin/ambassadors" 
+              element={
+                <ProtectedRoute requiresAdmin>
+                  <AmbassadorAdmin />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
