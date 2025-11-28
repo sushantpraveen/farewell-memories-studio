@@ -194,7 +194,7 @@ const PhoneOtpBlock: React.FC<PhoneOtpBlockProps> = ({
             placeholder="6-digit code"
             value={otp}
             onChange={handleOtpChange}
-            disabled={disabled || status === 'verified' || status === 'locked'}
+            disabled={disabled || status === 'verified'}
           />
         </div>
       )}

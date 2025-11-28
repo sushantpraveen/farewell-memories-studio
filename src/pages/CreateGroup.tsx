@@ -139,6 +139,10 @@ const CreateGroup = () => {
     setIsSubmitting(true);
 
     try {
+      // Check for active referral
+      const { AmbassadorStorageService } = await import('@/lib/ambassadorStorage');
+      const referralCode = AmbassadorStorageService.getActiveReferral();
+      
       const groupId = await createGroup({
         name: formData.name,
         yearOfPassing: formData.yearOfPassing,
@@ -148,6 +152,17 @@ const CreateGroup = () => {
 
       if (!groupId) {
         throw new Error('Failed to create group');
+      }
+
+      // If there's a referral, store it with the group
+      if (referralCode) {
+        const ambassador = AmbassadorStorageService.getAmbassadorByReferralCode(referralCode);
+        if (ambassador) {
+          // Store the ambassador ID with the group for later reward calculation
+          localStorage.setItem(`group-${groupId}-ambassador`, ambassador.id);
+          // Clear the active referral
+          AmbassadorStorageService.clearActiveReferral();
+        }
       }
 
       // Update user data to mark as leader and set groupId

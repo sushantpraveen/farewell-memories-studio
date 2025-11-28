@@ -172,6 +172,16 @@ const Index = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+                <Link to="/ambassador/signup">
+                  <Button 
+                    variant="outline"
+                    size="lg"
+                    className="border-purple-300 hover:bg-purple-50"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Campus Ambassador</span>
+                  </Button>
+                </Link>
                 <Button 
                   onClick={handleMainAction}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
