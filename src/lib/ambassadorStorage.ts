@@ -116,11 +116,10 @@ export class AmbassadorStorageService {
 
   // Calculate reward based on member count
   static calculateReward(memberCount: number): number {
-    if (memberCount >= 100) return 1200;
-    if (memberCount >= 61) return 750;
-    if (memberCount >= 41) return 400;
-    if (memberCount >= 20) return 200;
-    return 0; // No reward for less than 20 members
+    // 10% of total join amount where each member pays ₹200
+    // Reward per member = ₹200 * 10% = ₹20
+    if (memberCount <= 0) return 0;
+    return memberCount * 20;
   }
 
   // Create reward when group completes order
@@ -171,6 +170,27 @@ export class AmbassadorStorageService {
     return rewards.filter(r => r.ambassadorId === ambassadorId);
   }
 
+  // Get group IDs that were created via the ambassador's referral (client-side tracking)
+  static getReferredGroupIdsForAmbassador(ambassadorId: string): string[] {
+    const ids: string[] = [];
+    try {
+      // Iterate over localStorage keys to find pattern group-<id>-ambassador
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) || '';
+        if (key.startsWith('group-') && key.endsWith('-ambassador')) {
+          const groupId = key.slice('group-'.length, -'-ambassador'.length);
+          const val = localStorage.getItem(key);
+          if (val === ambassadorId) {
+            ids.push(groupId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading referred groups:', error);
+    }
+    return ids;
+  }
+
   // Update reward status
   static updateRewardStatus(rewardId: string, status: AmbassadorReward['status']): boolean {
     const rewards = this.getAllRewards();
@@ -190,6 +210,7 @@ export class AmbassadorStorageService {
   // Get dashboard stats for ambassador
   static getAmbassadorStats(ambassadorId: string) {
     const rewards = this.getRewardsByAmbassador(ambassadorId);
+    const referredGroupIds = this.getReferredGroupIdsForAmbassador(ambassadorId);
     
     return {
       totalGroups: rewards.length,
@@ -198,6 +219,7 @@ export class AmbassadorStorageService {
       pendingRewards: rewards.filter(r => r.status === 'Pending').reduce((sum, r) => sum + r.rewardAmount, 0),
       paidRewards: rewards.filter(r => r.status === 'Paid').reduce((sum, r) => sum + r.rewardAmount, 0),
       completedOrders: rewards.filter(r => r.status !== 'Pending').length,
+      referredGroups: referredGroupIds.length,
     };
   }
 }

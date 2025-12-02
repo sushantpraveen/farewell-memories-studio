@@ -7,7 +7,8 @@ import {
   updateUserProfile,
   getUsers,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getUserGroups
 } from '../controllers/userController.js';
 import { protect, isLeader, isAdmin } from '../middleware/authMiddleware.js';
 
@@ -38,6 +39,9 @@ router.put('/profile', protect, updateUserProfile);
 
 // Admin routes
 router.get('/', protect, isAdmin, getUsers);
+
+// User groups
+router.get('/:userId/groups', protect, getUserGroups);
 
 export default router;
 

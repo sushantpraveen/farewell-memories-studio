@@ -4,7 +4,9 @@ import {
   getKey, 
   createRazorpayOrder, 
   verifyPayment,
-  verifyPaymentAndJoin
+  verifyPaymentAndJoin,
+  createPaymentIntent,
+  confirmPayment
 } from '../controllers/paymentController.js';
 
 const router = express.Router();
@@ -17,6 +19,10 @@ router.post('/join/verify', verifyPaymentAndJoin);
 // Checkout flow routes (requires user auth)
 router.post('/order', protect, createRazorpayOrder);
 router.post('/verify', protect, verifyPayment);
+
+// Demo payment flow routes
+router.post('/intent', protect, createPaymentIntent);
+router.post('/confirm', protect, confirmPayment);
 
 export default router;
 

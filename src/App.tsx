@@ -18,6 +18,8 @@ import AdminOrders from "./pages/AdminOrders";
 import GridBoard from "./components/GridBoard";
 import JoinGroup from "./pages/JoinGroup";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import CollegeDashboard from "./pages/CollegeDashboard";
 import Editor from "./pages/Editor";
 import Checkout from "./pages/Checkout";
 import Success from "./pages/success";
@@ -26,6 +28,7 @@ import { GoogleAuthCallback } from "./pages/GoogleAuthCallback";
 import AmbassadorSignup from "./pages/AmbassadorSignup";
 import AmbassadorDashboard from "./pages/AmbassadorDashboard";
 import AmbassadorAdmin from "./pages/AmbassadorAdmin";
+import AmbassadorDetails from "./pages/AmbassadorDetails";
 import ReferralRedirect from "./pages/ReferralRedirect";
 
 const queryClient = new QueryClient();
@@ -53,7 +56,7 @@ const App = () => (
               } />
               <Route path="/join/:groupId" element={
                 // <ProtectedRoute>
-                  <JoinGroup />
+                <JoinGroup />
                 // </ProtectedRoute>
               } />
               <Route path="/success" element={<Success />} />
@@ -73,7 +76,7 @@ const App = () => (
                   <Checkout />
                 </ProtectedRoute>
               } />
-              
+
               {/* New groupId-based routes */}
               <Route path="/dashboard/:groupId" element={
                 <ProtectedRoute>
@@ -90,22 +93,46 @@ const App = () => (
                   <Checkout />
                 </ProtectedRoute>
               } />
-               <Route path="/admin/order" element={
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/colleges"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <CollegeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/admin/order" element={
                 <ProtectedRoute requiresAdmin>
                   <AdminOrders />
                 </ProtectedRoute>
-            } />
-            <Route path="/ambassador/signup" element={<AmbassadorSignup />} />
-            <Route path="/ambassador/:ambassadorId" element={<AmbassadorDashboard />} />
-            <Route 
-              path="/admin/ambassadors" 
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AmbassadorAdmin />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
+              } />
+              <Route path="/ambassador/signup" element={<AmbassadorSignup />} />
+              <Route path="/ambassador/:ambassadorId" element={<AmbassadorDashboard />} />
+              <Route
+                path="/admin/ambassadors"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <AmbassadorAdmin />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/ambassadors/:ambassadorId"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <AmbassadorDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

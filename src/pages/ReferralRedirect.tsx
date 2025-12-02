@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AmbassadorStorageService } from '@/lib/ambassadorStorage';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ReferralRedirect() {
   const { referralCode } = useParams<{ referralCode: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!referralCode) {
@@ -13,23 +14,52 @@ export default function ReferralRedirect() {
       return;
     }
 
-    // Validate referral code
-    const ambassador = AmbassadorStorageService.getAmbassadorByReferralCode(referralCode);
-    
-    if (!ambassador) {
-      toast.error('Invalid referral code');
-      navigate('/');
-      return;
-    }
+    const run = async () => {
+      try {
+        // 1) Validate referral code with backend
+        const res = await fetch(`/api/referrals/code/${encodeURIComponent(referralCode)}`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ambassadorId) {
+          toast.error('Invalid referral code');
+          navigate('/');
+          return;
+        }
 
-    // Store the referral code in localStorage for later use
-    AmbassadorStorageService.setActiveReferral(referralCode);
-    
-    toast.success(`Welcome! You're creating a group via ${ambassador.name}'s referral`);
-    
-    // Redirect to create group page
-    navigate('/create-group');
-  }, [referralCode, navigate]);
+        // 2) If logged in, check if user already has a group for this referral
+        if (user?.id) {
+          try {
+            const myGroupRes = await fetch(`/api/referrals/${encodeURIComponent(referralCode)}/my-group`, {
+              credentials: 'include',
+            });
+            const myGroupData = await myGroupRes.json().catch(() => null);
+            if (myGroupRes.ok && myGroupData?.group && myGroupData.group.id) {
+              toast.success('Welcome back! Opening your existing group.');
+              navigate(`/dashboard/${myGroupData.group.id}`);
+              return;
+            }
+          } catch (err) {
+            console.warn('Failed to resolve existing referral group for user:', err);
+          }
+        }
+
+        // 3) Set httpOnly cookie for attribution
+        await fetch('/api/referrals/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralCode })
+        }).catch(() => undefined);
+
+        const name = data?.name || data?.ambassadorName || 'your ambassador';
+        toast.success(`Welcome! You're creating a group via ${name}'s referral`);
+        navigate('/create-group');
+      } catch (err) {
+        toast.error('Invalid referral code');
+        navigate('/');
+      }
+    };
+
+    run();
+  }, [referralCode, navigate, user?.id]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">

@@ -44,6 +44,7 @@ export interface AdminMember {
     members: AdminMember[];
     shipping: Shipping;
     settings: OrderSettings;
+    groupId?: string; // For ambassador referral tracking
   }
   
   export interface OrderFilters {
@@ -56,6 +57,7 @@ export interface AdminMember {
   
   export interface AdminOrdersContextType {
     orders: Order[];
+    orderCount: number;
     selectedOrders: string[];
     filters: OrderFilters;
     currentPage: number;

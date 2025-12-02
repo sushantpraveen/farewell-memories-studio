@@ -1,9 +1,36 @@
 import Order from '../models/orderModel.js';
+import { upsertReward } from '../services/rewardService.js';
+import Group from '../models/groupModel.js';
 
 export const createOrder = async (req, res) => {
   try {
     const payload = req.body || {};
     const clientOrderId = payload.id || payload.clientOrderId || `ORD-${Date.now()}`;
+
+    // Extract groupId from payload (may be in notes or directly in payload)
+    let groupId = payload.groupId || payload.notes?.groupId || null;
+    
+    // If not found, try to extract from description or find by members
+    if (!groupId && payload.description) {
+      const descMatch = payload.description.match(/group[_-]?id[:\s]+([a-f0-9]{24})/i);
+      if (descMatch) {
+        groupId = descMatch[1];
+      }
+    }
+
+    // If still not found, try to find by member roll numbers
+    if (!groupId && payload.members && payload.members.length > 0) {
+      const firstMemberRoll = payload.members[0]?.memberRollNumber;
+      if (firstMemberRoll) {
+        const group = await Group.findOne({
+          'members.memberRollNumber': firstMemberRoll
+        }).select('_id ambassadorId').lean();
+        
+        if (group) {
+          groupId = group._id.toString();
+        }
+      }
+    }
 
     const order = await Order.create({
       clientOrderId,
@@ -25,7 +52,27 @@ export const createOrder = async (req, res) => {
       })),
       shipping: payload.shipping,
       settings: payload.settings,
+      groupId: groupId || undefined
     });
+
+    // Create ambassador reward if order is paid and group has ambassador
+    if (payload.paid && groupId) {
+      try {
+        // Verify group exists and has ambassador
+        const group = await Group.findById(groupId).select('ambassadorId members').lean();
+        
+        if (group && group.ambassadorId) {
+          // Calculate order value (total amount in rupees)
+          const orderValue = payload.settings?.total ? payload.settings.total / 100 : null;
+          
+          await upsertReward({ groupId, orderValue });
+          console.log(`[Order] Created reward for group ${groupId}`);
+        }
+      } catch (rewardError) {
+        // Non-blocking: reward creation failure shouldn't break order creation
+        console.error('[Order] Failed to create ambassador reward:', rewardError.message);
+      }
+    }
 
     return res.status(201).json(order.toJSON());
   } catch (err) {
@@ -88,10 +135,10 @@ export const getOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if id is a valid ObjectId
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-    
+
     // Build query based on id format
     let query;
     if (isValidObjectId) {
@@ -100,7 +147,7 @@ export const getOrderById = async (req, res) => {
       // If not a valid ObjectId, only search by clientOrderId
       query = { clientOrderId: id };
     }
-    
+
     const order = await Order.findOne(query).lean({ virtuals: true });
     if (!order) return res.status(404).json({ message: 'Order not found' });
     return res.json({ ...order, id: order.clientOrderId || String(order._id) });
@@ -131,10 +178,10 @@ export const updateOrder = async (req, res) => {
     }
 
     if (updates.paidAt) updates.paidAt = new Date(updates.paidAt);
-    
+
     // Check if id is a valid ObjectId
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-    
+
     // Build query based on id format
     let query;
     if (isValidObjectId) {
@@ -167,7 +214,7 @@ export const exportOrdersCsv = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean({ virtuals: true });
 
-    const header = ['Order ID','Customer Name','Status','Paid','Created At','Member Count'];
+    const header = ['Order ID', 'Customer Name', 'Status', 'Paid', 'Created At', 'Member Count'];
     const csvEscape = (val) => {
       if (val === null || val === undefined) return '';
       const str = String(val);
@@ -202,10 +249,10 @@ export const exportOrdersCsv = async (req, res) => {
 export const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if id is a valid ObjectId
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-    
+
     // Build query based on id format
     let query;
     if (isValidObjectId) {
@@ -214,7 +261,7 @@ export const deleteOrder = async (req, res) => {
       // If not a valid ObjectId, only search by clientOrderId
       query = { clientOrderId: id };
     }
-    
+
     const deleted = await Order.findOneAndDelete(query);
     if (!deleted) return res.status(404).json({ message: 'Order not found' });
     return res.status(204).send();

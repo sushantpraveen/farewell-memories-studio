@@ -19,7 +19,7 @@ export const GoogleAuthCallback: React.FC = () => {
           if (success) {
             const userData = LocalStorageService.loadUserData();
             if (userData?.isAdmin) {
-              navigate('/admin/order');
+              navigate('/admin');
             } else {
               navigate('/dashboard');
             }

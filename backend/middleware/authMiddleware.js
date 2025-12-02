@@ -6,24 +6,31 @@ import User from '../models/userModel.js';
  */
 export const protect = async (req, res, next) => {
   let token;
-  
+
+  // 1) Try Authorization: Bearer <token>
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production');
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({ message: 'Not authorized, user not found' });
-      }
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
-    }
+    token = req.headers.authorization.split(' ')[1];
   }
-  
+
+  // 2) Fallback to cookies (httpOnly)
+  if (!token && req.cookies) {
+    token = req.cookies.token || req.cookies.jwt || null;
+  }
+
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token provided' });
+    return res.status(401).json({ message: 'Not authorized, no token provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production');
+    req.user = await User.findById(decoded.id).select('-password');
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized, user not found' });
+    }
+    next();
+  } catch (error) {
+    console.error('protect middleware error:', error);
+    res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };
 

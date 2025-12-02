@@ -195,11 +195,6 @@ export const useJoinGroup = (groupId: string | undefined) => {
       return;
     }
 
-    if (!verifiedPhone || !isPhoneVerified) {
-      toast.error('Please verify your phone number before joining.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -219,7 +214,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
           amount: amountPaise,
           currency: 'INR',
           receipt,
-          notes: { groupId, phone: verifiedPhone }
+          notes: { groupId }
         })
       });
 
@@ -245,7 +240,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
         prefill: {
           name: memberData.name,
           email: memberData.email,
-          contact: verifiedPhone
+          contact: ''
         },
         notes: { groupId },
         handler: async (response: any) => {

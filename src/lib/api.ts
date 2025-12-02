@@ -252,6 +252,10 @@ export const ordersApi = {
     return apiRequest<any>(`/orders/${id}`, 'GET');
   },
 
+  getOrderCount: () => {
+    return apiRequest<{count:number}>('/orders/count', 'GET');
+  },
+
   // Update order (admin)
   updateOrder: (id: string, updates: any) => {
     return apiRequest<any>(`/orders/${id}`, 'PUT', updates);
@@ -277,6 +281,16 @@ export const ordersApi = {
 };
 
 /**
+ * User API helpers
+ */
+export const userApi = {
+  // Get groups owned by a user (most recent first)
+  getUserGroups: (userId: string) => {
+    return apiRequest<{ items: any[] }>(`/users/${encodeURIComponent(userId)}/groups`, 'GET');
+  },
+};
+
+/**
  * Payments API (Razorpay)
  */
 export const paymentsApi = {
@@ -296,6 +310,16 @@ export const paymentsApi = {
     name?: string;
     amount?: number;
   }) => apiRequest<{ valid: boolean; emailed: boolean }>(`/payments/verify`, 'POST', payload),
+  // Demo payment flow (internal reward bookkeeping)
+  // NOTE: backend currently expects { groupId, itemTotal }
+  createIntent: (groupId: string, itemTotal: number) =>
+    apiRequest<{ paymentId: string; clientSecret: string }>(`/payments/intent`, 'POST', { groupId, itemTotal }),
+  confirm: (paymentId: string, outcome?: 'success' | 'fail') =>
+    apiRequest<{ paymentId: string; status: string; reward?: { id: string; amount: number; status: string } }>(
+      `/payments/confirm`,
+      'POST',
+      { paymentId, outcome }
+    ),
 };
 
 /**

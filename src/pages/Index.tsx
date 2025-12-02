@@ -4,6 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { userApi } from '@/lib/api';
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import SEOHead from "@/components/seo/SEOHead";
@@ -67,33 +68,33 @@ const Index = () => {
   const navigate = useNavigate();
   const [userDashboardPath, setUserDashboardPath] = useState<string | null>(null);
 
-  const getLastActiveGroup = (): string | null => {
-    return localStorage.getItem('lastActiveGroupId');
-  };
-
   useEffect(() => {
-    const determineDashboardPath = () => {
-      if (user?.isLeader && user?.groupId) {
-        setUserDashboardPath(`/dashboard/${user.groupId}`);
-        return;
-      }
-      
-      if (!user?.isLeader && user?.groupId) {
+    const determineDashboardPath = async () => {
+      // No logged-in user -> no dashboard link
+      if (!user) {
         setUserDashboardPath(null);
         return;
       }
-      
-      const lastActive = getLastActiveGroup();
-      if (lastActive && user?.isLeader) {
-        setUserDashboardPath(`/dashboard/${lastActive}`);
-        return;
+
+      try {
+        // Fetch groups owned by this user and pick the most recent
+        const res = await userApi.getUserGroups(user.id);
+        const groups = res.items || [];
+
+        if (groups.length > 0) {
+          const primaryGroup = groups[0];
+          setUserDashboardPath(`/dashboard/${primaryGroup.id}`);
+        } else {
+          setUserDashboardPath(null);
+        }
+      } catch (err) {
+        console.error('[Index] Failed to resolve user groups for dashboard:', err);
+        setUserDashboardPath(null);
       }
-      
-      setUserDashboardPath(null);
     };
 
     determineDashboardPath();
-  }, [user?.groupId, user?.isLeader]);
+  }, [user?.id]);
 
   const handleMainAction = () => {
     if (userDashboardPath) {

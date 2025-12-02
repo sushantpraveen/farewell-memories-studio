@@ -88,7 +88,7 @@ const groupSchema = new mongoose.Schema(
     },
     shareLink: {
       type: String,
-      default: function() {
+      default: function () {
         return `/join/${this._id}`;
       }
     },
@@ -106,6 +106,38 @@ const groupSchema = new mongoose.Schema(
         type: Number,
         default: 0
       }
+    },
+    ambassadorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Ambassador',
+      default: null
+    },
+    referralCode: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    referredAt: {
+      type: Date,
+      default: null
+    },
+    // User who created/owns this group
+    createdByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+      required: false
+    },
+    status: {
+      type: String,
+      enum: ['created', 'paid'],
+      default: 'created',
+      index: true
+    },
+    orderTotal: {
+      type: Number,
+      min: 0,
+      default: null
     }
   },
   {
@@ -117,19 +149,22 @@ const groupSchema = new mongoose.Schema(
 groupSchema.index({ createdAt: -1 });
 groupSchema.index({ yearOfPassing: 1 });
 groupSchema.index({ 'members.memberRollNumber': 1 });
+groupSchema.index({ ambassadorId: 1, createdAt: -1 });
+groupSchema.index({ createdByUserId: 1, createdAt: -1 });
+groupSchema.index({ referralCode: 1, createdByUserId: 1 });
 
 // Virtual for calculating current member count
-groupSchema.virtual('currentMemberCount').get(function() {
+groupSchema.virtual('currentMemberCount').get(function () {
   return this.members.length;
 });
 
 // Method to check if group is full
-groupSchema.methods.isFull = function() {
+groupSchema.methods.isFull = function () {
   return this.members.length >= this.totalMembers;
 };
 
 // Method to add a new member
-groupSchema.methods.addMember = function(memberData) {
+groupSchema.methods.addMember = function (memberData) {
   if (this.isFull()) {
     throw new Error('Group is already full');
   }
@@ -141,7 +176,7 @@ groupSchema.methods.addMember = function(memberData) {
 };
 
 // Method to update grid template based on votes
-groupSchema.methods.updateGridTemplate = function() {
+groupSchema.methods.updateGridTemplate = function () {
   const votes = this.votes;
   let maxVotes = 0;
   let winningTemplate = this.gridTemplate;

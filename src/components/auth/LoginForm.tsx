@@ -46,7 +46,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
         toast.success('Login successful!');
         const storedUser = LocalStorageService.loadUserData();
         if (storedUser?.isAdmin) {
-          navigate('/admin/order');
+          navigate('/admin/');
         } else {
           navigate('/dashboard');
         }

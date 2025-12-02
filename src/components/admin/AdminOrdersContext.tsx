@@ -22,6 +22,12 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [orderCount, setOrderCount] = useState(0);
+
+  const fetchOrderCount = async () => {
+    const result = await ordersApi.getOrderCount();
+    setOrderCount(result.count);
+  };
 
   const refreshOrders = async () => {
     setLoading(true);
@@ -105,6 +111,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const value: AdminOrdersContextType = {
     orders,
+    orderCount,
     selectedOrders,
     filters,
     currentPage,
@@ -116,6 +123,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
     setSelectedOrders,
     updateOrderStatus,
     updateOrderSettings,
+    fetchOrderCount,
     deleteOrder,
     openOrderTab,
     closeOrderTab,

@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AmbassadorStorageService } from '@/lib/ambassadorStorage';
+import { createAmbassador } from '@/lib/ambassadorApi';
 import { toast } from 'sonner';
+import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
 
 export default function AmbassadorSignup() {
   const navigate = useNavigate();
@@ -16,30 +17,35 @@ export default function AmbassadorSignup() {
     college: '',
     city: '',
   });
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.name || !formData.email || !formData.whatsapp || !formData.college || !formData.city) {
       toast.error('Please fill all fields');
       return;
     }
 
-    // Check if email already exists
-    const existingAmbassador = AmbassadorStorageService.getAmbassadorByEmail(formData.email);
-    if (existingAmbassador) {
-      toast.error('This email is already registered as an ambassador');
+    if (!verifiedPhone) {
+      toast.error('Please verify your phone number with the OTP before continuing');
       return;
     }
 
-    // Create ambassador
-    const ambassador = AmbassadorStorageService.createAmbassador(formData);
-    
-    toast.success('Welcome! Your ambassador account has been created');
-    
-    // Navigate to dashboard
-    navigate(`/ambassador/${ambassador.id}`);
+    try {
+      const ambassador = await createAmbassador({
+        name: formData.name,
+        email: formData.email,
+        phone: verifiedPhone,
+        college: formData.college,
+        city: formData.city,
+      });
+      toast.success('Welcome! Your ambassador account has been created');
+      navigate(`/ambassador/${ambassador.id}`);
+    } catch (err: any) {
+      const message = err?.message || 'Failed to create ambassador';
+      toast.error(message);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,18 +117,21 @@ export default function AmbassadorSignup() {
 
             <div className="space-y-2">
               <Label htmlFor="whatsapp">WhatsApp Number</Label>
-              <Input
-                id="whatsapp"
-                name="whatsapp"
-                type="tel"
+              <PhoneOtpBlock
                 value={formData.whatsapp}
-                onChange={handleChange}
-                placeholder="+91 9876543210"
-                required
+                onChange={(val) => {
+                  setFormData(prev => ({ ...prev, whatsapp: val }));
+                  setVerifiedPhone(null);
+                }}
+                onVerified={(normalized) => setVerifiedPhone(normalized)}
+                source="ambassadorSignup"
               />
+              {!verifiedPhone && (
+                <p className="text-xs text-slate-600">Verify your phone via OTP to continue.</p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={!verifiedPhone}>
               Sign Up as Ambassador
             </Button>
           </form>

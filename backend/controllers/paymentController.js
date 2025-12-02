@@ -3,8 +3,12 @@ import crypto from 'crypto';
 import { sendMail } from '../utils/email.js';
 import Order from '../models/orderModel.js';
 import Group from '../models/groupModel.js';
-import OTPVerification from '../models/OTPVerification.js';
-import { standardizePhoneNumber } from '../utils/otpUtils.js';
+import Payment from '../models/paymentModel.js';
+import AmbassadorReward from '../models/ambassadorRewardModel.js';
+import Ambassador from '../models/ambassadorModel.js';
+import mongoose from 'mongoose';
+// import OTPVerification from '../models/OTPVerification.js';
+// import { standardizePhoneNumber } from '../utils/otpUtils.js';
 
 const getRazorpayInstance = () => {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -236,10 +240,11 @@ export const verifyPaymentAndJoin = async (req, res) => {
     if (!groupId || !member) {
       return res.status(400).json({ success: false, message: 'Missing group or member data' });
     }
+    // phone missing intentionally
+    const { name, email, memberRollNumber, photo, vote, size } = member;
 
-    const { name, email, memberRollNumber, photo, vote, size, phone } = member;
-
-    if (!name || !email || !memberRollNumber || !photo || !vote || !phone) {
+    // if (!name || !email || !memberRollNumber || !photo || !vote || !phone) {
+    if (!name || !email || !memberRollNumber || !photo || !vote ) {
       return res.status(400).json({ success: false, message: 'Incomplete member details provided' });
     }
 
@@ -258,18 +263,18 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid payment signature' });
     }
 
-    const normalizedPhone = standardizePhoneNumber(phone);
-    if (!normalizedPhone) {
-      return res.status(400).json({ success: false, message: 'Invalid phone number' });
-    }
+    // const normalizedPhone = standardizePhoneNumber(phone);
+    // if (!normalizedPhone) {
+    //   return res.status(400).json({ success: false, message: 'Invalid phone number' });
+    // }
 
-    const verifiedWindowMs = Number(process.env.OTP_VERIFIED_MAX_AGE_MINUTES || 30) * 60 * 1000;
-    const otpRecord = await OTPVerification.findOne({ phone: normalizedPhone, verified: true })
-      .sort({ verifiedAt: -1 });
+    // const verifiedWindowMs = Number(process.env.OTP_VERIFIED_MAX_AGE_MINUTES || 30) * 60 * 1000;
+    // const otpRecord = await OTPVerification.findOne({ phone: normalizedPhone, verified: true })
+    //   .sort({ verifiedAt: -1 });
 
-    if (!otpRecord || !otpRecord.verifiedAt || (Date.now() - otpRecord.verifiedAt.getTime()) > verifiedWindowMs || otpRecord.usedAt) {
-      return res.status(400).json({ success: false, message: 'Phone number has not been verified recently. Please complete OTP verification again.' });
-    }
+    // if (!otpRecord || !otpRecord.verifiedAt || (Date.now() - otpRecord.verifiedAt.getTime()) > verifiedWindowMs || otpRecord.usedAt) {
+    //   return res.status(400).json({ success: false, message: 'Phone number has not been verified recently. Please complete OTP verification again.' });
+    // }
 
     const group = await Group.findById(groupId);
     if (!group) {
@@ -285,8 +290,8 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Member with this roll number already exists' });
     }
 
-    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 1);
-    const printPrice = Number(process.env.PRINT_PRICE || 1);
+    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 150);
+    const printPrice = Number(process.env.PRINT_PRICE || 50);
     const gstRate = Number(process.env.GST_RATE || 0.05);
     const perItemSubtotal = tshirtPrice + printPrice;
     const perItemGst = Math.round(perItemSubtotal * gstRate);
@@ -300,7 +305,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
-      phone: normalizedPhone,
+      // phone: normalizedPhone,
       paidDeposit: true,
       depositAmountPaise: paymentAmountPaise,
       depositOrderId: razorpay_order_id,
@@ -314,9 +319,9 @@ export const verifyPaymentAndJoin = async (req, res) => {
 
     await group.save();
 
-    otpRecord.usedAt = new Date();
-    otpRecord.verified = false;
-    await otpRecord.save();
+    // otpRecord.usedAt = new Date();
+    // otpRecord.verified = false;
+    // await otpRecord.save();
 
     const responsePayload = {
       success: true,
@@ -401,5 +406,213 @@ export const verifyPaymentAndJoin = async (req, res) => {
   } catch (error) {
     console.error('verifyPaymentAndJoin error:', error);
     return res.status(500).json({ success: false, message: 'Failed to process payment and join group' });
+  }
+};
+
+/**
+ * @desc    Create payment intent (demo)
+ * @route   POST /api/payments/intent
+ * @access  Private
+ */
+export const createPaymentIntent = async (req, res) => {
+  try {
+    const { groupId, itemTotal } = req.body;
+
+    if (!groupId || !itemTotal || typeof itemTotal !== 'number' || itemTotal <= 0) {
+      return res.status(400).json({ message: 'groupId and valid amount are required' });
+    }
+
+    // Verify group exists
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // Create payment record
+    const payment = await Payment.create({
+      groupId,
+      amount: Math.round(itemTotal), // Round to integer (INR)
+      status: 'initiated',
+      clientSecret: 'demo'
+    });
+
+    return res.status(201).json({
+      paymentId: payment._id.toString(),
+      clientSecret: 'demo'
+    });
+  } catch (error) {
+    console.error('createPaymentIntent error:', error);
+    return res.status(500).json({ message: 'Failed to create payment intent' });
+  }
+};
+
+/**
+ * @desc    Confirm payment (demo) and allocate rewards
+ * @route   POST /api/payments/confirm
+ * @access  Private
+ */
+export const confirmPayment = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { paymentId, outcome = 'success' } = req.body;
+
+    if (!paymentId) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: 'paymentId is required' });
+    }
+
+    const payment = await Payment.findById(paymentId).session(session);
+    if (!payment) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    if (outcome === 'fail') {
+      payment.status = 'failed';
+      await payment.save({ session });
+      await session.commitTransaction();
+      return res.json({
+        paymentId: payment._id.toString(),
+        status: 'failed'
+      });
+    }
+
+    // Success path
+    if (payment.status === 'succeeded') {
+      // Already processed, return existing reward if any
+      const existingReward = await AmbassadorReward.findOne({ groupId: payment.groupId }).session(session);
+      await session.commitTransaction();
+      return res.json({
+        paymentId: payment._id.toString(),
+        status: 'succeeded',
+        reward: existingReward ? {
+          id: existingReward._id.toString(),
+          amount: existingReward.rewardAmount,
+          status: existingReward.status
+        } : undefined
+      });
+    }
+
+    // Load group
+    const group = await Group.findById(payment.groupId).session(session);
+    if (!group) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // Idempotency check: if group already paid, skip reward creation
+    if (group.status === 'paid') {
+      payment.status = 'succeeded';
+      await payment.save({ session });
+      const existingReward = await AmbassadorReward.findOne({ groupId: payment.groupId }).session(session);
+      await session.commitTransaction();
+      return res.json({
+        paymentId: payment._id.toString(),
+        status: 'succeeded',
+        reward: existingReward ? {
+          id: existingReward._id.toString(),
+          amount: existingReward.rewardAmount,
+          status: existingReward.status
+        } : undefined
+      });
+    }
+
+    // Mark payment as succeeded
+    payment.status = 'succeeded';
+    await payment.save({ session });
+
+    // Mark group as paid and store orderTotal
+    group.status = 'paid';
+    group.orderTotal = payment.amount;
+    await group.save({ session });
+
+    let reward = null;
+    let ambassadorEmail = null;
+    let ambassadorName = null;
+
+    // Allocate reward if group has ambassador
+    if (group.ambassadorId) {
+      // Check if reward already exists (idempotency)
+      const existingReward = await AmbassadorReward.findOne({
+        ambassadorId: group.ambassadorId,
+        groupId: group._id
+      }).session(session);
+
+      if (!existingReward) {
+        // Calculate reward: 10% rounded down
+        const rewardAmount = Math.floor(payment.amount * 0.10);
+
+        // Create reward
+        reward = await AmbassadorReward.create([{
+          ambassadorId: group.ambassadorId,
+          groupId: group._id,
+          groupNameSnapshot: group.name,
+          memberCountSnapshot: group.members.length,
+          rewardAmount,
+          status: 'pending',
+          orderValue: payment.amount
+        }], { session });
+
+        reward = reward[0];
+
+        // Update ambassador totals
+        const ambassador = await Ambassador.findById(group.ambassadorId).session(session);
+        if (ambassador) {
+          ambassador.totals.rewardsPending = (ambassador.totals.rewardsPending || 0) + rewardAmount;
+          await ambassador.save({ session });
+          ambassadorEmail = ambassador.email;
+          ambassadorName = ambassador.name;
+        }
+
+        console.log(`[Payment] Reward allocated: ₹${rewardAmount} to ambassador ${group.ambassadorId} for group ${group._id}`);
+      } else {
+        reward = existingReward;
+        console.log(`[Payment] Reward already exists for group ${group._id}, skipping creation`);
+      }
+    } else {
+      console.log(`[Payment] No ambassador linked to group ${group._id}, skipping reward allocation`);
+    }
+
+    await session.commitTransaction();
+
+    // Notify ambassador about pending reward (non-blocking)
+    if (reward && ambassadorEmail) {
+      setImmediate(() => {
+        (async () => {
+          try {
+            const amountDisplay = `₹${reward.rewardAmount.toFixed(0)}`;
+            await sendMail({
+              to: ambassadorEmail,
+              subject: 'New reward pending approval - Signature Day',
+              text: `Hi ${ambassadorName || 'Ambassador'},\n\n` +
+                `A new reward of ${amountDisplay} has been generated for your referred group "${group.name}".\n` +
+                `It is currently pending admin approval. Once approved and paid out, it will appear in your ambassador dashboard.\n\n` +
+                `Thank you for your referrals!\n\n` +
+                `- Signature Day Team`,
+            });
+          } catch (err) {
+            console.error('Failed to send ambassador reward notification:', err);
+          }
+        })();
+      });
+    }
+
+    return res.json({
+      paymentId: payment._id.toString(),
+      status: 'succeeded',
+      reward: reward ? {
+        id: reward._id.toString(),
+        amount: reward.rewardAmount,
+        status: reward.status
+      } : undefined
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('confirmPayment error:', error);
+    return res.status(500).json({ message: 'Failed to confirm payment' });
+  } finally {
+    session.endSession();
   }
 };

@@ -53,7 +53,12 @@ const OrderSchema = new mongoose.Schema(
     gridTemplate: { type: String, enum: ['square', 'hexagonal', 'circle'], required: true },
     members: { type: [AdminMemberSchema], default: [] },
     shipping: { type: ShippingSchema, required: true },
-    settings: { type: OrderSettingsSchema, required: true }
+    settings: { type: OrderSettingsSchema, required: true },
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Group',
+      index: true
+    }
   },
   { timestamps: true }
 );

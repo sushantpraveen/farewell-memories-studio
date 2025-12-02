@@ -5,6 +5,7 @@ import OTPVerification from '../models/OTPVerification.js';
 import crypto from 'crypto';
 import { validationResult } from 'express-validator';
 import { standardizePhoneNumber } from '../utils/otpUtils.js';
+import { getReferralCode, resolveReferralCode } from '../services/referralService.js';
 
 /**
  * @desc    Create a new group
@@ -21,13 +22,32 @@ export const createGroup = async (req, res) => {
 
     const { name, yearOfPassing, totalMembers, gridTemplate } = req.body;
 
+    // Resolve referral code from cookie or body
+    const referralCode = getReferralCode(req);
+    let ambassadorId = null;
+    let resolvedReferralCode = null;
+    let referredAt = null;
+
+    if (referralCode) {
+      const ambassador = await resolveReferralCode(referralCode);
+      if (ambassador) {
+        ambassadorId = ambassador._id;
+        resolvedReferralCode = referralCode;
+        referredAt = new Date();
+      }
+    }
+
     // Create new group
     const group = await Group.create({
       name,
       yearOfPassing,
       totalMembers,
       gridTemplate: gridTemplate || 'square',
-      members: []
+      members: [],
+      ambassadorId,
+      referralCode: resolvedReferralCode,
+      referredAt,
+      createdByUserId: req.user?._id || null
     });
 
     if (group) {
@@ -45,6 +65,9 @@ export const createGroup = async (req, res) => {
         gridTemplate: group.gridTemplate,
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
+        ambassadorId: group.ambassadorId || undefined,
+        referralCode: group.referralCode || undefined,
+        referredAt: group.referredAt || undefined,
         members: group.members.map(member => ({
           ...member,
           id: member._id || member.id // Include id field for frontend compatibility
@@ -159,12 +182,12 @@ export const getGroups = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    
+
     // Extract sorting parameters
     const sortField = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     const sort = { [sortField]: sortOrder };
-    
+
     // Extract filtering parameters
     const filter = {};
     if (req.query.yearOfPassing) {
@@ -173,7 +196,7 @@ export const getGroups = async (req, res) => {
     if (req.query.search) {
       filter.name = { $regex: req.query.search, $options: 'i' };
     }
-    
+
     // Use lean() for better performance and select() to exclude large photo data
     const groups = await Group.find(filter)
       .select('-members.photo')
@@ -181,10 +204,10 @@ export const getGroups = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
-    
+
     // Get total count for pagination
     const total = await Group.countDocuments(filter);
-    
+
     res.json({
       groups,
       pagination: {
@@ -244,67 +267,67 @@ export const getGroupById = async (req, res) => {
 export const getGroupMembers = async (req, res) => {
   try {
     const group = await Group.findById(req.params.id).lean();
-    
+
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
-    
+
     // Extract pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    
+
     // Extract sorting parameters
     const sortField = req.query.sortBy || 'joinedAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-    
+
     // Extract search parameter
     const search = req.query.search || '';
-    
+
     // Filter and sort members
     let members = [...group.members];
-    
+
     // Apply search filter if provided
     if (search) {
-      members = members.filter(member => 
+      members = members.filter(member =>
         member.name.toLowerCase().includes(search.toLowerCase()) ||
         member.memberRollNumber.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     // Sort members
     members.sort((a, b) => {
       if (sortField === 'joinedAt') {
-        return sortOrder === 1 
+        return sortOrder === 1
           ? new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
           : new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime();
       }
-      
+
       if (sortField === 'name') {
         return sortOrder === 1
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
       }
-      
+
       if (sortField === 'memberRollNumber') {
         return sortOrder === 1
           ? a.memberRollNumber.localeCompare(b.memberRollNumber)
           : b.memberRollNumber.localeCompare(a.memberRollNumber);
       }
-      
+
       return 0;
     });
-    
+
     // Apply pagination
     const total = members.length;
     const paginatedMembers = members.slice(skip, skip + limit);
-    
+
     // Do not truncate photos for members list
     const resultMembers = paginatedMembers.map(member => ({
       ...member,
       id: member._id || member.id // Include id field for frontend compatibility
     }));
-    
+
     res.json({
       members: resultMembers,
       pagination: {
@@ -392,8 +415,8 @@ export const joinGroup = async (req, res) => {
     if (req.user) {
       const user = await User.findById(req.user._id);
       const isCurrentLeader = user?.isLeader && user?.groupId === group._id.toString();
-      
-      await User.findByIdAndUpdate(req.user._id, { 
+
+      await User.findByIdAndUpdate(req.user._id, {
         groupId: group._id,
         // Only set isLeader to false if user is not already the leader
         // This allows leaders to join their own group without losing leader status
@@ -449,18 +472,18 @@ export const updateGroupTemplate = async (req, res) => {
     const votes = group.votes;
     let maxVotes = 0;
     let winningTemplate = group.gridTemplate;
-    
+
     for (const [template, count] of Object.entries(votes)) {
       if (count > maxVotes) {
         maxVotes = count;
         winningTemplate = template;
       }
     }
-    
+
     // Only update if template has changed
     if (winningTemplate !== group.gridTemplate || (req.body && req.body.gridTemplate)) {
       const templateToUse = (req.body && req.body.gridTemplate) ? req.body.gridTemplate : winningTemplate;
-      
+
       // Update the document directly without loading the entire object
       await Group.updateOne(
         { _id: req.params.id },

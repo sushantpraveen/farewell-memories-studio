@@ -3,6 +3,7 @@ import generateToken from '../utils/generateToken.js';
 import { validationResult } from 'express-validator';
 import crypto from 'crypto';
 import { sendMail } from '../utils/email.js';
+import Group from '../models/groupModel.js';
 
 /**
  * @desc    Register a new user
@@ -173,6 +174,42 @@ export const getUsers = async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * @desc    Get groups owned by a user (most recent first)
+ * @route   GET /api/users/:userId/groups
+ * @access  Private (user themself or admin)
+ */
+export const getUserGroups = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Only allow the user themself or an admin to view groups
+    if (!req.user || (String(req.user._id) !== String(userId) && !req.user.isAdmin)) {
+      return res.status(403).json({ message: 'Not authorized to view these groups' });
+    }
+
+    const groups = await Group.find({ createdByUserId: userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const items = groups.map((g) => ({
+      id: g._id,
+      name: g.name,
+      yearOfPassing: g.yearOfPassing,
+      totalMembers: g.totalMembers,
+      gridTemplate: g.gridTemplate,
+      createdAt: g.createdAt,
+      status: g.status,
+      referralCode: g.referralCode || null,
+    }));
+
+    res.json({ items });
+  } catch (error) {
+    console.error('getUserGroups error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

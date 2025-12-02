@@ -204,13 +204,13 @@ const Checkout = () => {
   const [codAvailable, setCodAvailable] = useState(false);
 
   // Pricing & totals (dynamic shipping)
-  const tshirtPrice = 1; // ₹299 per t-shirt
-  const printPrice = 1;  // ₹99 per print
+  const tshirtPrice = 150; // ₹299 per t-shirt
+  const printPrice = 50;  // ₹99 per print
   const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
   const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
   const tax = pricing.gst; // 5% GST correctly applied
-  const finalTotal = pricing.total + shipping;
+  const finalTotal = tax + shipping;
 
   // Quantity handlers
   const handleQuantityChange = (change: number) => {
@@ -662,25 +662,16 @@ const Checkout = () => {
             await ordersApi.createOrder(newOrder);
             console.log('[Checkout] ✅ Order created successfully');
             
-            // Create ambassador reward if group was created via referral
+            // Trigger backend reward allocation (demo intent+confirm flow, non-blocking)
             try {
-              const { AmbassadorStorageService } = await import('@/lib/ambassadorStorage');
-              const ambassadorId = localStorage.getItem(`group-${group.id}-ambassador`);
-              
-              if (ambassadorId) {
-                const memberCount = group.members.length;
-                const reward = AmbassadorStorageService.createReward(
-                  group.id,
-                  group.name,
-                  ambassadorId,
-                  memberCount,
-                  finalTotal
-                );
-                console.log('[Checkout] ✅ Ambassador reward created:', reward);
+              if (group?.id) {
+                console.log('[Checkout] Creating backend payment intent for ambassador reward...');
+                const intent = await paymentsApi.createIntent(group.id, itemTotal);
+                await paymentsApi.confirm(intent.paymentId, 'success');
+                console.log('[Checkout] ✅ Backend ambassador reward allocation triggered');
               }
             } catch (err) {
-              console.error('[Checkout] Failed to create ambassador reward:', err);
-              // Non-blocking error
+              console.error('[Checkout] Failed to trigger backend ambassador reward allocation (non-blocking):', err);
             }
             
             // Offer invoice download for the user immediately

@@ -16,6 +16,7 @@ import { LazyImage } from '@/components/LazyImage';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { userApi } from '@/lib/api';
 
 const Dashboard = () => {
   const { user, logout, updateUser } = useAuth();
@@ -34,45 +35,30 @@ const Dashboard = () => {
   const [newCapacity, setNewCapacity] = useState<number | ''>('');
   const [newTemplate, setNewTemplate] = useState<'square' | 'hexagonal' | 'circle' | ''>('');
   const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
+  const [userGroups, setUserGroups] = useState<Array<{ id: string; name: string; yearOfPassing?: string }>>([]);
 
-  // Helper functions for group storage
-  const saveLastActiveGroup = (groupId: string) => {
-    localStorage.setItem('lastActiveGroupId', groupId);
-  };
-
-  const getLastActiveGroup = (): string | null => {
-    return localStorage.getItem('lastActiveGroupId');
-  };
-
-  // Handle route redirection for legacy routes without groupId
+  // NOTE: For /dashboard/:groupId we no longer auto-redirect to a
+  // "default" group; the URL is considered the source of truth.
+  // The legacy /dashboard route without :groupId is rare; if needed,
+  // we can add a separate redirect there.
+  
+  // Load all groups owned by the current user so they can switch between them
   useEffect(() => {
-    // If no groupId in URL params, redirect to appropriate group
-    if (!groupId) {
-      // First try user's current groupId
-      if (user?.groupId) {
-        navigate(`/dashboard/${user.groupId}`, { replace: true });
+    const loadUserGroups = async () => {
+      if (!user?.id) {
+        setUserGroups([]);
         return;
       }
-      
-      // Then try last active group from localStorage
-      const lastActive = getLastActiveGroup();
-      if (lastActive) {
-        navigate(`/dashboard/${lastActive}`, { replace: true });
-        return;
+      try {
+        const res = await userApi.getUserGroups(user.id);
+        setUserGroups(res.items || []);
+      } catch (err) {
+        console.warn('[Dashboard] Failed to load user groups for switcher:', err);
+        setUserGroups([]);
       }
-      
-      // If user has groups available, redirect to first one
-      if (groups && Array.isArray(groups) && groups.length > 0) {
-        navigate(`/dashboard/${groups[0].id}`, { replace: true });
-        return;
-      }
-      
-      // If user has no group, redirect to create group page
-      toast.info('Create a group to get started!');
-      navigate('/create-group', { replace: true });
-      return;
-    }
-  }, [groupId, user?.groupId, groups, navigate]);
+    };
+    loadUserGroups();
+  }, [user?.id]);
   
   // Update group data whenever groupId changes
   useEffect(() => {
@@ -88,30 +74,14 @@ const Dashboard = () => {
         console.log('Dashboard useEffect - fetchedGroup:', fetchedGroup);
         
         if (fetchedGroup) {
-          // Check if user is the leader of this group
-          if (!user?.isLeader || user?.groupId !== groupId) {
-            console.log('User is not the leader of this group');
-            // toast.error('Access denied: Only the group leader can access the dashboard');
-            navigate('/', { replace: true });
-            return;
-          }
-          
           setGroup(fetchedGroup);
-          saveLastActiveGroup(groupId); // Save as last active group
         } else {
           console.log('No group found for groupId:', groupId);
-          // Redirect to user's default group or show error
-          if (user?.groupId && user.groupId !== groupId) {
-            navigate(`/dashboard/${user.groupId}`, { replace: true });
-          } else {
-            toast.error('Group not found');
-            navigate('/create-group');
-          }
+          toast.error('Group not found');
         }
       } catch (error) {
         console.error('Error fetching group:', error);
         toast.error('Failed to load group');
-        navigate('/create-group');
       } finally {
         setLoadingGroup(false);
       }
@@ -345,6 +315,30 @@ const BackgroundDoodle = () => (
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {userGroups.length > 1 && (
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Switch group:</span>
+                  <Select
+                    value={groupId}
+                    onValueChange={(value) => {
+                      if (value && value !== groupId) {
+                        navigate(`/dashboard/${value}`);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-48 text-xs">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name} {g.yearOfPassing ? `(${g.yearOfPassing})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-full">
                 <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-sm text-green-700 font-medium">Live</span>

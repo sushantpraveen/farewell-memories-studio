@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import compression from 'compression';
 import passport from 'passport';
+import cookieParser from 'cookie-parser';
 
 // Routes
 import userRoutes from './routes/userRoutes.js';
@@ -14,6 +15,10 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import shippingQuoteRoutes from './routes/shippingQuoteRoutes.js';
 import otpRoutes from './routes/otpRoutes.js';
+import ambassadorRoutes from './routes/ambassadorRoutes.js';
+import referralRoutes from './routes/referralRoutes.js';
+import rewardRoutes from './routes/rewardRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 // Passport config
 import { configurePassport } from './config/passport.js';
@@ -45,6 +50,9 @@ app.use(passport.initialize());
 const maxRequestSize = '10mb'; // Reduced from 50mb to avoid memory issues
 app.use(express.json({ limit: maxRequestSize }));
 app.use(express.urlencoded({ extended: true, limit: maxRequestSize }));
+
+// Cookie parser for referral cookies
+app.use(cookieParser());
 
 // Add compression to reduce payload sizes
 app.use(compression());
@@ -106,11 +114,17 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api', shippingQuoteRoutes);
+app.use('/api/ambassadors', ambassadorRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/rewards', rewardRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date(),
-    database: 'connected', message: 'Server is running' });
+  res.status(200).json({
+    status: 'ok', timestamp: new Date(),
+    database: 'connected', message: 'Server is running'
+  });
 });
 
 // Error handling middleware
