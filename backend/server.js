@@ -33,9 +33,15 @@ const PORT = process.env.PORT || 4000; // Changed to 4000 to avoid conflict
 // Middleware
 // CORS configuration
 app.use(cors({
-  origin: ["http://signaturedaytshirt.com", "http://www.signaturedaytshirt.com", "http://localhost:8080"],
+  origin: [
+    "http://signaturedaytshirt.com",
+    "https://signaturedaytshirt.com",
+    "http://www.signaturedaytshirt.com",
+    "https://www.signaturedaytshirt.com",
+    "http://localhost:8080"
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -67,6 +73,14 @@ app.use((req, res, next) => {
 });
 
 app.use(morgan('dev'));
+
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl || req.path}`);
+  }
+  next();
+});
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/signatureday')
@@ -106,24 +120,37 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/signature
     process.exit(1);
   });
 
-// Routes
+// Routes - Order matters: more specific routes should come before general ones
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
-app.use('/api', shippingQuoteRoutes);
 app.use('/api/ambassadors', ambassadorRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/admin', adminRoutes);
+// Shipping routes mounted at /api (more general, should come last)
+app.use('/api', shippingQuoteRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok', timestamp: new Date(),
     database: 'connected', message: 'Server is running'
+  });
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  console.error(`[404] API route not found: ${req.method} ${req.originalUrl}`);
+  console.error(`[404] Available routes: /api/users, /api/groups, /api/orders, /api/payments, /api/auth, /api/otp, /api/shipping-quote, /api/ambassadors, /api/referrals, /api/rewards, /api/admin`);
+  res.status(404).json({
+    error: 'Route not found',
+    method: req.method,
+    path: req.originalUrl,
+    message: `The requested API endpoint ${req.method} ${req.originalUrl} does not exist`
   });
 });
 

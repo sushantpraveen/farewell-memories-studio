@@ -92,16 +92,30 @@ ambassadorSchema.pre('validate', async function (next) {
     return next();
   }
 
-  let code;
-  let exists = true;
-  while (exists) {
-    // Format: SD-CA-12345
-    const randomNum = Math.floor(Math.random() * 90000) + 10000;
-    code = `SD-CA-${randomNum}`;
-    exists = await mongoose.model('Ambassador').findOne({ referralCode: code });
+  try {
+    let code;
+    let exists = true;
+    let attempts = 0;
+    const maxAttempts = 10; // Prevent infinite loop
+    
+    while (exists && attempts < maxAttempts) {
+      // Format: SD-CA-12345
+      const randomNum = Math.floor(Math.random() * 90000) + 10000;
+      code = `SD-CA-${randomNum}`;
+      exists = await this.constructor.findOne({ referralCode: code });
+      attempts++;
+    }
+    
+    if (exists) {
+      return next(new Error('Failed to generate unique referral code after multiple attempts'));
+    }
+    
+    this.referralCode = code;
+    next();
+  } catch (error) {
+    console.error('Error generating referral code:', error);
+    next(error);
   }
-  this.referralCode = code;
-  next();
 });
 
 // Virtual for referral link

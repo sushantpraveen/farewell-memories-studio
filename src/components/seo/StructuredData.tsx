@@ -24,7 +24,7 @@ const StructuredData = ({
     const organizationSchema = {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "SignaturedayTshirt",
+      "name": "Signature Day Tshirt",
       "alternateName": "Signature Day Tshirt",
       "url": baseUrl,
       "logo": `${baseUrl}/logo.png`,
@@ -32,7 +32,7 @@ const StructuredData = ({
       "foundingDate": "2024",
       "founder": {
         "@type": "Person",
-        "name": "SignaturedayTshirt Team"
+        "name": "SignatureayTshirt Team"
       },
       "contactPoint": {
         "@type": "ContactPoint",
@@ -54,7 +54,7 @@ const StructuredData = ({
     const webAppSchema = {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "SignaturedayTshirt",
+      "name": "Signaturea Day Tshirt",
       "alternateName": "Signature Day Tshirt Group Photo Collage Creator",
       "url": baseUrl,
       "description": "Design custom photo collage T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect farewell memory that you'll treasure forever.",
@@ -90,7 +90,7 @@ const StructuredData = ({
     const websiteSchema = {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "name": "SignaturedayTshirt",
+      "name": "Signature Day Tshirt",
       "alternateName": "Signature Day Tshirt",
       "url": baseUrl,
       "description": "Create beautiful group photo collages for farewell t-shirts and memories. Join thousands of students creating beautiful memories.",

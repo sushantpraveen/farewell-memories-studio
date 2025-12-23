@@ -111,7 +111,7 @@ const Index = () => {
   return (
     <>
       <SEOHead 
-        title="SignatureDayTshirt - Create Custom Farewell T-Shirts with Photo Collages"
+        title="Signature Day Tshirt - Create Custom Farewell T-Shirts with Photo Collages"
         description="Design memorable farewell T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect photo collage T-shirt for your graduation or farewell day."
         keywords="farewell t-shirts, custom t-shirts, photo collage, graduation shirts, class shirts, signature day, group photo shirts"
       />
@@ -163,7 +163,7 @@ const Index = () => {
                   />
                 </div>
                 <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
-                  SignatureDayTshirt
+                  Signature Day Tshirt
                 </h1>
               </motion.div>
 
@@ -454,7 +454,7 @@ const Index = () => {
           <img src="/images/friends_with_tee_cutout .png" alt="Signature Day" className="w-full h-full object-cover" />
           <div className="flex flex-col gap-4">
           <h2 className="text-4xl lg:text-5xl font-heading mb-4 text-start bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold w-fit">
-          Why Students Love SignatureDayTshirt for Signature Day?
+          Why Students Love Signature Day Tshirt for Signature Day?
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
           Making memories should be easy, and we made sure of it. From order to delivery, we made the Signature Day experience completely hassle-free. Every student got their own customized T-shirt, perfectly packed and delivered on time — ready to collect all the signatures and memories that matter.

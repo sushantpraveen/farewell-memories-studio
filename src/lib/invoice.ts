@@ -31,16 +31,39 @@ async function loadJsPDF(): Promise<JsPDFCtor> {
     return (window as any).jspdf.jsPDF as JsPDFCtor;
   }
   await new Promise<void>((resolve, reject) => {
-    const existing = document.getElementById('jspdf-cdn');
-    if (existing) { resolve(); return; }
+    const existing = document.getElementById('jspdf-cdn') as HTMLScriptElement | null;
+
+    if (existing) {
+      // Script tag already exists; if it finished loading we resolve immediately.
+      if (existing.dataset.loaded === 'true') {
+        resolve();
+        return;
+      }
+
+      // Otherwise wait for the existing script to complete.
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Failed to load jsPDF')), { once: true });
+      return;
+    }
+
     const s = document.createElement('script');
     s.id = 'jspdf-cdn';
     s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-    s.onload = () => resolve();
+    s.async = true;
+    s.onload = () => {
+      s.dataset.loaded = 'true';
+      resolve();
+    };
     s.onerror = () => reject(new Error('Failed to load jsPDF'));
     document.body.appendChild(s);
   });
-  return (window as any).jspdf.jsPDF as JsPDFCtor;
+
+  const jsPdfNamespace = (window as any).jspdf;
+  if (!jsPdfNamespace?.jsPDF) {
+    throw new Error('jsPDF failed to initialize');
+  }
+
+  return jsPdfNamespace.jsPDF as JsPDFCtor;
 }
 
 export async function generateInvoicePdfBase64(

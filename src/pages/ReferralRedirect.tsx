@@ -51,7 +51,7 @@ export default function ReferralRedirect() {
 
         const name = data?.name || data?.ambassadorName || 'your ambassador';
         toast.success(`Welcome! You're creating a group via ${name}'s referral`);
-        navigate('/create-group');
+        navigate('/');
       } catch (err) {
         toast.error('Invalid referral code');
         navigate('/');

@@ -121,23 +121,43 @@ export const createAmbassador = async (req, res) => {
   try {
     const { name, email, phone, college, city, state, graduationYear, upiId } = req.body || {};
 
+    console.log('[createAmbassador] Request received:', { name, email, phone, college, city, state, graduationYear, upiId });
+
     if (!name || !email || !phone) {
       return res.status(400).json({ message: "Name, email and phone are required" });
     }
 
+    // Check for duplicate email or phone before creating
+    const existingAmbassador = await Ambassador.findOne({
+      $or: [
+        { email: email.toLowerCase().trim() },
+        { phone: phone.trim() }
+      ]
+    });
+
+    if (existingAmbassador) {
+      const duplicateField = existingAmbassador.email === email.toLowerCase().trim() ? 'email' : 'phone';
+      return res.status(409).json({ 
+        message: `Ambassador with this ${duplicateField} already exists`,
+        field: duplicateField
+      });
+    }
+
     const ambassador = await Ambassador.create({
-      name,
-      email,
-      phone,
-      college,
-      city,
-      state,
-      graduationYear,
-      upiId
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
+      college: college?.trim(),
+      city: city?.trim(),
+      state: state?.trim(),
+      graduationYear: graduationYear?.trim(),
+      upiId: upiId?.trim()
     });
 
     // Ensure virtuals (referralLink) are included
     const json = ambassador.toJSON();
+
+    console.log('[createAmbassador] Ambassador created successfully:', json._id.toString());
 
     return res.status(201).json({
       ambassador: {
@@ -152,7 +172,34 @@ export const createAmbassador = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating ambassador:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error stack:", error.stack);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors: errors,
+        error: error.message 
+      });
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({ 
+        message: `Ambassador with this ${field} already exists`,
+        field: field,
+        error: error.message 
+      });
+    }
+    
+    // Handle other errors
+    res.status(500).json({ 
+      message: "Server error", 
+      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
   }
 };
 

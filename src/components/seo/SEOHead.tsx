@@ -14,7 +14,7 @@ interface SEOHeadProps {
 }
 
 const SEOHead = ({
-  title = "SignaturedayTshirt - Create Memorable Farewell T-Shirts with Group Photo Collages",
+  title = "Signature Day Tshirt - Create Memorable Farewell T-Shirts with Group Photo Collages",
   description = "Design custom photo collage T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect farewell memory that you'll treasure forever. Join thousands of students creating beautiful memories.",
   keywords = "signature day tshirt, group photo collage, graduation memories, class photos, custom t-shirt design, student farewell, photo collage creator, group memories, graduation t-shirts, class reunion",
   canonicalUrl = "https://signaturedaytshirt.com",
@@ -23,7 +23,7 @@ const SEOHead = ({
   structuredData,
   noIndex = false
 }: SEOHeadProps) => {
-  const fullTitle = title.includes("SignaturedayTshirt") ? title : `${title} | SignaturedayTshirt`;
+  const fullTitle = title.includes("Signature Day Tshirt") ? title : `${title} | Signature Day Tshirt`;
   
   // For now, return null - implement with react-helmet-async when installed
   // This component will be used to dynamically update meta tags per page
