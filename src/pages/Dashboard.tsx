@@ -470,7 +470,7 @@ const BackgroundDoodle = () => (
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
+                <div className="divide-y divide-gray-100 max-h-[525px] h-screen overflow-y-auto">
                   {group.members.map((member: Member, index: number) => (
                     <div 
                       key={member.memberRollNumber || member.id || index} 
@@ -509,7 +509,7 @@ const BackgroundDoodle = () => (
                     </div>
                   ))}
                   {group.members.length === 0 && (
-                    <div className="p-8 text-center">
+                    <div className="p-8 flex flex-col w-full h-full justify-center items-center">
                       <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 font-medium">No members have joined yet</p>
                       <p className="text-sm text-gray-400 mt-1">Share the group link to invite members</p>
@@ -520,7 +520,7 @@ const BackgroundDoodle = () => (
           </Card>
           
             {/* Vote Distribution */}
-            <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
+            {/* <Card className="relative bg-white/80 backdrop-blur-lg border-none shadow-lg overflow-hidden">
             <Badge className="absolute px-2 py-1 top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
                 coming soon
               </Badge>
@@ -531,9 +531,9 @@ const BackgroundDoodle = () => (
                     <CardTitle>Vote Distribution</CardTitle>
                   </div>
                   
-                  {/* <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                     {totalVotes} total votes
-              </Badge> */}
+              </Badge>
         </div>
             </CardHeader>
               <CardContent className="p-6 pt-0">
@@ -543,11 +543,11 @@ const BackgroundDoodle = () => (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="capitalize font-medium text-gray-700">{template}</span>
-                      {/* {winningTemplate === template && (
+                      {winningTemplate === template && (
                             <Badge className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
                               Winner
                             </Badge>
-                      )} */}
+                      )}
                     </div>
                         <span className="text-sm font-medium text-gray-900">{count as number} votes</span>
                       </div>
@@ -571,7 +571,7 @@ const BackgroundDoodle = () => (
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Right Column - Quick Actions */}

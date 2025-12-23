@@ -1,3 +1,432 @@
+// import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+// import { useNavigate } from 'react-router-dom';
+// import { useCollage, GridTemplate, Group } from '@/context/CollageContext';
+// import { useAuth } from '@/context/AuthContext';
+// import { toast } from 'sonner';
+// import { debounce } from 'lodash';
+// import { uploadToCloudinary } from '@/lib/cloudinary';
+// import { calculatePricing } from '@/lib/pricing';
+// import { generateInvoicePdfBase64 } from '@/lib/invoice';
+
+// interface MemberData {
+//   name: string;
+//   email: string;
+//   memberRollNumber: string;
+//   photo: string;
+//   vote: GridTemplate;
+//   size: undefined | 's' | 'm' | 'l' | 'xl' | 'xxl';
+// }
+
+// interface Errors {
+//   name: string;
+//   email: string;
+//   memberRollNumber: string;
+//   photo: string;
+//   size: string;
+// }
+
+// const VERIFIED_MAX_AGE_MINUTES = Number(import.meta.env.VITE_OTP_VERIFIED_MAX_AGE_MINUTES || 30);
+
+// declare global {
+//   interface Window {
+//     Razorpay: any;
+//   }
+// }
+
+// const loadRazorpayScript = (): Promise<boolean> =>
+//   new Promise((resolve) => {
+//     if (document.getElementById('razorpay-sdk')) return resolve(true);
+//     const script = document.createElement('script');
+//     script.id = 'razorpay-sdk';
+//     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+//     script.onload = () => resolve(true);
+//     script.onerror = () => resolve(false);
+//     document.body.appendChild(script);
+//   });
+
+// export const useJoinGroup = (groupId: string | undefined) => {
+//   const navigate = useNavigate();
+//   const { getGroup, isLoading } = useCollage();
+//   const { updateUser, user } = useAuth();
+
+//   const [memberData, setMemberData] = useState<MemberData>({
+//     name: '',
+//     email: '',
+//     memberRollNumber: '',
+//     photo: '',
+//     vote: 'square',
+//     size: undefined
+//   });
+
+//   const [errors, setErrors] = useState<Errors>({
+//     name: '',
+//     email: '',
+//     memberRollNumber: '',
+//     photo: '',
+//     size: ''
+//   });
+
+//   const [group, setGroup] = useState<Group | undefined>(undefined);
+//   const [previewTemplate, setPreviewTemplate] = useState<GridTemplate>('square');
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+//   const [formTouched, setFormTouched] = useState(false);
+//   const [loadingGroup, setLoadingGroup] = useState<boolean>(true);
+//   const [submitPhotoUrl, setSubmitPhotoUrl] = useState<string>('');
+//   const lastObjectUrlRef = useRef<string | null>(null);
+//   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
+
+//   const [phoneInput, setPhoneInput] = useState<string>('');
+//   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+//   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
+
+//   const joinPricing = useMemo(
+//     () => calculatePricing({ quantity: 1, tshirtPrice: 1, printPrice: 1, gstRate: 0.05 }),
+//     []
+//   );
+
+//   const validateForm = useCallback((data: MemberData) => {
+//     const newErrors: Errors = {
+//       name: '',
+//       email: '',
+//       memberRollNumber: '',
+//       photo: '',
+//       size: ''
+//     };
+
+//     if (!data.name) {
+//       newErrors.name = 'Name is required';
+//     } else if (data.name.length < 2) {
+//       newErrors.name = 'Name must be at least 2 characters';
+//     }
+
+//     if (!data.email) {
+//       newErrors.email = 'Email is required';
+//     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+//       newErrors.email = 'Enter a valid email address';
+//     }
+
+//     if (!data.memberRollNumber) {
+//       newErrors.memberRollNumber = 'Roll number is required';
+//     }
+
+//     if (!data.photo) {
+//       newErrors.photo = 'Photo is required';
+//     }
+
+//     if (!data.size) {
+//       newErrors.size = 'Size selection is required';
+//     }
+
+//     return newErrors;
+//   }, []);
+
+//   const handleInputChange = useCallback((field: keyof MemberData, value: MemberData[keyof MemberData]) => {
+//     setMemberData((prev) => ({ ...prev, [field]: value }));
+//     if (!formTouched) setFormTouched(true);
+//   }, [formTouched]);
+
+//   const debouncedValidate = useCallback(
+//     debounce((data: MemberData) => {
+//       setErrors(validateForm(data));
+//     }, 500),
+//     [validateForm]
+//   );
+
+//   const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = event.target.files?.[0];
+//     if (!file) return;
+
+//     if (file.size > 5 * 1024 * 1024) {
+//       toast.error('Image is too large. Please select an image under 5MB.');
+//       return;
+//     }
+
+//     const objectUrl = URL.createObjectURL(file);
+//     if (lastObjectUrlRef.current && lastObjectUrlRef.current !== objectUrl) {
+//       URL.revokeObjectURL(lastObjectUrlRef.current);
+//     }
+//     lastObjectUrlRef.current = objectUrl;
+//     setMemberData((prev) => ({ ...prev, photo: objectUrl }));
+
+//     const uploadToast = toast.loading('Uploading photo...');
+//     setIsUploadingPhoto(true);
+//     try {
+//       const result = await uploadToCloudinary(file, 'groups');
+//       setSubmitPhotoUrl(result.secure_url);
+//       setMemberData((prev) => ({ ...prev, photo: result.secure_url }));
+//       if (lastObjectUrlRef.current) {
+//         URL.revokeObjectURL(lastObjectUrlRef.current);
+//         lastObjectUrlRef.current = null;
+//       }
+//       toast.success('Upload complete', { id: uploadToast });
+//     } catch (error) {
+//       console.error('[JoinGroup] Cloudinary upload failed', error);
+//       toast.error('Photo upload failed. You can still submit, but it may be slower.', { id: uploadToast });
+//       setSubmitPhotoUrl('');
+//     } finally {
+//       setIsUploadingPhoto(false);
+//     }
+//   }, []);
+
+//   const handlePhoneInput = useCallback((raw: string) => {
+//     setPhoneInput(raw);
+//     if (isPhoneVerified) {
+//       setIsPhoneVerified(false);
+//       setVerifiedPhone(null);
+//     }
+//   }, [isPhoneVerified]);
+
+//   const handlePhoneVerified = useCallback((normalized: string) => {
+//     setPhoneInput(normalized);
+//     setVerifiedPhone(normalized);
+//     setIsPhoneVerified(true);
+//   }, []);
+
+//   const handleSubmit = useCallback(async (event: React.FormEvent) => {
+//     event.preventDefault();
+//     if (!groupId) return;
+
+//     const newErrors = validateForm(memberData);
+//     setErrors(newErrors);
+
+//     if (Object.values(newErrors).some(Boolean)) {
+//       toast.error('Please fix the errors in the form');
+//       return;
+//     }
+
+//     setIsSubmitting(true);
+
+//     try {
+//       const activeGroup = group;
+//       const scriptLoaded = await loadRazorpayScript();
+//       if (!scriptLoaded) {
+//         throw new Error('Failed to load Razorpay SDK');
+//       }
+
+//       const receipt = `grp_join_${groupId.slice(-6)}_${Date.now()}`;
+//       // Calculate amount in paise (must be integer for Razorpay)
+//       const amountPaise = Math.round(joinPricing.total * 100);
+//       const orderResponse = await fetch('/api/payments/join/order', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           amount: amountPaise,
+//           currency: 'INR',
+//           receipt,
+//           notes: { groupId }
+//         })
+//       });
+
+//       if (!orderResponse.ok) {
+//         throw new Error('Failed to create payment order');
+//       }
+
+//       const order = await orderResponse.json();
+
+//       const keyRes = await fetch('/api/payments/key');
+//       if (!keyRes.ok) {
+//         throw new Error('Failed to fetch payment key');
+//       }
+//       const { keyId } = await keyRes.json();
+
+//       const options = {
+//         key: keyId,
+//         amount: order.amount,
+//         currency: 'INR',
+//         name: activeGroup?.name ?? 'Signature Day',
+//         description: activeGroup ? `${activeGroup.name} • Class of ${activeGroup.yearOfPassing}` : 'Signature Day Join Payment',
+//         order_id: order.id,
+//         prefill: {
+//           name: memberData.name,
+//           email: memberData.email,
+//           contact: ''
+//         },
+//         notes: { groupId },
+//         handler: async (response: any) => {
+//           try {
+//             const invoiceBase64 = await generateInvoicePdfBase64(
+//               {
+//                 name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+//                 gstin: '36AAHCC5155C1ZW',
+//                 cin: 'U74999TG2018PTC123754',
+//                 logoUrl: '/chitlu-logo.png'
+//               },
+//               {
+//                 invoiceId: `INV-JOIN-${Date.now()}`,
+//                 dateISO: new Date().toISOString(),
+//                 customerName: memberData.name,
+//                 customerEmail: memberData.email
+//               },
+//               [
+//                 {
+//                   description: `${activeGroup?.name ?? 'Group'} T-Shirt + Print`,
+//                   quantity: 1,
+//                   unitPrice: 1,
+//                   printPrice: 1,
+//                   gstRate: 0.05
+//                 }
+//               ]
+//             );
+
+//             const verifyResponse = await fetch('/api/payments/join/verify', {
+//               method: 'POST',
+//               headers: { 'Content-Type': 'application/json' },
+//               body: JSON.stringify({
+//                 razorpay_order_id: response.razorpay_order_id,
+//                 razorpay_payment_id: response.razorpay_payment_id,
+//                 razorpay_signature: response.razorpay_signature,
+//                 groupId,
+//                 member: {
+//                   ...memberData,
+//                   photo: submitPhotoUrl || memberData.photo,
+//                   phone: verifiedPhone
+//                 },
+//                 invoicePdfBase64: invoiceBase64,
+//                 invoiceFileName: `Invoice-${activeGroup?.name ?? 'Join'}-${Date.now()}.pdf`
+//               })
+//             });
+
+//             const verifyData = await verifyResponse.json().catch(() => null);
+//             if (!verifyResponse.ok || !verifyData?.success) {
+//               throw new Error(verifyData?.message || 'Payment verification failed');
+//             }
+
+//             await getGroup(groupId, true);
+//             if (user) {
+//               const updates: Partial<typeof user> = { groupId };
+//               if (user.isLeader) {
+//                 updates.isLeader = true;
+//               }
+//               try {
+//                 await updateUser(updates);
+//               } catch (err) {
+//                 console.warn('[JoinGroup] Skipping user update after payment:', err);
+//               }
+//             }
+//             toast.success('Payment successful! Welcome to the group.');
+//             setIsSubmitting(false);
+//             setIsProcessingPayment(false);
+//             navigate(`/success?groupId=${groupId}`);
+//           } catch (err) {
+//             console.error('Verify payment error:', err);
+//             toast.error(err instanceof Error ? err.message : 'Failed to finalize payment.');
+//             setIsSubmitting(false);
+//             setIsProcessingPayment(false);
+//           }
+//         },
+//         modal: {
+//           ondismiss: () => {
+//             setIsSubmitting(false);
+//             setIsProcessingPayment(false);
+//             toast.info('Payment cancelled.');
+//           }
+//         },
+//         theme: { color: '#6d28d9' }
+//       };
+
+//       const razorpay = new window.Razorpay(options);
+//       razorpay.open();
+//     } catch (error) {
+//       console.error('[JoinGroup] Payment initiation error', error);
+//       toast.error(error instanceof Error ? error.message : 'Failed to initiate payment.');
+//       setIsSubmitting(false);
+//       setIsProcessingPayment(false);
+//     }
+//   }, [groupId, memberData, validateForm, verifiedPhone, isPhoneVerified, group, joinPricing.total, submitPhotoUrl, getGroup, updateUser, navigate, user]);
+
+//   useEffect(() => {
+//     if (!formTouched) return;
+//     const timeout = setTimeout(() => debouncedValidate(memberData), 500);
+//     return () => {
+//       clearTimeout(timeout);
+//       debouncedValidate.cancel();
+//     };
+//   }, [memberData, formTouched, debouncedValidate]);
+
+//   useEffect(() => {
+//     if (!groupId) return;
+
+//     let isMounted = true;
+//     let loadingTimeout: NodeJS.Timeout;
+
+//     const fetchGroup = async () => {
+//       try {
+//         loadingTimeout = setTimeout(() => {
+//           if (isMounted) setLoadingGroup(true);
+//         }, 200);
+
+//         const groupData = await getGroup(groupId);
+//         if (!isMounted) return;
+
+//         if (groupData) {
+//           const { id, name, yearOfPassing, totalMembers, gridTemplate } = groupData;
+//           setGroup({
+//             id,
+//             name,
+//             yearOfPassing,
+//             totalMembers,
+//             gridTemplate,
+//             members: Array.isArray((groupData as any).members) ? (groupData as any).members : [],
+//             shareLink: '',
+//             createdAt: new Date(),
+//             votes: { hexagonal: 0, square: 0, circle: 0 }
+//           });
+//           setPreviewTemplate(gridTemplate);
+//         } else {
+//           setGroup(undefined);
+//         }
+//       } catch (error) {
+//         if (!isMounted) return;
+//         console.error('Failed to fetch group:', error);
+//         toast.error('Failed to load group data');
+//       } finally {
+//         if (isMounted) {
+//           clearTimeout(loadingTimeout);
+//           setLoadingGroup(false);
+//         }
+//       }
+//     };
+
+//     fetchGroup();
+
+//     return () => {
+//       isMounted = false;
+//       clearTimeout(loadingTimeout);
+//     };
+//   }, [groupId, getGroup]);
+
+//   useEffect(() => () => {
+//     if (lastObjectUrlRef.current) {
+//       URL.revokeObjectURL(lastObjectUrlRef.current);
+//       lastObjectUrlRef.current = null;
+//     }
+//   }, []);
+
+//   return {
+//     memberData,
+//     errors,
+//     group,
+//     previewTemplate,
+//     isSubmitting,
+//     isProcessingPayment,
+//     loadingGroup,
+//     isLoading,
+//     formTouched,
+//     handleInputChange,
+//     handlePhotoUpload,
+//     handleSubmit,
+//     submitPhotoUrl,
+//     isUploadingPhoto,
+//     phone: phoneInput,
+//     setPhone: handlePhoneInput,
+//     isPhoneVerified,
+//     setIsPhoneVerified,
+//     onPhoneVerified: handlePhoneVerified,
+//     joinPricing
+//   };
+// };
+
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollage, GridTemplate, Group } from '@/context/CollageContext';
@@ -195,6 +624,11 @@ export const useJoinGroup = (groupId: string | undefined) => {
       return;
     }
 
+    if (!verifiedPhone || !isPhoneVerified) {
+      toast.error('Please verify your phone number before joining.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -214,7 +648,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
           amount: amountPaise,
           currency: 'INR',
           receipt,
-          notes: { groupId }
+          notes: { groupId, phone: verifiedPhone }
         })
       });
 
@@ -240,7 +674,7 @@ export const useJoinGroup = (groupId: string | undefined) => {
         prefill: {
           name: memberData.name,
           email: memberData.email,
-          contact: ''
+          contact: verifiedPhone
         },
         notes: { groupId },
         handler: async (response: any) => {
