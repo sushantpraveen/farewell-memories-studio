@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown } from "lucide-react";
+import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown, Phone, X } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from '@/lib/api';
@@ -15,12 +16,12 @@ const FloatingElement = ({ children, className = "", delay = 0 }) => (
   <motion.div
     className={`absolute ${className}`}
     initial={{ opacity: 0, y: 20 }}
-    animate={{ 
+    animate={{
       opacity: [0.3, 0.6, 0.3],
       y: [0, -20, 0],
       rotate: [0, 5, 0]
     }}
-    transition={{ 
+    transition={{
       duration: 5,
       delay,
       repeat: Infinity,
@@ -63,6 +64,77 @@ const socialProof = [
     name: "Emma"
   },
 ]
+
+const ClickToCall = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-4">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="bg-white rounded-2xl shadow-2xl p-6 border border-purple-100 min-w-[240px]"
+          >
+            <div className="flex flex-col gap-3">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+                Need Help?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Our support team is here for you. Give us a call at:
+              </p>
+              <a
+                href="tel:9515888515"
+                className="flex items-center gap-2 text-lg font-bold text-purple-600 hover:text-pink-600 transition-colors bg-purple-50 p-3 rounded-xl border border-purple-100"
+              >
+                <Phone className="h-5 w-5" />
+                9515888515
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 relative group"
+        aria-label="Click to call"
+      >
+        <AnimatePresence mode="wait">
+          {isOpen ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <X className="h-7 w-7" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="phone"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Phone className="h-7 w-7" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-4 w-4 bg-pink-500"></span>
+        </span>
+      </motion.button>
+    </div>
+  );
+};
 
 const Index = () => {
   const { user, isAuthenticated } = useAuth();
@@ -158,12 +230,12 @@ const Index = () => {
 
   return (
     <>
-      <SEOHead 
+      <SEOHead
         title="Signature Day Tshirt - Create Custom Farewell T-Shirts with Photo Collages"
         description="Design memorable farewell T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect photo collage T-shirt for your graduation or farewell day."
         keywords="farewell t-shirts, custom t-shirts, photo collage, graduation shirts, class shirts, signature day, group photo shirts"
       />
-      
+
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Permanent+Marker&family=Comfortaa:wght@400;500;600;700&display=swap');
@@ -188,7 +260,7 @@ const Index = () => {
           }
         `}
       </style>
-      
+
       <div className="min-h-screen relative bg-background font-body">
         <AnimatedBackground />
 
@@ -196,7 +268,7 @@ const Index = () => {
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b" role="banner">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16 lg:h-20">
-              <motion.div 
+              <motion.div
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -215,12 +287,15 @@ const Index = () => {
                 </h1>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="hidden sm:flex items-center gap-3"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+
+                {/* <Link to="/ambassador/signup">
+
                 {ambassadorId ? (
                   <Button 
                     variant="outline"
@@ -233,6 +308,7 @@ const Index = () => {
                     <span className="md:hidden">Dashboard</span>
                   </Button>
                 ) : (
+
                   <Button 
                     variant="outline"
                     size="lg"
@@ -243,6 +319,9 @@ const Index = () => {
                     <Users className="h-4 w-4 mr-2" />
                     <span className="hidden md:inline">Campus Ambassador</span>
                   </Button>
+
+                </Link> */}
+                <Button
                 )}
                 <Button 
                   onClick={handleMainAction}
@@ -292,12 +371,12 @@ const Index = () => {
               </h1>
 
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Design custom photo collage T-shirts with your classmates. Upload photos, 
+                Design custom photo collage T-shirts with your classmates. Upload photos,
                 vote on layouts, and create unforgettable memories together.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
+                <Button
                   size="lg"
                   onClick={handleMainAction}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 group"
@@ -308,45 +387,45 @@ const Index = () => {
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </Button>
-                
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  onClick={() => {
-                    document.getElementById('enhanced-how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="border-2"
-                >
-                  Learn More
-                </Button>
+                {/* here i have to add campus ambassador */}
+                <Link to="/ambassador/signup">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="border-purple-300 hover:bg-purple-50"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Campus Ambassador</span>
+                  </Button>
+                </Link>
               </div>
 
-                             {/* Social Proof */}
-               <div className="flex items-center gap-4 pt-4">
-                 <div className="flex -space-x-3">
-                   {socialProof.map((person, i) => (
-                     <div 
-                       key={i}
-                       className="w-10 h-10 rounded-full border-2 border-background overflow-hidden bg-gradient-to-br from-purple-400 to-pink-400"
-                       title={person.name}
-                     >
-                       <img 
-                         src={person.img} 
-                         alt={person.name}
-                         className="w-full h-full object-cover"
-                         onError={(e) => {
-                           // Fallback to gradient background if image doesn't exist
-                           e.currentTarget.style.display = 'none';
-                         }}
-                       />
-                     </div>
-                   ))}
-                 </div>
-                 <div>
-                   <p className="text-sm font-semibold">Join 10,000+ Students</p>
-                   <p className="text-xs text-muted-foreground">Creating amazing memories</p>
-                 </div>
-               </div>
+              {/* Social Proof */}
+              <div className="flex items-center gap-4 pt-4">
+                <div className="flex -space-x-3">
+                  {socialProof.map((person, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 rounded-full border-2 border-background overflow-hidden bg-gradient-to-br from-purple-400 to-pink-400"
+                      title={person.name}
+                    >
+                      <img
+                        src={person.img}
+                        alt={person.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to gradient background if image doesn't exist
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Join 10,000+ Students</p>
+                  <p className="text-xs text-muted-foreground">Creating amazing memories</p>
+                </div>
+              </div>
             </motion.div>
 
             {/* Right Content - Visual */}
@@ -484,6 +563,30 @@ const Index = () => {
           </div>
         </section> */}
 
+
+        {/* CTA Section */}
+        <section className="relative overflow-hidden py-20 lg:py-20">
+          <div className="container mx-auto px-4 relative z-10">
+            <motion.div
+              className="max-w-7xl mx-auto text-center text-white"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7 }}
+            >
+              <h2 className="text-3xl lg:text-5xl font-heading mb-6 bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold w-fit">
+                Choose Your Signature Day T-Shirt Style
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed text-start mb-6">Create a T-shirt that speaks your memories. Pick from our best-selling Signature Day designs and customize it with your photos, names, or batch details. Perfect for Farewell Day, School Events, or College Memories — Wear your journey with pride.</p>
+              <div className="grid lg:grid-cols-3 gap-3">
+                {Array.from({ length: 6 }).map((_, n) => (
+                  <img key={n} src={`/images/img${n + 1}.jpg`} alt={`Image ${n}`} className="w-full h-full object-cover rounded-lg" />
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/* Stats Section */}
         <section className="container mx-auto px-4 py-8 lg:py-12">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
@@ -511,23 +614,23 @@ const Index = () => {
         </section>
 
         <section className="container mx-auto px-4 py-16 lg:py-4">
-        <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
-          <img src="/images/friends_with_tee_cutout .png" alt="Signature Day" className="w-full h-full object-cover" />
-          <div className="flex flex-col gap-4">
-          <h2 className="text-4xl lg:text-5xl font-heading mb-4 text-start bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold w-fit">
-          Why Students Love Signature Day Tshirt for Signature Day?
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-          Making memories should be easy, and we made sure of it. From order to delivery, we made the Signature Day experience completely hassle-free. Every student got their own customized T-shirt, perfectly packed and delivered on time — ready to collect all the signatures and memories that matter.
-          </p>
-          <button onClick={handleMainAction} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-md w-fit">Explore Designs</button>
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+            <img src="/images/friends_with_tee_cutout .png" alt="Signature Day" className="w-full h-full object-cover" />
+            <div className="flex flex-col gap-4">
+              <h2 className="text-4xl lg:text-5xl font-heading mb-4 text-start bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold w-fit">
+                Why Students Love Signature Day Tshirt for Signature Day?
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Making memories should be easy, and we made sure of it. From order to delivery, we made the Signature Day experience completely hassle-free. Every student got their own customized T-shirt, perfectly packed and delivered on time — ready to collect all the signatures and memories that matter.
+              </p>
+              <button onClick={handleMainAction} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-md w-fit">Explore Designs</button>
+            </div>
           </div>
-        </div>
         </section>
 
-         {/* Enhanced How It Works Process */}
-         <section id="enhanced-how-it-works" className="container mx-auto px-4 py-16 lg:py-24 bg-muted/30">
-          <motion.div 
+        {/* Enhanced How It Works Process */}
+        <section id="enhanced-how-it-works" className="container mx-auto px-4 py-16 lg:py-24 bg-muted/30">
+          <motion.div
             className="text-center mb-16 max-w-3xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -560,36 +663,36 @@ const Index = () => {
                 color: "yellow"
               }
             ].map((step, index) => (
-                             <motion.div
-                 key={index}
-                 initial={{ opacity: 0, y: 20 }}
-                 whileInView={{ opacity: 1, y: 0 }}
-                 viewport={{ once: true }}
-                 transition={{ duration: 0.7, delay: index * 0.2 }}
-                 className="relative"
-               >
-                 <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group">
-                   <div className="relative h-64 bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-8">
-                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
-                     <img 
-                       src={step.img}
-                       alt={step.title}
-                       className="relative z-10 h-full w-full object-contain"
-                     />
-                     <div className="absolute top-4 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-lg">
-                       <step.icon className="h-7 w-7 text-white" />
-                     </div>
-                   </div>
-                   <CardHeader>
-                     <CardTitle className="text-xl font-semibold">{step.title}</CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <CardDescription className="text-muted-foreground leading-relaxed">
-                       {step.description}
-                     </CardDescription>
-                   </CardContent>
-                 </Card>
-               </motion.div>
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: index * 0.2 }}
+                className="relative"
+              >
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group">
+                  <div className="relative h-64 bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center p-8">
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
+                    <img
+                      src={step.img}
+                      alt={step.title}
+                      className="relative z-10 h-full w-full object-contain"
+                    />
+                    <div className="absolute top-4 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-lg">
+                      <step.icon className="h-7 w-7 text-white" />
+                    </div>
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold">{step.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </section>
@@ -654,10 +757,10 @@ const Index = () => {
                     {/* <div className="w-full h-full bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center">
                       <Shirt className="h-20 w-20 text-white" />
                     </div> */}
-                    <img 
-                       src={feature.img}
-                       alt={feature.title}
-                       className="h-full w-full object-cover"
+                    <img
+                      src={feature.img}
+                      alt={feature.title}
+                      className="h-full w-full object-cover"
                     />
                   </div>
                   <CardHeader>
@@ -675,24 +778,7 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="relative overflow-hidden py-20 lg:py-20">
-          {/* <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600" /> */}
-          {/* <motion.div
-            className="absolute inset-0 opacity-20"
-            animate={{
-              backgroundPosition: ["0% 0%", "100% 100%"],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-            style={{
-              backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')",
-              backgroundSize: "60px 60px"
-            }}
-          /> */}
-          
+        {/* <section className="relative overflow-hidden py-20 lg:py-20">
           <div className="container mx-auto px-4 relative z-10">
             <motion.div 
               className="max-w-7xl mx-auto text-center text-white"
@@ -712,10 +798,10 @@ const Index = () => {
               </div>
             </motion.div>
           </div>
-        </section>
+        </section> */}
 
-         {/* FAQ Section */}
-         <section className="container mx-auto px-4 py-4 lg:py-24">
+        {/* FAQ Section */}
+        <section className="container mx-auto px-4 py-4 lg:py-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -726,7 +812,7 @@ const Index = () => {
             <h2 className="text-3xl lg:text-4xl font-heading mb-12 px-3 bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text font-bold">
               Frequently Asked Questions
             </h2>
-            
+
             <Accordion type="single" collapsible className="space-y-1">
               <AccordionItem value="item-1" className="border-b-2 border-gray-100 px-6 bg-card">
                 <AccordionTrigger className="text-left hover:no-underline">
@@ -859,6 +945,8 @@ const Index = () => {
             </div>
           </div>
         </footer>
+
+        <ClickToCall />
       </div>
     </>
   );

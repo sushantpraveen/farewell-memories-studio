@@ -206,7 +206,7 @@ export default function AmbassadorSignup() {
             </div>
 
             <Button type="submit" className="w-full" disabled={!verifiedPhone}>
-              Sign Up as Ambassador
+              Registered as Ambassador
             </Button>
           </form>
         </CardContent>
