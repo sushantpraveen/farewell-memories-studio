@@ -19,11 +19,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { ambassadorAdminApi } from '@/services/ambassadorAdminApi';
+import { ambassadorAdminApi, WaitlistItem } from '@/services/ambassadorAdminApi';
 import { adminApi } from '@/services/adminApi';
 import { getAmbassadorRewards as getAmbassadorRewardsApi, Paginated, AmbassadorRewardItem } from '@/lib/ambassadorApi';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { Search, CheckCircle, Clock, DollarSign, Upload, X, Image as ImageIcon, Eye } from 'lucide-react';
+import { Search, CheckCircle, Clock, DollarSign, Upload, X, Image as ImageIcon, Eye, UserPlus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AmbassadorAdmin() {
@@ -58,6 +58,11 @@ export default function AmbassadorAdmin() {
   const [currentRewardForPayment, setCurrentRewardForPayment] = useState<{ id: string; amount: number; ambassadorName: string } | null>(null);
   const [paymentScreenshotFile, setPaymentScreenshotFile] = useState<File | null>(null);
   const [paymentScreenshotPreview, setPaymentScreenshotPreview] = useState<string | null>(null);
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistItem[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [approvingWaitlistId, setApprovingWaitlistId] = useState<string | null>(null);
+  const [rejectingWaitlistId, setRejectingWaitlistId] = useState<string | null>(null);
+  const [showWaitlist, setShowWaitlist] = useState(true);
 
   const loadAmbassadors = async () => {
     try {
@@ -140,7 +145,50 @@ export default function AmbassadorAdmin() {
 
   useEffect(() => {
     loadAdminRewards();
+    loadWaitlist();
   }, []);
+
+  const loadWaitlist = async () => {
+    try {
+      setWaitlistLoading(true);
+      const res = await ambassadorAdminApi.listWaitlist(1, 50, 'pending');
+      setWaitlistEntries(res.items || []);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load waitlist');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
+  const handleApproveWaitlist = async (id: string) => {
+    try {
+      setApprovingWaitlistId(id);
+      await ambassadorAdminApi.approveWaitlist(id);
+      toast.success('Ambassador approved and created successfully');
+      await loadWaitlist();
+      await loadAmbassadors(); // Refresh ambassadors list
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to approve waitlist entry');
+    } finally {
+      setApprovingWaitlistId(null);
+    }
+  };
+
+  const handleRejectWaitlist = async (id: string) => {
+    if (!confirm('Are you sure you want to reject this application?')) {
+      return;
+    }
+    try {
+      setRejectingWaitlistId(id);
+      await ambassadorAdminApi.rejectWaitlist(id);
+      toast.success('Application rejected');
+      await loadWaitlist();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to reject waitlist entry');
+    } finally {
+      setRejectingWaitlistId(null);
+    }
+  };
 
   // Save screenshots to localStorage whenever they change
   useEffect(() => {
@@ -330,6 +378,110 @@ export default function AmbassadorAdmin() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Waitlist Section */}
+        {showWaitlist && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5" />
+                    Pending Ambassador Applications
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Review and approve new ambassador signups
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowWaitlist(!showWaitlist);
+                  }}
+                >
+                  {showWaitlist ? 'Hide' : 'Show'} Waitlist
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {waitlistLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading waitlist...</div>
+              ) : waitlistEntries.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No pending applications
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>College</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Applied</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {waitlistEntries.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">{entry.name}</TableCell>
+                        <TableCell>{entry.email}</TableCell>
+                        <TableCell>{entry.phone}</TableCell>
+                        <TableCell>{entry.college || '-'}</TableCell>
+                        <TableCell>{entry.city || '-'}</TableCell>
+                        <TableCell>
+                          {new Date(entry.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveWaitlist(entry.id)}
+                              disabled={approvingWaitlistId === entry.id || rejectingWaitlistId === entry.id}
+                            >
+                              {approvingWaitlistId === entry.id ? (
+                                <>
+                                  <Clock className="w-3 h-3 mr-1 animate-spin" />
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Approve
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectWaitlist(entry.id)}
+                              disabled={approvingWaitlistId === entry.id || rejectingWaitlistId === entry.id}
+                            >
+                              {rejectingWaitlistId === entry.id ? (
+                                <>
+                                  <Clock className="w-3 h-3 mr-1 animate-spin" />
+                                  Rejecting...
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Reject
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search and Ambassadors Table */}
         <Card>

@@ -95,6 +95,21 @@ export const getAmbassador = async (id: string): Promise<AmbassadorResponse> => 
   return handleResponse(res);
 };
 
+export const getAmbassadorByEmail = async (email: string): Promise<AmbassadorResponse | null> => {
+  try {
+    const res = await fetch(`/api/ambassadors/by-email?email=${encodeURIComponent(email)}`);
+    if (res.status === 404) {
+      return null; // Not an ambassador
+    }
+    return handleResponse(res);
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
+
 export const getAmbassadorStats = async (id: string): Promise<AmbassadorStatsResponse> => {
   const res = await fetch(`/api/ambassadors/${encodeURIComponent(id)}/stats`);
   return handleResponse(res);
@@ -167,12 +182,23 @@ export const getAmbassadorGroups = async (
 
 export const createAmbassador = async (
   payload: CreateAmbassadorPayload
-): Promise<AmbassadorResponse> => {
+): Promise<AmbassadorResponse | { waitlistId: string; status: string; message: string }> => {
   const res = await fetch('/api/ambassadors', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
   const data = await handleResponse(res);
+  
+  // Check if it's a waitlist response
+  if (data.waitlistId) {
+    return {
+      waitlistId: data.waitlistId,
+      status: data.status,
+      message: data.message
+    };
+  }
+  
+  // Legacy ambassador response
   return data?.ambassador ?? data;
 };
