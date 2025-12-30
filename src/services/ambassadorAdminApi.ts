@@ -143,4 +143,69 @@ export const ambassadorAdminApi = {
     });
     return handleResponse(res);
   },
+
+  // Waitlist management
+  listWaitlist: async (
+    page = 1,
+    limit = 20,
+    status: 'pending' | 'approved' | 'rejected' = 'pending',
+    search = ''
+  ): Promise<Paginated<WaitlistItem>> => {
+    const qs = new URLSearchParams({ 
+      page: String(page), 
+      limit: String(limit),
+      status 
+    });
+    if (search) qs.set('search', search);
+
+    const res = await fetch(`/api/ambassadors/waitlist/list?${qs.toString()}`, {
+      credentials: 'include',
+      headers: authHeaders(),
+    });
+
+    const data = await handleResponse(res);
+    return {
+      items: data.items || [],
+      page: data.page || 1,
+      limit: data.limit || 20,
+      total: data.total || 0,
+      hasMore: data.hasMore ?? false,
+      pages: data.pages,
+    };
+  },
+
+  approveWaitlist: async (id: string): Promise<{ ambassador: any; message: string }> => {
+    const res = await fetch(`/api/ambassadors/waitlist/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: authHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  rejectWaitlist: async (id: string, reason?: string): Promise<{ message: string }> => {
+    const res = await fetch(`/api/ambassadors/waitlist/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: authHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+    return handleResponse(res);
+  },
 };
+
+export interface WaitlistItem {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  college?: string;
+  city?: string;
+  state?: string;
+  graduationYear?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedAt?: string;
+  rejectionReason?: string;
+  ambassadorId?: string;
+  createdAt: string;
+}

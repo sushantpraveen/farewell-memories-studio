@@ -36,6 +36,8 @@ export default function AmbassadorDashboard() {
       try {
         const amb = await getAmbassador(ambassadorId);
         setAmbassador(amb);
+        // Store ambassadorId in localStorage for quick access
+        localStorage.setItem('ambassadorId', ambassadorId);
         const s = await getAmbassadorStats(ambassadorId);
         setStats(s);
         const summaryData = await getAmbassadorSummary(ambassadorId);
