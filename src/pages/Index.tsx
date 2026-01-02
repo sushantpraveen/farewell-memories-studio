@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown, Phone, X } from "lucide-react";
+import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown, Phone, X, MessageCircle, Lightbulb } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+import UserWalkthrough, { Step } from "@/components/UserWalkthrough";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from '@/lib/api';
@@ -64,7 +65,7 @@ const socialProof = [
   },
 ]
 
-const ClickToCall = () => {
+const WhatsAppSupport = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -75,21 +76,24 @@ const ClickToCall = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="bg-white rounded-2xl shadow-2xl p-6 border border-purple-100 min-w-[240px]"
+            className="bg-white rounded-2xl shadow-2xl p-6 border border-green-100 min-w-[240px]"
           >
             <div className="flex flex-col gap-3">
-              <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
-                Need Help?
+              <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 text-transparent bg-clip-text flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-green-600" />
+                Chat with Support
               </h3>
               <p className="text-sm text-muted-foreground">
-                Our support team is here for you. Give us a call at:
+                Message us on WhatsApp for any help with your Signature Day Tee!
               </p>
               <a
-                href="tel:9515888515"
-                className="flex items-center gap-2 text-lg font-bold text-purple-600 hover:text-pink-600 transition-colors bg-purple-50 p-3 rounded-xl border border-purple-100"
+                href="https://wa.me/919515888515"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 text-lg font-bold text-white transition-all bg-[#25D366] hover:bg-[#128C7E] p-3 rounded-xl shadow-md"
               >
-                <Phone className="h-5 w-5" />
-                9515888515
+                <MessageCircle className="h-5 w-5" />
+                Message Us
               </a>
             </div>
           </motion.div>
@@ -100,8 +104,8 @@ const ClickToCall = () => {
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 relative group"
-        aria-label="Click to call"
+        className="w-16 h-16 rounded-full bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 relative group"
+        aria-label="Chat on WhatsApp"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -116,19 +120,19 @@ const ClickToCall = () => {
             </motion.div>
           ) : (
             <motion.div
-              key="phone"
+              key="whatsapp"
               initial={{ rotate: 90, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: -90, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Phone className="h-7 w-7" />
+              <MessageCircle className="h-7 w-7" />
             </motion.div>
           )}
         </AnimatePresence>
         <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-pink-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
         </span>
       </motion.button>
     </div>
@@ -139,6 +143,7 @@ const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [userDashboardPath, setUserDashboardPath] = useState<string | null>(null);
+
 
   useEffect(() => {
     const determineDashboardPath = async () => {
@@ -180,8 +185,32 @@ const Index = () => {
   const buttonText = hasGroup ? 'Go to Dashboard' : 'Create Group';
   const heroButtonText = hasGroup ? 'Go to Dashboard' : 'Start Creating';
 
+  const tourSteps: Step[] = [
+    {
+      targetId: "tour-hero-cta",
+      title: "Start Creating",
+      description: "Click here to start designing your custom farewell T-shirt."
+    },
+    {
+      targetId: "tour-ambassador",
+      title: "Campus Ambassador",
+      description: "Passionate about your class? Apply to be a Campus Ambassador and earn rewards."
+    },
+    {
+      targetId: "tour-create-group",
+      title: "Create Group",
+      description: "Ready to go? Create your group and start inviting friends instantly."
+    },
+    {
+      targetId: "tour-explore-designs",
+      title: "Explore Designs",
+      description: "Browse our collection of 420+ templates and find the perfect style for your batch."
+    }
+  ];
+
   return (
     <>
+      <UserWalkthrough steps={tourSteps} />
       <SEOHead
         title="Signature Day Tshirt - Create Custom Farewell T-Shirts with Photo Collages"
         description="Design memorable farewell T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect photo collage T-shirt for your graduation or farewell day."
@@ -221,6 +250,7 @@ const Index = () => {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16 lg:h-20">
               <motion.div
+                id="tour-logo"
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -256,6 +286,7 @@ const Index = () => {
                   </Button>
                 </Link> */}
                 <Button
+                  id="tour-create-group"
                   onClick={handleMainAction}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
@@ -307,11 +338,12 @@ const Index = () => {
                 vote on layouts, and create unforgettable memories together.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <Button
+                  id="tour-hero-cta"
                   size="lg"
                   onClick={handleMainAction}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 group"
+                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 group"
                 >
                   <span className="flex items-center gap-2">
                     {hasGroup ? <Users className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
@@ -320,14 +352,17 @@ const Index = () => {
                   </span>
                 </Button>
                 {/* here i have to add campus ambassador */}
-                <Link to="/ambassador/signup">
+                <Link id="tour-ambassador" to="/ambassador/signup" className="w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="lg"
-                    className="border-purple-300 hover:bg-purple-50"
+                    className="w-full border-purple-300 hover:bg-purple-50 flex items-center justify-center gap-2"
                   >
-                    <Users className="h-4 w-4 mr-2" />
-                    <span className="hidden md:inline">Campus Ambassador</span>
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span>
+                      <span className="sm:hidden">Ambassador</span>
+                      <span className="hidden sm:inline">Campus Ambassador</span>
+                    </span>
                   </Button>
                 </Link>
               </div>
@@ -555,7 +590,7 @@ const Index = () => {
               <p className="text-lg text-muted-foreground leading-relaxed">
                 Making memories should be easy, and we made sure of it. From order to delivery, we made the Signature Day experience completely hassle-free. Every student got their own customized T-shirt, perfectly packed and delivered on time — ready to collect all the signatures and memories that matter.
               </p>
-              <button onClick={handleMainAction} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-md w-fit">Explore Designs</button>
+              <button id="tour-explore-designs" onClick={handleMainAction} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-md w-fit">Explore Designs</button>
             </div>
           </div>
         </section>
@@ -630,7 +665,7 @@ const Index = () => {
         </section>
 
         {/* Memory-Driven Merch */}
-        <section className="px-2 py-16 lg:py-24 bg-gradient-to-b from-transparent to-purple-50/30">
+        <section id="tour-features" className="px-2 py-16 lg:py-24 bg-gradient-to-b from-transparent to-purple-50/30">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -826,6 +861,7 @@ const Index = () => {
                   <li><Link to="/" className="text-slate-400 hover:text-white transition-colors">Home</Link></li>
                   <li><Link to="/create-group" className="text-slate-400 hover:text-white transition-colors">Create Group</Link></li>
                   <li><a href="#how-it-works" className="text-slate-400 hover:text-white transition-colors">How It Works</a></li>
+
                 </ul>
               </div>
 
@@ -878,7 +914,9 @@ const Index = () => {
           </div>
         </footer>
 
-        <ClickToCall />
+        <div id="tour-support">
+          <WhatsAppSupport />
+        </div>
       </div>
     </>
   );

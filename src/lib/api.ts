@@ -93,8 +93,14 @@ async function apiRequest<T>(
  */
 export const authApi = {
   // Register a new user
-  register: (name: string, email: string, password: string) => {
-    return apiRequest<any>('/users/register', 'POST', { name, email, password }, false);
+  register: async (name: string, email: string, password: string) => {
+    try {
+      const response = await apiRequest<any>('/users/register', 'POST', { name, email, password }, false);
+      return response;
+    } catch (error) {
+      console.error('[API] Registration error details:', error);
+      throw error;
+    }
   },
   
   // Login user

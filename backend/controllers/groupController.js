@@ -52,10 +52,26 @@ export const createGroup = async (req, res) => {
 
     if (group) {
       // Update user to be a leader and associate with group
+      // Update user to be a leader and associate with group
       await User.findByIdAndUpdate(req.user._id, {
         isLeader: true,
-        groupId: group._id
+        groupId: group._id.toString() // Ensure stored as string
       });
+
+      // Add creator as the first member automatically!
+      const creatorMember = {
+        name: req.user.name,
+        email: req.user.email,
+        memberRollNumber: "LEADER", 
+        // Ensure photo is present, fallback to placeholder if undefined
+        photo: req.user.profileImage || "https://res.cloudinary.com/dlnj2xxjia/image/upload/v1699946892/avatars/user_placeholder_v2_x8d9q1.png",
+        vote: gridTemplate || 'square',
+        joinedAt: new Date()
+      };
+      
+      // We need to add this member to the group we just created
+      group.members.push(creatorMember);
+      await group.save();
 
       res.status(201).json({
         id: group._id,
@@ -555,6 +571,7 @@ export const updateGroup = async (req, res) => {
  * @access  Private/Leader
  */
 export const deleteGroup = async (req, res) => {
+  console.log(`[Backend] DELETE request received for group: ${req.params.id}`);
   try {
     const group = await Group.findById(req.params.id);
 
@@ -563,17 +580,48 @@ export const deleteGroup = async (req, res) => {
     }
 
     // Check if user is the leader of this group
-    if (!req.user.isLeader || req.user.groupId !== group._id.toString()) {
+    // 1. Check if they are the 'active' leader (User.groupId matches)
+    const isActiveLeader = req.user.isLeader && req.user.groupId == group._id.toString();
+    
+    // 2. Check if they are listed as a LEADER in the group's member list (for multi-group owners)
+    // using email or phone to match since we have those on req.user
+    const isMemberLeader = group.members.some(m => 
+        (m.email === req.user.email || (m.phone && req.user.phone && m.phone === req.user.phone)) && 
+        m.memberRollNumber === "LEADER"
+    );
+    
+    // 3. Check explicit ownership if field exists
+    const isOwner = group.createdByUserId && group.createdByUserId.toString() === req.user._id.toString();
+
+    // 4. Legacy fallback: If group has no clear owner/leader, check if user is the FIRST member (creator)
+    // Use case-insensitive email comparison
+    const isFirstMember = group.members.length > 0 && 
+                          (
+                            (group.members[0].email && req.user.email && group.members[0].email.toLowerCase() === req.user.email.toLowerCase()) || 
+                            (group.members[0].phone && req.user.phone && group.members[0].phone === req.user.phone)
+                          );
+
+    console.log(`[Auth Debug] active=${isActiveLeader}, memberLeader=${isMemberLeader}, owner=${isOwner}, first=${isFirstMember}`);
+
+    if (!isActiveLeader && !isMemberLeader && !isOwner && !isFirstMember) {
+      console.warn(`Delete blocked: User ${req.user._id} is not authorized for group ${group._id}`);
       return res.status(403).json({ message: 'Not authorized to delete this group' });
     }
 
     // Remove group association from all users in this group
     await User.updateMany({ groupId: group._id }, { groupId: null, isLeader: false });
+    console.log(`Detached users from group ${group._id}`);
 
-    // Delete the group
-    await Group.deleteOne({ _id: group._id });
+    // Delete the group using findByIdAndDelete to ensure it is removed and return the doc
+    const deletedGroup = await Group.findByIdAndDelete(group._id);
 
-    res.json({ message: 'Group removed successfully' });
+    if (!deletedGroup) {
+      console.error('Delete failed: Group not found during delete operation');
+      return res.status(500).json({ message: 'Failed to delete group' });
+    }
+
+    console.log(`Group ${group._id} deleted successfully`);
+    res.json({ message: 'Group removed successfully', deletedId: group._id });
   } catch (error) {
     console.error('Delete group error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

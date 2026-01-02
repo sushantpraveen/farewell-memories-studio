@@ -11,14 +11,20 @@ import Group from '../models/groupModel.js';
  * @access  Public
  */
 export const registerUser = async (req, res) => {
+  console.log('[Backend] Register request body:', req.body);
   try {
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('[Backend] Registration Validation Failed:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    let { email } = req.body;
+    
+    // Enforce lowercase email
+    if (email) email = email.toLowerCase();
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
@@ -61,7 +67,10 @@ export const registerUser = async (req, res) => {
  */
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email } = req.body;
+    const { password } = req.body;
+    
+    if (email) email = email.toLowerCase();
 
     // Find user by email
     const user = await User.findOne({ email });
