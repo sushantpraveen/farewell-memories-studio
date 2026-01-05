@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createAmbassador } from '@/lib/ambassadorApi';
 import { toast } from 'sonner';
 import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
+import { Clock, CheckCircle } from 'lucide-react';
 
 export default function AmbassadorSignup() {
   const navigate = useNavigate();
@@ -18,6 +19,9 @@ export default function AmbassadorSignup() {
     city: '',
   });
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+
+  const [submitted, setSubmitted] = useState(false);
+  const [waitlistId, setWaitlistId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,17 +37,26 @@ export default function AmbassadorSignup() {
     }
 
     try {
-      const ambassador = await createAmbassador({
+      const response = await createAmbassador({
         name: formData.name,
         email: formData.email,
         phone: verifiedPhone,
         college: formData.college,
         city: formData.city,
       });
-      toast.success('Welcome! Your ambassador account has been created');
-      navigate(`/ambassador/${ambassador.id}`);
+      
+      // Check if response has waitlistId (new waitlist flow)
+      if ('waitlistId' in response && response.waitlistId) {
+        setWaitlistId(response.waitlistId);
+        setSubmitted(true);
+        toast.success('Application submitted! Your request is pending admin approval.');
+      } else if ('id' in response && response.id) {
+        // Legacy flow - direct ambassador creation (shouldn't happen now)
+        toast.success('Welcome! Your ambassador account has been created');
+        navigate(`/ambassador/${response.id}`);
+      }
     } catch (err: any) {
-      const message = err?.message || 'Failed to create ambassador';
+      const message = err?.message || 'Failed to submit application';
       toast.error(message);
     }
   };
@@ -54,6 +67,67 @@ export default function AmbassadorSignup() {
       [e.target.name]: e.target.value,
     }));
   };
+
+  // Show waitlist status if submitted
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              Application Submitted
+            </CardTitle>
+            <CardDescription>
+              Your application is pending admin approval
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-sm text-orange-800">
+                Thank you for your interest in becoming a Campus Ambassador! 
+                Your application has been submitted and is currently under review.
+              </p>
+            </div>
+            <div className="space-y-2 text-sm">
+              <p className="text-muted-foreground">
+                <strong>What happens next?</strong>
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
+                <li>Our team will review your application</li>
+                <li>You'll receive an email notification once approved</li>
+                <li>Upon approval, you'll get your unique referral link</li>
+                <li>You can start earning rewards by sharing your link</li>
+              </ul>
+            </div>
+            {waitlistId && (
+              <div className="text-xs text-muted-foreground pt-2 border-t">
+                Application ID: {waitlistId}
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => {
+                setSubmitted(false);
+                setWaitlistId(null);
+                setFormData({
+                  name: '',
+                  email: '',
+                  whatsapp: '',
+                  college: '',
+                  city: '',
+                });
+                setVerifiedPhone(null);
+              }}
+            >
+              Submit Another Application
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

@@ -7,6 +7,7 @@ import UserWalkthrough, { Step } from "@/components/UserWalkthrough";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from '@/lib/api';
+import { getAmbassador, getAmbassadorByEmail } from '@/lib/ambassadorApi';
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import SEOHead from "@/components/seo/SEOHead";
@@ -140,9 +141,24 @@ const WhatsAppSupport = () => {
 };
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [userDashboardPath, setUserDashboardPath] = useState<string | null>(null);
+  const [ambassadorId, setAmbassadorId] = useState<string | null>(null);
+  const [checkingAmbassador, setCheckingAmbassador] = useState(false);
+
+  const handleAmbassadorClick = () => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+      return;
+    }
+    
+    if (ambassadorId) {
+      navigate(`/ambassador/${ambassadorId}`);
+    } else {
+      navigate('/ambassador/signup');
+    }
+  };
 
 
   useEffect(() => {
@@ -150,6 +166,7 @@ const Index = () => {
       // No logged-in user -> no dashboard link
       if (!user) {
         setUserDashboardPath(null);
+        setAmbassadorId(null);
         return;
       }
 
@@ -172,6 +189,37 @@ const Index = () => {
 
     determineDashboardPath();
   }, [user?.id]);
+
+  // Check if user is an ambassador by email
+  useEffect(() => {
+    const checkAmbassador = async () => {
+      if (!user?.email) {
+        setAmbassadorId(null);
+        return;
+      }
+
+      try {
+        setCheckingAmbassador(true);
+        // Try to find ambassador by email
+        const ambassador = await getAmbassadorByEmail(user.email);
+        if (ambassador) {
+          setAmbassadorId(ambassador.id);
+          // Store in localStorage for quick access
+          localStorage.setItem('ambassadorId', ambassador.id);
+        } else {
+          setAmbassadorId(null);
+          localStorage.removeItem('ambassadorId');
+        }
+      } catch (err) {
+        console.error('[Index] Failed to check ambassador status:', err);
+        setAmbassadorId(null);
+      } finally {
+        setCheckingAmbassador(false);
+      }
+    };
+
+    checkAmbassador();
+  }, [user?.email]);
 
   const handleMainAction = () => {
     if (userDashboardPath) {
@@ -275,18 +323,41 @@ const Index = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+
                 {/* <Link to="/ambassador/signup">
+
+                {ambassadorId ? (
                   <Button 
                     variant="outline"
                     size="lg"
                     className="border-purple-300 hover:bg-purple-50"
+                    onClick={() => navigate(`/ambassador/${ambassadorId}`)}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Ambassador Dashboard</span>
+                    <span className="md:hidden">Dashboard</span>
+                  </Button>
+                ) : (
+
+                  <Button 
+                    variant="outline"
+                    size="lg"
+                    className="border-purple-300 hover:bg-purple-50"
+                    onClick={handleAmbassadorClick}
+                    disabled={checkingAmbassador}
                   >
                     <Users className="h-4 w-4 mr-2" />
                     <span className="hidden md:inline">Campus Ambassador</span>
                   </Button>
+
                 </Link> */}
                 <Button
+
                   id="tour-create-group"
+
+                )}
+                <Button 
+
                   onClick={handleMainAction}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
