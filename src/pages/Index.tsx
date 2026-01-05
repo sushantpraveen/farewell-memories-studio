@@ -351,11 +351,7 @@ const Index = () => {
                   </Button>
 
                 </Link> */}
-                <Button
-
-                  id="tour-create-group"
-
-                )}
+              
                 <Button 
 
                   onClick={handleMainAction}

@@ -58,21 +58,6 @@ export const createGroup = async (req, res) => {
         groupId: group._id.toString() // Ensure stored as string
       });
 
-      // Add creator as the first member automatically!
-      const creatorMember = {
-        name: req.user.name,
-        email: req.user.email,
-        memberRollNumber: "LEADER", 
-        // Ensure photo is present, fallback to placeholder if undefined
-        photo: req.user.profileImage || "https://res.cloudinary.com/dlnj2xxjia/image/upload/v1699946892/avatars/user_placeholder_v2_x8d9q1.png",
-        vote: gridTemplate || 'square',
-        joinedAt: new Date()
-      };
-      
-      // We need to add this member to the group we just created
-      group.members.push(creatorMember);
-      await group.save();
-
       res.status(201).json({
         id: group._id,
         name: group.name,
