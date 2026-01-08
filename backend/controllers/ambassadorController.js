@@ -90,7 +90,7 @@ export const listAmbassadors = async (req, res) => {
       city: a.city,
       referralCode: a.referralCode,
       referralLink:
-        (process.env.FRONTEND_ORIGIN || "http://localhost:8080") +
+        (process.env.APP_BASE_URL || "http://localhost:8080") +
         "/ref/" +
         a.referralCode,
       upiId: a.payoutMethod?.upiId ?? a.upiId,
@@ -614,7 +614,7 @@ export const approveWaitlist = async (req, res) => {
       setImmediate(() => {
         (async () => {
           try {
-            const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:8080';
+            const frontendOrigin = process.env.APP_BASE_URL || 'http://localhost:8080';
             const dashboardUrl = `${frontendOrigin}/ambassador/${json._id.toString()}`;
             
             const htmlTemplate = `
@@ -644,7 +644,7 @@ export const approveWaitlist = async (req, res) => {
                   <div class="details">
                     <h3>Your Ambassador Details</h3>
                     <p><strong>Referral Code:</strong> ${json.referralCode}</p>
-                    <p><strong>Referral Link:</strong> ${json.referralLink}</p>
+                    <p><strong>Referral Link:</strong> ${dashboardUrl}</p>
                   </div>
 
                   <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 10% of their payment.</p>
@@ -682,7 +682,7 @@ export const approveWaitlist = async (req, res) => {
               
               Your Ambassador Details:
               - Referral Code: ${json.referralCode}
-              - Referral Link: ${json.referralLink}
+              - Referral Link: ${dashboardUrl}
               
               You can now start earning rewards by sharing your referral link!
               
@@ -757,7 +757,7 @@ export const approveWaitlist = async (req, res) => {
     setImmediate(() => {
       (async () => {
         try {
-          const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:8080';
+          const frontendOrigin = process.env.APP_BASE_URL || 'http://localhost:8080';
           const dashboardUrl = `${frontendOrigin}/ambassador/${json._id.toString()}`;
           
           const htmlTemplate = `
@@ -787,7 +787,7 @@ export const approveWaitlist = async (req, res) => {
                 <div class="details">
                   <h3>Your Ambassador Details</h3>
                   <p><strong>Referral Code:</strong> ${json.referralCode}</p>
-                  <p><strong>Referral Link:</strong> ${json.referralLink}</p>
+                  <p><strong>Referral Link:</strong> ${dashboardUrl}</p>
                 </div>
 
                 <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 10% of their payment.</p>
@@ -825,7 +825,7 @@ export const approveWaitlist = async (req, res) => {
             
             Your Ambassador Details:
             - Referral Code: ${json.referralCode}
-            - Referral Link: ${json.referralLink}
+            - Referral Link: ${dashboardUrl}
             
             You can now start earning rewards by sharing your referral link!
             
