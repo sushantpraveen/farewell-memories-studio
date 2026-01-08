@@ -11,8 +11,11 @@ import {
   updatePayoutMethod,
   listAmbassadors,
   listWaitlist,
+  // approveWaitlist,
+  // listWaitlist,
   approveWaitlist,
-  rejectWaitlist
+  rejectWaitlist,
+  loginAmbassador
 } from '../controllers/ambassadorController.js';
 import { protect, isAdmin } from '../middleware/authMiddleware.js';
 

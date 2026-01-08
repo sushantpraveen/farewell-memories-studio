@@ -4,13 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { createAmbassador } from '@/lib/ambassadorApi';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { createAmbassador, loginAmbassadorByPhone } from '@/lib/ambassadorApi';
 import { toast } from 'sonner';
 import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
-import { Clock, CheckCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 export default function AmbassadorSignup() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'signup' | 'login'>('signup');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +22,9 @@ export default function AmbassadorSignup() {
     city: '',
   });
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+  const [loginPhone, setLoginPhone] = useState<string>('');
+  const [loginVerifiedPhone, setLoginVerifiedPhone] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [submitted, setSubmitted] = useState(false);
   const [waitlistId, setWaitlistId] = useState<string | null>(null);
@@ -37,6 +43,7 @@ export default function AmbassadorSignup() {
     }
 
     try {
+      setIsSubmitting(true);
       const response = await createAmbassador({
         name: formData.name,
         email: formData.email,
@@ -58,6 +65,8 @@ export default function AmbassadorSignup() {
     } catch (err: any) {
       const message = err?.message || 'Failed to submit application';
       toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -66,6 +75,36 @@ export default function AmbassadorSignup() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!loginVerifiedPhone) {
+      toast.error('Please verify your phone number with the OTP before logging in');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const ambassador = await loginAmbassadorByPhone(loginVerifiedPhone);
+      if (!ambassador?.id) {
+        toast.error('Login failed. Please try again.');
+        return;
+      }
+
+      // Persist ambassador session
+      localStorage.setItem('ambassadorId', ambassador.id);
+      localStorage.setItem('ambassadorProfile', JSON.stringify(ambassador));
+
+      toast.success(`Welcome back, ${ambassador.name}!`);
+      navigate(`/ambassador/${ambassador.id}`);
+    } catch (err: any) {
+      const message = err?.message || 'Failed to login as ambassador';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Show waitlist status if submitted
@@ -133,13 +172,20 @@ export default function AmbassadorSignup() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Become a Campus Ambassador</CardTitle>
+          <CardTitle>Campus Ambassador</CardTitle>
           <CardDescription>
-            Earn rewards by promoting SignatureDay at your campus
+            Join as a new ambassador or log in to your dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signup' | 'login')} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-4">
+              <TabsTrigger value="signup">New Ambassador Signup</TabsTrigger>
+              <TabsTrigger value="login">Existing Ambassador Login</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="signup" className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -205,10 +251,36 @@ export default function AmbassadorSignup() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={!verifiedPhone}>
-              Registered as Ambassador
+            <Button type="submit" className="w-full" disabled={!verifiedPhone || isSubmitting}>
+              {isSubmitting ? 'Submitting…' : 'Register as Ambassador'}
             </Button>
           </form>
+            </TabsContent>
+
+            <TabsContent value="login" className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-phone">Registered Phone Number</Label>
+                  <PhoneOtpBlock
+                    value={loginPhone}
+                    onChange={(val) => {
+                      setLoginPhone(val);
+                      setLoginVerifiedPhone(null);
+                    }}
+                    onVerified={(normalized) => setLoginVerifiedPhone(normalized)}
+                    source="ambassadorLogin"
+                  />
+                  {!loginVerifiedPhone && (
+                    <p className="text-xs text-slate-600">Verify your phone via OTP to log in.</p>
+                  )}
+                </div>
+
+                <Button type="submit" className="w-full" disabled={!loginVerifiedPhone || isSubmitting}>
+                  {isSubmitting ? 'Logging in…' : 'Login to Dashboard'}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

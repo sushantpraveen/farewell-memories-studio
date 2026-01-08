@@ -90,6 +90,15 @@ const handleResponse = async (res: Response) => {
   return data;
 };
 
+export const loginAmbassadorByPhone = async (phone: string): Promise<AmbassadorResponse> => {
+  const res = await fetch('/api/ambassadors/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone })
+  });
+  return handleResponse(res);
+};
+
 export const getAmbassador = async (id: string): Promise<AmbassadorResponse> => {
   const res = await fetch(`/api/ambassadors/${encodeURIComponent(id)}`);
   return handleResponse(res);

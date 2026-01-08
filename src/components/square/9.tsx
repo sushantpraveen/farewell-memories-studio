@@ -100,12 +100,12 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
     // Right side 14-19 (rows 1..6)
     if (index >= 4 && index <= 5) {
-      keys.push(cid('right', index - 3, 7));
+      keys.push(cid('right', index - 3, 4));
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
     if (index >= 6 && index <= 8) {
-      keys.push(cid('bottom', 9, index - 5));
+      keys.push(cid('bottom', 4, index - 5));
       return keys;
     }
     return keys;
@@ -131,7 +131,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       // Right side: 4-5
       return 4 + (row - 1);
     } else if (section === 'bottom') {
-      // Bottom row: 5-7
+      // Bottom row: 5-6
       return 5 + col;
     }
     return -1;
@@ -569,20 +569,20 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             <div
               className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer flex items-center justify-center"
               style={{
-                ...(getCellStyleWithFallback(cid('right', rowIndex + 1, 0)) as any),
+                ...(getCellStyleWithFallback(cid('right', rowIndex + 1, 4)) as any),
                 transform: 'translateY(calc(var(--row) / 2))',
               } as React.CSSProperties}
-              onClick={() => handleCellClick(cid('right', rowIndex + 1, 6))}
+              onClick={() => handleCellClick(cid('right', rowIndex + 1, 4))}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleCellClick(cid('right', rowIndex + 1, 7));
+                  handleCellClick(cid('right', rowIndex + 1, 4));
                 }
               }}
             >
-              {!cellImages[cid('right', rowIndex + 1, 7)] && (
+              {!cellImages[cid('right', rowIndex + 1, 4)] && (
                 <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
                   +
                 </div>
@@ -605,7 +605,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 3 }, (_, colIndex) => {
-              const key = cid('bottom', 0, colIndex+1);
+              const key = cid('bottom', 4, colIndex+1);
               
               return (
                 <div

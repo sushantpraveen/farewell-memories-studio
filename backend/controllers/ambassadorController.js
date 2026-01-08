@@ -118,6 +118,40 @@ export const listAmbassadors = async (req, res) => {
   }
 };
 
+// Login ambassador with verified phone
+export const loginAmbassador = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    const ambassador = await Ambassador.findOne({ phone: phone.trim() });
+
+    if (!ambassador) {
+      return res.status(404).json({ message: "Ambassador not found with this phone number" });
+    }
+
+    // Update last login
+    ambassador.lastLogin = new Date();
+    await ambassador.save();
+
+    return res.json({
+      id: ambassador._id.toString(),
+      name: ambassador.name,
+      email: ambassador.email,
+      phone: ambassador.phone,
+      referralCode: ambassador.referralCode,
+      referralLink: ambassador.referralLink,
+      upiId: ambassador.payoutMethod?.upiId ?? ambassador.upiId
+    });
+  } catch (error) {
+    console.error("Error logging in ambassador:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Create a new ambassador waitlist entry (public)
 export const createAmbassador = async (req, res) => {
   try {

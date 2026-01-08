@@ -76,3 +76,6 @@ const AmbassadorWaitlist = mongoose.model('AmbassadorWaitlist', ambassadorWaitli
 
 export default AmbassadorWaitlist;
 
+
+
+

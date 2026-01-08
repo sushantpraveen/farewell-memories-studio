@@ -81,7 +81,14 @@ export const useJoinGroup = (groupId: string | undefined) => {
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
 
   const joinPricing = useMemo(
-    () => calculatePricing({ quantity: 1, tshirtPrice: 299, printPrice: 0, gstRate: 0 }),
+    () => ({
+      perItemSubtotal: 189.52,
+      perItemGst: 9.48,
+      perItemTotal: 199,
+      subtotal: 189.52,
+      gst: 9.48,
+      total: 199
+    }),
     []
   );
 
