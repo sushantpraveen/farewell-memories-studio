@@ -18,7 +18,7 @@ const StructuredData = ({
   pageData = {} 
 }: StructuredDataProps) => {
   useEffect(() => {
-    const baseUrl = 'https://signaturedaytshirt.com';
+    const baseUrl = 'https://support@shelfmerch.com';
     
     // Organization Schema
     const organizationSchema = {
@@ -37,7 +37,7 @@ const StructuredData = ({
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer service",
-        "email": "support@signaturedaytshirt.com"
+        "email": "support@shelfmerch.com"
       },
       "sameAs": [
         "https://twitter.com/signaturedaytshirt",

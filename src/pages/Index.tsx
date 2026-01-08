@@ -148,7 +148,7 @@
 //       navigate('/auth');
 //       return;
 //     }
-    
+
 //     if (ambassadorId) {
 //       navigate(`/ambassador/${ambassadorId}`);
 //     } else {
@@ -239,22 +239,22 @@
 //       <style>
 //         {`
 //           @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Permanent+Marker&family=Comfortaa:wght@400;500;600;700&display=swap');
-          
+
 //           .font-brand {
 //             font-family: 'Permanent Marker', cursive;
 //             letter-spacing: -0.02em;
 //           }
-          
+
 //           .font-heading {
 //             font-family: 'Poppins', sans-serif;
 //             font-weight: 700;
 //             letter-spacing: -0.03em;
 //           }
-          
+
 //           .font-body {
 //             font-family: 'Comfortaa', cursive;
 //           }
-          
+
 //           .font-decorative {
 //             font-family: 'Permanent Marker', cursive;
 //           }
@@ -321,7 +321,7 @@
 //                   </Button>
 
 //                 </Link> */}
-               
+
 //                 <Button 
 //                   onClick={handleMainAction}
 //                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
@@ -1247,22 +1247,22 @@
 //       <style>
 //         {`
 //           @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Permanent+Marker&family=Comfortaa:wght@400;500;600;700&display=swap');
-          
+
 //           .font-brand {
 //             font-family: 'Permanent Marker', cursive;
 //             letter-spacing: -0.02em;
 //           }
-          
+
 //           .font-heading {
 //             font-family: 'Poppins', sans-serif;
 //             font-weight: 700;
 //             letter-spacing: -0.03em;
 //           }
-          
+
 //           .font-body {
 //             font-family: 'Comfortaa', cursive;
 //           }
-          
+
 //           .font-decorative {
 //             font-family: 'Permanent Marker', cursive;
 //           }
@@ -2059,7 +2059,7 @@ const WhatsAppSupport = () => {
                 Message us on WhatsApp for any help with your Signature Day Tee!
               </p>
               <a
-                href="https://wa.me/919515888515"
+                href="https://wa.me/917036365724"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 text-lg font-bold text-white transition-all bg-[#25D366] hover:bg-[#128C7E] p-3 rounded-xl shadow-md"
@@ -2921,7 +2921,7 @@ const Index = () => {
                 <ul className="space-y-2 text-sm">
                   <li><Link to="/" className="text-slate-400 hover:text-white transition-colors">Home</Link></li>
                   <li><Link to="/create-group" className="text-slate-400 hover:text-white transition-colors">Create Group</Link></li>
-                  <li><a href="#how-it-works" className="text-slate-400 hover:text-white transition-colors">How It Works</a></li>
+                  <li><Link to="/how-it-works" className="text-slate-400 hover:text-white transition-colors">How It Works</Link></li>
 
                 </ul>
               </div>
@@ -2943,8 +2943,8 @@ const Index = () => {
                   <li className="flex items-start gap-2">
                     <Mail className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                     <div>
-                      <a href="mailto:support@signaturedaytshirt.com" className="text-slate-400 hover:text-white transition-colors">
-                        support@signaturedaytshirt.com
+                      <a href="mailto:support@shelfmerch.com" className="text-slate-400 hover:text-white transition-colors">
+                        support@shelfmerch.com
                       </a>
                       <p className="text-xs text-slate-500 mt-1">We typically respond within 24 hours</p>
                     </div>
@@ -2952,7 +2952,7 @@ const Index = () => {
                   <li className="flex items-start gap-2">
                     <Clock className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-slate-400">Mon-Fri: 9AM-6PM EST</p>
+                      <p className="text-slate-400">Mon-Fri: 9AM-6PM IST</p>
                       <p className="text-xs text-slate-500 mt-1">Weekend support available</p>
                     </div>
                   </li>
@@ -2963,7 +2963,7 @@ const Index = () => {
             {/* Bottom Bar */}
             <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-sm text-slate-400">
-                © 2025 SignatureDayTshirt. All rights reserved.
+                © 2026 SignatureDayTshirt. All rights reserved.
               </p>
               <div className="flex items-center gap-4 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
