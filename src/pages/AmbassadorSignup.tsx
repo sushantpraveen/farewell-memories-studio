@@ -180,8 +180,8 @@ export default function AmbassadorSignup() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signup' | 'login')} className="w-full">
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="signup">New Ambassador Signup</TabsTrigger>
-              <TabsTrigger value="login">Existing Ambassador Login</TabsTrigger>
+              <TabsTrigger value="signup">Register as Ambassador</TabsTrigger>
+              <TabsTrigger value="login">Login as Ambassador</TabsTrigger>
             </TabsList>
 
             <TabsContent value="signup" className="space-y-4">

@@ -2383,7 +2383,7 @@ const Index = () => {
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium">
                 <Sparkles className="h-4 w-4" />
-                <span>End memories that last forever</span>
+                <span>Create memories that last forever</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
