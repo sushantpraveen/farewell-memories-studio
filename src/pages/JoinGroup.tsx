@@ -18,9 +18,9 @@ const AnimatedBackground = () => (
 );
 
 // Fix the import to use named export
-const GridPreview = lazy(() => 
-  import("@/components/GridPreview").then(module => ({ 
-    default: module.GridPreview 
+const GridPreview = lazy(() =>
+  import("@/components/GridPreview").then(module => ({
+    default: module.GridPreview
   }))
 );
 
@@ -57,19 +57,19 @@ const JoinGroup = () => {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4 animate-fadeIn">
         <AnimatedBackground />
-        { isSubmitting ?  <div className="mb-6">
-              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
-                <img src="/congrats.gif" alt="success" width={400} />
-              </div>
-            </div>
-          : 
-        <Card className="w-full max-w-md text-center animate-slideUp backdrop-blur-lg bg-white/80 border-none shadow-xl">
-          <CardContent className="pt-6">
-            <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
-            <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p>
-          </CardContent>
-        </Card>
+        {isSubmitting ? <div className="mb-6">
+          <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
+            <img src="/congrats.gif" alt="success" width={400} />
+          </div>
+        </div>
+          :
+          <Card className="w-full max-w-md text-center animate-slideUp backdrop-blur-lg bg-white/80 border-none shadow-xl">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-4 animate-pulse">Loading...</h1>
+              <p className="text-gray-600">{loadingGroup ? "Loading group data..." : "Initializing application..."}</p>
+            </CardContent>
+          </Card>
         }
       </div>
     );
@@ -153,117 +153,117 @@ const JoinGroup = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
             <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
-          
-            {/* Join Form */}
-            <Card className="shadow-xl border-0 backdrop-blur-lg bg-white/80">
-              <CardHeader className="pb-4 sm:pb-6">
-                <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Join the Group</CardTitle>
-                <CardDescription className="text-sm sm:text-base">
-                  Upload your photo and vote for your favorite grid template. {remainingSpots} spots remaining!
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                  <PhoneOtpBlock
-                    value={phone}
-                    onChange={setPhone}
-                    onVerified={onPhoneVerified}
-                    className="bg-slate-50/70"
-                    disabled={isSubmitting || isProcessingPayment}
-                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="memberName" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                      <span className="text-sm sm:text-base font-medium">Your Name</span>
-                      {errors.name && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.name}</span>}
-                      {formTouched && memberData.name && !errors.name && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
-                    </Label>
-                    <Input
-                      id="memberName"
-                      placeholder="Enter your full name"
-                      value={memberData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      className={errors.name ? "border-red-300 focus:border-red-500" : ""}
-                      aria-invalid={!!errors.name}
-                      aria-describedby={errors.name ? "name-error" : undefined}
+              {/* Join Form */}
+              <Card className="shadow-xl border-0 backdrop-blur-lg bg-white/80">
+                <CardHeader className="pb-4 sm:pb-6">
+                  <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Join the Group</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">
+                    Upload your photo and vote for your favorite grid template. {remainingSpots} spots remaining!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                    <PhoneOtpBlock
+                      value={phone}
+                      onChange={setPhone}
+                      onVerified={onPhoneVerified}
+                      className="bg-slate-50/70"
+                      disabled={isSubmitting || isProcessingPayment}
                     />
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="memberEmail" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                      <span className="text-sm sm:text-base font-medium">Email</span>
-                      {errors.email && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.email}</span>}
-                      {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
-                    </Label>
-                    <Input
-                      id="memberEmail"
-                      placeholder="Enter your email"
-                      value={memberData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={errors.email ? "border-red-300 focus:border-red-500" : ""}
-                      aria-invalid={!!errors.email}
-                      aria-describedby={errors.email ? "email-error" : undefined}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="memberName" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="text-sm sm:text-base font-medium">Your Name</span>
+                        {errors.name && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.name}</span>}
+                        {formTouched && memberData.name && !errors.name && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                      </Label>
+                      <Input
+                        id="memberName"
+                        placeholder="Enter your full name"
+                        value={memberData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        className={errors.name ? "border-red-300 focus:border-red-500" : ""}
+                        aria-invalid={!!errors.name}
+                        aria-describedby={errors.name ? "name-error" : undefined}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="memberRollNumber" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                      <span className="text-sm sm:text-base font-medium">Roll No.</span>
-                      {errors.memberRollNumber && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.memberRollNumber}</span>}
-                      {formTouched && memberData.memberRollNumber && !errors.memberRollNumber && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
-                    </Label>
-                    <Input
-                      id="memberRollNumber"
-                      placeholder="Enter your roll number"
-                      value={memberData.memberRollNumber}
-                      onChange={(e) => handleInputChange('memberRollNumber', e.target.value)}
-                      className={errors.memberRollNumber ? "border-red-300 focus:border-red-500" : ""}
-                      aria-invalid={!!errors.memberRollNumber}
-                      aria-describedby={errors.memberRollNumber ? "roll-error" : undefined}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="memberEmail" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="text-sm sm:text-base font-medium">Email</span>
+                        {errors.email && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.email}</span>}
+                        {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                      </Label>
+                      <Input
+                        id="memberEmail"
+                        placeholder="Enter your email"
+                        value={memberData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={errors.email ? "border-red-300 focus:border-red-500" : ""}
+                        aria-invalid={!!errors.email}
+                        aria-describedby={errors.email ? "email-error" : undefined}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="size" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                      <span className="text-sm sm:text-base font-medium">T‑Shirt Size</span>
-                      {errors.size && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.size}</span>}
-                      {formTouched && memberData.size && !errors.size && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Selected</span>}
-                    </Label>
-                    <Select
-                      value={memberData.size}
-                      onValueChange={(val) => handleInputChange('size', val as 's' | 'm' | 'l' | 'xl' | 'xxl')}
-                    >
-                      <SelectTrigger id="size" className={errors.size ? "border-red-300" : ""}>
-                        <SelectValue placeholder="Select your size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem key="size-s" value="s">S</SelectItem>
-                        <SelectItem key="size-m" value="m">M</SelectItem>
-                        <SelectItem key="size-l" value="l">L</SelectItem>
-                        <SelectItem key="size-xl" value="xl">XL</SelectItem>
-                        <SelectItem key="size-xxl" value="xxl">XXL</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="memberRollNumber" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="text-sm sm:text-base font-medium">Roll No.</span>
+                        {errors.memberRollNumber && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.memberRollNumber}</span>}
+                        {formTouched && memberData.memberRollNumber && !errors.memberRollNumber && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
+                      </Label>
+                      <Input
+                        id="memberRollNumber"
+                        placeholder="Enter your roll number"
+                        value={memberData.memberRollNumber}
+                        onChange={(e) => handleInputChange('memberRollNumber', e.target.value)}
+                        className={errors.memberRollNumber ? "border-red-300 focus:border-red-500" : ""}
+                        aria-invalid={!!errors.memberRollNumber}
+                        aria-describedby={errors.memberRollNumber ? "roll-error" : undefined}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="photo" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                      <span className="flex items-center text-sm sm:text-base font-medium">
-                        <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        Upload Your Photo
-                      </span>
-                      {errors.photo && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.photo}</span>}
-                      {formTouched && memberData.photo && !errors.photo && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Uploaded</span>}
-                    </Label>
-                    <Input
-                      id="photo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className={errors.photo ? "border-red-300 focus:border-red-500" : ""}
-                      aria-invalid={!!errors.photo}
-                    />
-                    {/* {memberData.photo && (
+                    <div className="space-y-2">
+                      <Label htmlFor="size" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="text-sm sm:text-base font-medium">T‑Shirt Size</span>
+                        {errors.size && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.size}</span>}
+                        {formTouched && memberData.size && !errors.size && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Selected</span>}
+                      </Label>
+                      <Select
+                        value={memberData.size}
+                        onValueChange={(val) => handleInputChange('size', val as 's' | 'm' | 'l' | 'xl' | 'xxl')}
+                      >
+                        <SelectTrigger id="size" className={errors.size ? "border-red-300" : ""}>
+                          <SelectValue placeholder="Select your size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem key="size-s" value="s">S</SelectItem>
+                          <SelectItem key="size-m" value="m">M</SelectItem>
+                          <SelectItem key="size-l" value="l">L</SelectItem>
+                          <SelectItem key="size-xl" value="xl">XL</SelectItem>
+                          <SelectItem key="size-xxl" value="xxl">XXL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="photo" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="flex items-center text-sm sm:text-base font-medium">
+                          <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          Upload Your Photo
+                        </span>
+                        {errors.photo && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.photo}</span>}
+                        {formTouched && memberData.photo && !errors.photo && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Uploaded</span>}
+                      </Label>
+                      <Input
+                        id="photo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className={errors.photo ? "border-red-300 focus:border-red-500" : ""}
+                        aria-invalid={!!errors.photo}
+                      />
+                      {/* {memberData.photo && (
                       <div className="mt-4 flex justify-center">
                         <LazyImage
                           src={memberData.photo}
@@ -273,85 +273,85 @@ const JoinGroup = () => {
                         />
                       </div>
                     )} */}
-                  </div>
+                    </div>
 
-                 
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3"
-                    disabled={
-                      !memberData.name || 
-                      !memberData.email ||
-                      !memberData.memberRollNumber || 
-                      !memberData.size || 
-                      !submitPhotoUrl ||
-                      isUploadingPhoto ||
-                      isSubmitting ||
-                      isProcessingPayment ||
-                      Object.values(errors).some(error => error) ||
-                      !isPhoneVerified
-                    }
-                  >
-                    {isProcessingPayment ? (
-                      <span className="flex items-center">
-                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
-                        Processing Payment...
-                      </span>
-                    ) : isUploadingPhoto ? (
-                      <span className="flex items-center">
-                        <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
-                        Uploading photo...
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center">
-                        💳 Pay ₹{joinPricing.perItemTotal} & Join Group
-                      </span>
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+
+                    <Button
+                      type="submit"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3"
+                      disabled={
+                        !memberData.name ||
+                        !memberData.email ||
+                        !memberData.memberRollNumber ||
+                        !memberData.size ||
+                        !submitPhotoUrl ||
+                        isUploadingPhoto ||
+                        isSubmitting ||
+                        isProcessingPayment ||
+                        Object.values(errors).some(error => error) ||
+                        !isPhoneVerified
+                      }
+                    >
+                      {isProcessingPayment ? (
+                        <span className="flex items-center">
+                          <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+                          Processing Payment...
+                        </span>
+                      ) : isUploadingPhoto ? (
+                        <span className="flex items-center">
+                          <span className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+                          Uploading photo...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center">
+                          💳 Pay ₹{joinPricing.perItemTotal} & Join Group
+                        </span>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Grid Preview - 2/3 width */}
             <div className="lg:col-span-2 order-1 lg:order-2">
               <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] backdrop-blur-lg bg-white/80">
-                 <CardHeader className="pb-2 sm:pb-4">
-                   <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Grid Preview</CardTitle>
-                   <CardDescription className="text-sm sm:text-base">{group.gridTemplate}</CardDescription>
-                 </CardHeader>
-                 <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
-                   <Suspense fallback={
-                     <div className="p-4 sm:p-8 text-center">
-                       <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
-                       <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
-                     </div>
-                   }>
-                     <div className="relative">
-                       {isCloudinaryPhoto ? (
-                         <GridPreview 
-                           template={group.gridTemplate}
-                           memberCount={group.totalMembers}
-                           members={[]} // Don't pass any members since we don't need them for preview
-                           centerEmptyDefault
-                           activeMember={{
-                             id: 'preview',
-                             name: memberData.name || 'You',
-                             memberRollNumber: memberData.memberRollNumber,
-                             photo: memberData.photo,
-                             vote: memberData.vote,
-                             joinedAt: new Date()
-                           }}
-                           size="large"
-                         />
-                       ) : (
-                         <div className="p-4 sm:p-8 text-center">
-                           <p className="text-sm sm:text-base text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
-                         </div>
-                       )}
-                     </div>
-                   </Suspense>
-                 </CardContent>
+                <CardHeader className="pb-2 sm:pb-4">
+                  <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Grid Preview</CardTitle>
+                  <CardDescription className="text-sm sm:text-base">{group.gridTemplate}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
+                  <Suspense fallback={
+                    <div className="p-4 sm:p-8 text-center">
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
+                    </div>
+                  }>
+                    <div className="relative">
+                      {isCloudinaryPhoto ? (
+                        <GridPreview
+                          template={group.gridTemplate}
+                          memberCount={group.totalMembers}
+                          members={[]} // Don't pass any members since we don't need them for preview
+                          centerEmptyDefault
+                          activeMember={{
+                            id: 'preview',
+                            name: memberData.name || 'You',
+                            memberRollNumber: memberData.memberRollNumber,
+                            photo: memberData.photo,
+                            vote: memberData.vote,
+                            joinedAt: new Date()
+                          }}
+                          size="large"
+                        />
+                      ) : (
+                        <div className="p-4 sm:p-8 text-center">
+                          <p className="text-sm sm:text-base text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
+                        </div>
+                      )}
+                    </div>
+                  </Suspense>
+                </CardContent>
               </Card>
             </div>
           </div>
