@@ -82,12 +82,12 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
   const joinPricing = useMemo(
     () => ({
-      perItemSubtotal: 189.52,
+      perItemSubtotal: 179.52,
       perItemGst: 9.48,
-      perItemTotal: 199,
-      subtotal: 189.52,
+      perItemTotal: 189,
+      subtotal: 179.52,
       gst: 9.48,
-      total: 199
+      total: 189
     }),
     []
   );

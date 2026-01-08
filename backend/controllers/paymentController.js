@@ -290,8 +290,8 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Member with this roll number already exists' });
     }
 
-    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 149);
-    const printPrice = Number(process.env.PRINT_PRICE || 50);
+    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 140);
+    const printPrice = Number(process.env.PRINT_PRICE || 40);
     const gstRate = Number(process.env.GST_RATE || 0.05);
     const perItemSubtotal = tshirtPrice + printPrice;
     const perItemGst = Math.round(perItemSubtotal * gstRate);
