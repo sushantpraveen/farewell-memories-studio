@@ -1171,6 +1171,7 @@ const Dashboard = () => {
       title: "Delete This Group",
       description: "Need to remove this group? Click the delete button. Don't worry, we'll ask for confirmation first!"
     },
+    
     {
       targetId: "guide-invite-members",
       title: "Invite Your Friends",
