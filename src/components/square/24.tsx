@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-24';
+  const COMP_ID = 'grid-28';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -104,11 +104,32 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 18 && index <= 24) {
+    if (index >= 18 && index <= 23) {
       keys.push(cid('bottom', 6, index - 18));
       return keys;
     }
-
+    // Bottom extension 26-28 (centered 8 cells)
+    if (index >= 28 && index <= 28) {
+      const col = index - 28; // 0..7
+      // Preview variant (row 0) and download variant (row -1)
+      keys.push(cid('bottom-extension', 0, col + 2));
+      keys.push(cid('bottom-extension', -1, col + 2));
+      return keys;
+    }
+    // Bottom-most extension 34-36 (3 cells)
+    if (index >= 34 && index <= 36) {
+      const col = index - 34; // 0..2
+      keys.push(cid('bottom-most-extension', 0, col + 2));
+      keys.push(cid('bottom-most-extension', -1, col + 2));
+      return keys;
+    }
+    // Top extension most 37-44 (8 cells)
+    if (index >= 37 && index <= 44) {
+      const col = index - 37; // 0..7
+      keys.push(cid('topExt-most', 0, col + 2));
+      keys.push(cid('topExt-most', -1, col + 2));
+      return keys;
+    }
     return keys;
   };
 
@@ -135,7 +156,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       // Bottom row: 18-23
       return 18 + col;
     }
-
+    
     return -1;
   };
 
@@ -398,7 +419,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
           {Array.from({ length: 6 }, (_, colIndex) => {
-            const cellKey = cid('top', 0, colIndex);
+            const cellKey = cid('top', 0, colIndex );
             return (
               <div
                 key={cellKey}
