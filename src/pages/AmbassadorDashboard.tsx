@@ -327,11 +327,11 @@ export default function AmbassadorDashboard() {
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
                 Each member who joins a group pays <span className="font-semibold">₹189</span> (incl. GST). You earn
-                <span className="font-semibold"> 10%</span> of this, i.e., <span className="font-semibold">₹18.9 per member</span>.
+                <span className="font-semibold"> 12%</span> of this, i.e., <span className="font-semibold">₹22.68 per member</span>.
               </p>
               <p className="text-xs">
                 Example: If 50 members complete their join payment across your referred groups, your reward is
-                <span className="font-semibold"> 50 × ₹18.9 = ₹945</span>.
+                <span className="font-semibold"> 50 × ₹22.68 = ₹1134</span>.
               </p>
             </div>
           </CardContent>
