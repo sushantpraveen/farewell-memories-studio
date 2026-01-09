@@ -26,6 +26,7 @@ const router = express.Router();
 router.post('/', createAmbassador);
 router.get('/', protect, isAdmin, listAmbassadors);
 router.get('/by-email', getAmbassadorByEmail);
+router.post('/login', loginAmbassador);
 router.get('/:id', getAmbassadorById);
 router.patch('/:id', updateAmbassador);
 router.patch('/:id/payout-method', updatePayoutMethod);
