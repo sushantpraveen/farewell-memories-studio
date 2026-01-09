@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {useGrid} from './context/GridContext';
@@ -116,20 +115,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       keys.push(cid('bottom-extension', -1, col + 2));
       return keys;
     }
-    // Bottom-most extension 34-36 (3 cells)
-    if (index >= 34 && index <= 36) {
-      const col = index - 34; // 0..2
-      keys.push(cid('bottom-most-extension', 0, col + 2));
-      keys.push(cid('bottom-most-extension', -1, col + 2));
-      return keys;
-    }
-    // Top extension most 37-44 (8 cells)
-    if (index >= 37 && index <= 44) {
-      const col = index - 37; // 0..7
-      keys.push(cid('topExt-most', 0, col + 2));
-      keys.push(cid('topExt-most', -1, col + 2));
-      return keys;
-    }
+    
     return keys;
   };
 
@@ -583,7 +569,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 7 }, (_, colIndex) => {
-              const key = cid('bottom-extension', 0, colIndex + 2);
+              const key = cid('bottom', 9, colIndex );
               
               return (
                 <div
