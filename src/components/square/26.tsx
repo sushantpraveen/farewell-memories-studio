@@ -95,7 +95,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
     // Left side 8-13 (rows 1..6)
     if (index >= 7 && index <= 12) {
-      keys.push(cid('left', index - 6, 0));
+      keys.push(cid('left', index - 7, 0));
       return keys;
     }
     // Right side 14-19 (rows 1..6)
@@ -105,7 +105,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
     // Bottom row 18-25 (row 9, cols 0..7)
     if (index >= 19 && index <= 25) {
-      keys.push(cid('bottom', 9, index - 18));
+      keys.push(cid('bottom', 9, index - 19));
       return keys;
     }
  
@@ -559,7 +559,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
             {Array.from({ length: 7 }, (_, colIndex) => {
-              const key = cid('bottom', 0, colIndex  );
+              const key = cid('bottom', 9, colIndex  );
               
               return (
                 <div

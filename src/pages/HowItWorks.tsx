@@ -395,6 +395,7 @@ const HowItWorks = () => {
                             <div className="flex flex-wrap justify-center gap-8 text-sm text-slate-400">
                                 <Link to="/" className="hover:text-white transition-colors">Home</Link>
                                 <Link to="/how-it-works" className="hover:text-white transition-colors">How It Works</Link>
+                                <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
                                 <Link to="/ambassador/signup" className="hover:text-white transition-colors">Campus Ambassador</Link>
                             </div>
                             <p className="text-sm text-slate-500 mt-8">

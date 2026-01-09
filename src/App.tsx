@@ -31,6 +31,7 @@ import AmbassadorAdmin from "./pages/AmbassadorAdmin";
 import AmbassadorDetails from "./pages/AmbassadorDetails";
 import ReferralRedirect from "./pages/ReferralRedirect";
 import HowItWorks from "./pages/HowItWorks";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

@@ -55,7 +55,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   }, []);
 
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-28';
+  const COMP_ID = 'grid-31';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -88,46 +88,40 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
   // used in both preview and download so we can seed GridContext correctly
   const getKeysForIndex = (index: number): string[] => {
     const keys: string[] = [];
-    // Top row 0-7
-    if (index >= 0 && index <= 7) {
+    // Top row 0-6
+    if (index >= 0 && index <= 6) {
       keys.push(cid('top', 0, index));
       return keys;
     }
     // Left side 8-13 (rows 1..6)
-    if (index >= 8 && index <= 13) {
-      keys.push(cid('left', index - 7, 0));
+    if (index >= 7 && index <= 11) {
+      keys.push(cid('left', index - 6, 0));
       return keys;
     }
     // Right side 14-19 (rows 1..6)
-    if (index >= 14 && index <= 19) {
-      keys.push(cid('right', index - 13, 7));
+    if (index >= 12 && index <= 16) {
+      keys.push(cid('right', index - 11, 7));
       return keys;
     }
     // Bottom row 18-25 (row 9, cols 0..7)
-    if (index >= 20 && index <= 27) {
-      keys.push(cid('bottom', 9, index - 20));
+    if (index >= 17 && index <= 23) {
+      keys.push(cid('bottom', 9, index - 17));
       return keys;
     }
     // Bottom extension 26-28 (centered 8 cells)
-    if (index >= 28 && index <= 28) {
-      const col = index - 28; // 0..7
+    if (index >= 24 && index <= 28) {
+      const col = index - 24; // 0..7
       // Preview variant (row 0) and download variant (row -1)
       keys.push(cid('bottom-extension', 0, col + 2));
       keys.push(cid('bottom-extension', -1, col + 2));
       return keys;
     }
-    // Bottom-most extension 34-36 (3 cells)
-    if (index >= 34 && index <= 36) {
-      const col = index - 34; // 0..2
-      keys.push(cid('bottom-most-extension', 0, col + 2));
-      keys.push(cid('bottom-most-extension', -1, col + 2));
-      return keys;
-    }
-    // Top extension most 37-44 (8 cells)
-    if (index >= 37 && index <= 44) {
-      const col = index - 37; // 0..7
-      keys.push(cid('topExt-most', 0, col + 2));
-      keys.push(cid('topExt-most', -1, col + 2));
+    
+    // Top most extension  37-44 (8 cells)
+    if (index >= 29 && index <= 32) {
+      const col = index - 29; // 0..7
+      keys.push(cid('top-extension', 0, col + 2));
+      keys.push(cid('top-extension', -1, col + 2));
       return keys;
     }
     return keys;
@@ -422,7 +416,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
           {Array.from({ length: 4 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('top-extension', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
