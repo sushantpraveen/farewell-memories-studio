@@ -541,8 +541,8 @@ export const confirmPayment = async (req, res) => {
       }).session(session);
 
       if (!existingReward) {
-        // Calculate reward: 10% rounded down
-        const rewardAmount = Math.floor(payment.amount * 0.10);
+        // Calculate reward: 12% rounded down
+        const rewardAmount = Math.floor(payment.amount * 0.12);
 
         // Create reward
         reward = await AmbassadorReward.create([{

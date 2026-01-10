@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getAmbassador, getAmbassadorStats, getAmbassadorSummary, getAmbassadorRewards, updateAmbassadorPayoutMethod, type AmbassadorResponse, type AmbassadorStatsResponse, type AmbassadorSummaryResponse, type AmbassadorRewardItem } from '@/lib/ambassadorApi';
+import { getAmbassador, getAmbassadorStats, getAmbassadorSummary, getAmbassadorRewards, updateAmbassadorPayoutMethod, getAmbassadorGroups, type AmbassadorResponse, type AmbassadorStatsResponse, type AmbassadorSummaryResponse, type AmbassadorRewardItem, type AmbassadorGroupItem } from '@/lib/ambassadorApi';
 import { Copy, ExternalLink, Eye, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ export default function AmbassadorDashboard() {
   const [stats, setStats] = useState<AmbassadorStatsResponse | null>(null);
   const [summary, setSummary] = useState<AmbassadorSummaryResponse | null>(null);
   const [rewards, setRewards] = useState<AmbassadorRewardItem[]>([]);
+  const [groups, setGroups] = useState<AmbassadorGroupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [upiInput, setUpiInput] = useState('');
   const [savingUpi, setSavingUpi] = useState(false);
@@ -44,6 +45,8 @@ export default function AmbassadorDashboard() {
         setSummary(summaryData);
         const r = await getAmbassadorRewards(ambassadorId, 1, 50);
         setRewards(r.items);
+        const g = await getAmbassadorGroups(ambassadorId, 1, 50);
+        setGroups(g.items);
       } catch (err: any) {
         toast.error(err?.message || 'Failed to load ambassador');
         navigate('/ambassador/signup');
@@ -273,8 +276,8 @@ export default function AmbassadorDashboard() {
                                   reward.status === 'Paid' || reward.status === 'paid'
                                     ? 'default'
                                     : reward.status === 'Approved'
-                                    ? 'secondary'
-                                    : 'outline'
+                                      ? 'secondary'
+                                      : 'outline'
                                 }
                               >
                                 {reward.status}
@@ -282,7 +285,7 @@ export default function AmbassadorDashboard() {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Payment Screenshot Section */}
                         {screenshotUrl && (
                           <div className="border-t pt-3 space-y-2">
@@ -312,6 +315,68 @@ export default function AmbassadorDashboard() {
                       </div>
                     );
                   })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Referred Groups List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Referred Groups</CardTitle>
+            <CardDescription>Groups created using your referral link</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {groups.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No groups joined yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="p-3 font-medium">Group Name</th>
+                      <th className="p-3 font-medium">Status</th>
+                      <th className="p-3 font-medium">Progress</th>
+                      <th className="p-3 font-medium">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((group) => (
+                      <tr key={group.id} className="border-b last:border-0 hover:bg-muted/10">
+                        <td className="p-3 font-medium">{group.name}</td>
+                        <td className="p-3">
+                          <Badge
+                            variant={
+                              group.status === 'paid'
+                                ? 'default'
+                                : 'outline'
+                            }
+                          >
+                            {group.status === 'paid' ? 'Paid' : 'Active'}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded">
+                              {group.currentMemberCount} / {group.totalMembers}
+                            </span>
+                            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${Math.min(100, (group.currentMemberCount / group.totalMembers) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {new Date(group.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>

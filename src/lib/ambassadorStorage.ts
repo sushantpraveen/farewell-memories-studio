@@ -116,10 +116,10 @@ export class AmbassadorStorageService {
 
   // Calculate reward based on member count
   static calculateReward(memberCount: number): number {
-    // 10% of total join amount where each member pays ₹200
-    // Reward per member = ₹200 * 10% = ₹20
+    // 12% of total join amount where each member pays ₹200
+    // Reward per member = ₹200 * 12% = ₹24
     if (memberCount <= 0) return 0;
-    return memberCount * 20;
+    return memberCount * 24;
   }
 
   // Create reward when group completes order
