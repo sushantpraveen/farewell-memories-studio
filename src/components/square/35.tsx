@@ -109,7 +109,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return keys;
     }
     // Bottom extension 28-32 (5 cells centered)
-    if (index >= 28 && index <= 32) {
+    if (index >= 28 && index <= 30) {
       const col = index - 28; // 0..4
       // Preview variant (row 0) and download variant (row -1)
       keys.push(cid('bottom-extension', 0, col + 2));
@@ -117,10 +117,10 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       return keys;
     }
     // Top extension 33-36 (4 cells centered)
-    if (index >= 33 && index <= 36) {
-      const col = index - 33; // 0..3
-      keys.push(cid('topExt', 0, col + 2));
-      keys.push(cid('topExt', -1, col + 2));
+    if (index >= 31 && index <= 34) {
+      const col = index - 31; // 0..3
+      keys.push(cid('top-extension', 0, col + 2));
+      keys.push(cid('top-extension', -1, col + 2));
       return keys;
     }
     return keys;
@@ -432,7 +432,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
             } as React.CSSProperties}
           >
           {Array.from({ length: 4 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+            const cellKey = cid('top-extension', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}

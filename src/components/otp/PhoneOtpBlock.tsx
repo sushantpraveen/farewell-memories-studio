@@ -10,6 +10,7 @@ interface PhoneOtpBlockProps {
   source?: string;
   className?: string;
   disabled?: boolean;
+  hideLabel?: boolean;
 }
 
 const normalizePhone = (raw: string) => raw.replace(/[^0-9+]/g, '');
@@ -29,10 +30,12 @@ const PhoneOtpBlock: React.FC<PhoneOtpBlockProps> = ({
   onVerified,
   source = 'joinGroup',
   className,
-  disabled
+  disabled,
+  hideLabel
 }) => {
   const [otp, setOtp] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'waiting' | 'verifying' | 'verified' | 'locked'>('idle');
+  // ... rest of state ...
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState<number>(0);
@@ -163,38 +166,49 @@ const PhoneOtpBlock: React.FC<PhoneOtpBlockProps> = ({
   const canEditPhone = status !== 'verifying' && status !== 'sending';
 
   return (
-    <div className={cn('space-y-3 rounded-lg border border-slate-200 p-4 bg-white/70', className)}>
+    <div className={cn(
+      'rounded-lg',
+      !hideLabel && 'border border-slate-200 p-4 bg-white/70 space-y-3',
+      hideLabel && 'w-full',
+      className
+    )}>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700" htmlFor="join-phone">
-          Phone Number
-        </label>
+        {!hideLabel && (
+          <label className="text-sm font-medium text-slate-700" htmlFor="join-phone">
+            Phone Number
+          </label>
+        )}
         <Input
           id="join-phone"
           type="tel"
-          placeholder="Enter phone number"
+          placeholder={hideLabel ? "WhatsApp Number" : "Enter phone number"}
           value={value}
           onChange={handlePhoneChange}
           disabled={!canEditPhone || disabled}
+          className={cn(hideLabel && "pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl")}
         />
-        {!isValidPhone(normalizedPhone) && (
+        {!isValidPhone(normalizedPhone) && !hideLabel && (
           <p className="text-xs text-slate-500">We’ll send an OTP automatically when you enter a valid number.</p>
         )}
       </div>
 
       {(status === 'waiting' || status === 'verifying' || status === 'verified') && (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700" htmlFor="join-otp">
-            Enter OTP
-          </label>
+          {!hideLabel && (
+            <label className="text-sm font-medium text-slate-700" htmlFor="join-otp">
+              Enter OTP
+            </label>
+          )}
           <Input
             id="join-otp"
             type="text"
             inputMode="numeric"
             maxLength={OTP_LENGTH}
-            placeholder="6-digit code"
+            placeholder={hideLabel ? "OTP Code" : "6-digit code"}
             value={otp}
             onChange={handleOtpChange}
             disabled={disabled || status === 'verified'}
+            className={cn(hideLabel && "pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl")}
           />
         </div>
       )}
