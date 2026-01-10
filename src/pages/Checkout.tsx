@@ -204,8 +204,8 @@ const Checkout = () => {
   const [codAvailable, setCodAvailable] = useState(false);
 
   // Pricing & totals (dynamic shipping)
-  const tshirtPrice = 150; // ₹299 per t-shirt
-  const printPrice = 50;  // ₹99 per print
+  const tshirtPrice = 140; // ₹140 per t-shirt
+  const printPrice = 40;  // ₹40 per print
   const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
   const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback

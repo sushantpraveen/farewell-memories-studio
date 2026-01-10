@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getAmbassador, getAmbassadorStats, getAmbassadorSummary, getAmbassadorRewards, updateAmbassadorPayoutMethod, type AmbassadorResponse, type AmbassadorStatsResponse, type AmbassadorSummaryResponse, type AmbassadorRewardItem } from '@/lib/ambassadorApi';
+import { getAmbassador, getAmbassadorStats, getAmbassadorSummary, getAmbassadorRewards, updateAmbassadorPayoutMethod, getAmbassadorGroups, type AmbassadorResponse, type AmbassadorStatsResponse, type AmbassadorSummaryResponse, type AmbassadorRewardItem, type AmbassadorGroupItem } from '@/lib/ambassadorApi';
 import { Copy, ExternalLink, Eye, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ export default function AmbassadorDashboard() {
   const [stats, setStats] = useState<AmbassadorStatsResponse | null>(null);
   const [summary, setSummary] = useState<AmbassadorSummaryResponse | null>(null);
   const [rewards, setRewards] = useState<AmbassadorRewardItem[]>([]);
+  const [groups, setGroups] = useState<AmbassadorGroupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [upiInput, setUpiInput] = useState('');
   const [savingUpi, setSavingUpi] = useState(false);
@@ -44,6 +45,8 @@ export default function AmbassadorDashboard() {
         setSummary(summaryData);
         const r = await getAmbassadorRewards(ambassadorId, 1, 50);
         setRewards(r.items);
+        const g = await getAmbassadorGroups(ambassadorId, 1, 50);
+        setGroups(g.items);
       } catch (err: any) {
         toast.error(err?.message || 'Failed to load ambassador');
         navigate('/ambassador/signup');
@@ -193,125 +196,134 @@ export default function AmbassadorDashboard() {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Total Groups</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Groups</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalGroups}</div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <div className="text-2xl font-bold">{stats.totalGroups}</div>
+              <p className="text-xs text-muted-foreground mt-1">
                 {stats.completedOrders} completed orders
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Total Members</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Members</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.totalMembers}</div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <div className="text-2xl font-bold">{stats.totalMembers}</div>
+              <p className="text-xs text-muted-foreground mt-1">
                 across all groups
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Total Paid Rewards</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Estimated Earnings</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">
+              <div className="text-2xl font-bold text-orange-600">
+                ₹{Math.round(
+                  groups
+                    .filter(g => g.status !== 'paid' && g.status !== 'Paid')
+                    .reduce((sum, g) => sum + (g.currentMemberCount || 0), 0)
+                  * 180 * 0.12
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-1">
+                Based on {
+                  groups
+                    .filter(g => g.status !== 'paid' && g.status !== 'Paid')
+                    .reduce((sum, g) => sum + (g.currentMemberCount || 0), 0)
+                } members joined (₹21.6/member)
+              </p>
+            </CardContent>
+
+
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Earnings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
                 ₹{summary?.totalRewards.paid ?? stats.paidRewards ?? 0}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Transferred to you after admin approval
+              <p className="text-xs text-muted-foreground mt-1">
+                Transferred to you
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Rewards List */}
+
+        {/* Referred Groups List */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Rewards</CardTitle>
-            <CardDescription>Track all your earnings from group referrals</CardDescription>
+            <CardTitle>Referred Groups</CardTitle>
+            <CardDescription>Groups created using your referral link</CardDescription>
           </CardHeader>
           <CardContent>
-            {rewards.filter(r => r.status === 'Paid' || r.status === 'paid').length === 0 ? (
+            {groups.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No rewards yet. Start sharing your referral link!</p>
-                <Button onClick={copyReferralLink} className="mt-4">
-                  Copy Referral Link
-                </Button>
+                <p>No groups joined yet.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {rewards
-                  .filter(reward => reward.status === 'Paid' || reward.status === 'paid')
-                  .map((reward) => {
-                    const screenshotUrl = rewardScreenshots[reward.id];
-                    return (
-                      <div
-                        key={reward.id}
-                        className="p-4 border rounded-lg space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="font-semibold">{reward.groupName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {reward.memberCount} members • Created {new Date(reward.createdAt).toLocaleDateString()}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="p-3 font-medium">Group Name</th>
+                      <th className="p-3 font-medium">Status</th>
+                      <th className="p-3 font-medium">Progress</th>
+                      <th className="p-3 font-medium">Total Sales</th>
+                      <th className="p-3 font-medium">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((group) => (
+                      <tr key={group.id} className="border-b last:border-0 hover:bg-muted/10">
+                        <td className="p-3 font-medium">{group.name}</td>
+                        <td className="p-3">
+                          <Badge
+                            variant={
+                              group.status === 'paid'
+                                ? 'default'
+                                : 'outline'
+                            }
+                          >
+                            {group.status === 'paid' ? 'Paid' : 'Active'}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded">
+                              {group.currentMemberCount} / {group.totalMembers}
+                            </span>
+                            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${Math.min(100, (group.currentMemberCount / group.totalMembers) * 100)}%` }}
+                              />
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="font-bold text-lg">₹{reward.rewardAmount}</div>
-                              <Badge
-                                variant={
-                                  reward.status === 'Paid' || reward.status === 'paid'
-                                    ? 'default'
-                                    : reward.status === 'Approved'
-                                    ? 'secondary'
-                                    : 'outline'
-                                }
-                              >
-                                {reward.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Payment Screenshot Section */}
-                        {screenshotUrl && (
-                          <div className="border-t pt-3 space-y-2">
-                            <div className="text-sm font-medium text-muted-foreground">
-                              Payment Success Screenshot
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(screenshotUrl, '_blank')}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Screenshot
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDownloadScreenshot(reward.id, screenshotUrl)}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        </td>
+                        <td className="p-3 font-medium">
+                          ₹{Math.round((group.currentMemberCount || 0) * 180 * 0.12)}
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {new Date(group.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>
@@ -327,11 +339,11 @@ export default function AmbassadorDashboard() {
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
                 Each member who joins a group pays <span className="font-semibold">₹189</span> (incl. GST). You earn
-                <span className="font-semibold"> 12%</span> of this, i.e., <span className="font-semibold">₹22.68 per member</span>.
+                <span className="font-semibold"> 12%</span> of approx ₹200 value, i.e., <span className="font-semibold">₹24 per member</span>.
               </p>
               <p className="text-xs">
                 Example: If 50 members complete their join payment across your referred groups, your reward is
-                <span className="font-semibold"> 50 × ₹22.68 = ₹1134</span>.
+                <span className="font-semibold"> 50 × ₹24 = ₹1,200</span>.
               </p>
             </div>
           </CardContent>

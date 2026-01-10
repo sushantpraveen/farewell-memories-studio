@@ -41,7 +41,7 @@ export const listAmbassadors = async (req, res) => {
     // ---------- REWARDS AGGREGATION (PAID + PENDING) ----------
     // Convert ObjectIds to ObjectId instances for $in query
     const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
-    
+
     const rewardsAgg = await AmbassadorReward.aggregate([
       { $match: { ambassadorId: { $in: objectIds } } },
       {
@@ -173,7 +173,7 @@ export const createAmbassador = async (req, res) => {
 
     if (existingAmbassador) {
       const duplicateField = existingAmbassador.email === email.toLowerCase().trim() ? 'email' : 'phone';
-      return res.status(409).json({ 
+      return res.status(409).json({
         message: `Ambassador with this ${duplicateField} already exists`,
         field: duplicateField
       });
@@ -190,7 +190,7 @@ export const createAmbassador = async (req, res) => {
     if (existingWaitlist) {
       const duplicateField = existingWaitlist.email === email.toLowerCase().trim() ? 'email' : 'phone';
       const status = existingWaitlist.status;
-      return res.status(409).json({ 
+      return res.status(409).json({
         message: `Application with this ${duplicateField} already exists. Status: ${status}`,
         field: duplicateField,
         status: status,
@@ -220,30 +220,30 @@ export const createAmbassador = async (req, res) => {
   } catch (error) {
     console.error("Error creating waitlist entry:", error);
     console.error("Error stack:", error.stack);
-    
+
     // Handle Mongoose validation errors
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
-        message: "Validation error", 
+      return res.status(400).json({
+        message: "Validation error",
         errors: errors,
-        error: error.message 
+        error: error.message
       });
     }
-    
+
     // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(409).json({ 
+      return res.status(409).json({
         message: `Application with this ${field} already exists`,
         field: field,
-        error: error.message 
+        error: error.message
       });
     }
-    
+
     // Handle other errors
-    res.status(500).json({ 
-      message: "Server error", 
+    res.status(500).json({
+      message: "Server error",
       error: error.message,
       ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     });
@@ -279,13 +279,13 @@ export const getAmbassadorById = async (req, res) => {
 export const getAmbassadorByEmail = async (req, res) => {
   try {
     const { email } = req.query;
-    
+
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    const ambassador = await Ambassador.findOne({ 
-      email: email.toLowerCase().trim() 
+    const ambassador = await Ambassador.findOne({
+      email: email.toLowerCase().trim()
     }).lean({ virtuals: true });
 
     if (!ambassador) {
@@ -496,9 +496,10 @@ export const getAmbassadorGroups = async (req, res) => {
       id: g._id.toString(),
       name: g.name,
       yearOfPassing: g.yearOfPassing,
-      totalMembers: Array.isArray(g.members) ? g.members.length : 0,
+      totalMembers: g.totalMembers,
       currentMemberCount: Array.isArray(g.members) ? g.members.length : 0,
       gridTemplate: g.gridTemplate,
+      status: g.status,
       createdAt: g.createdAt
     }));
 
@@ -587,8 +588,8 @@ export const approveWaitlist = async (req, res) => {
     }
 
     if (waitlistEntry.status !== 'pending') {
-      return res.status(400).json({ 
-        message: `Waitlist entry is already ${waitlistEntry.status}` 
+      return res.status(400).json({
+        message: `Waitlist entry is already ${waitlistEntry.status}`
       });
     }
 
@@ -616,7 +617,7 @@ export const approveWaitlist = async (req, res) => {
           try {
             const frontendOrigin = process.env.APP_BASE_URL || 'http://localhost:8080';
             const dashboardUrl = `${frontendOrigin}/ambassador/${json._id.toString()}`;
-            
+
             const htmlTemplate = `
               <!DOCTYPE html>
               <html>
@@ -647,7 +648,7 @@ export const approveWaitlist = async (req, res) => {
                     <p><strong>Referral Link:</strong> ${dashboardUrl}</p>
                   </div>
 
-                  <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 10% of their payment.</p>
+                  <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 12% of their payment.</p>
 
                   <div style="text-align: center; margin: 30px 0;">
                     <a href="${dashboardUrl}" class="button">Go to Dashboard</a>
@@ -709,7 +710,7 @@ export const approveWaitlist = async (req, res) => {
               html: htmlTemplate,
               text: textVersion,
             });
-            
+
             console.log('[approveWaitlist] Approval email sent to:', waitlistEntry.email);
           } catch (emailError) {
             console.error('[approveWaitlist] Failed to send approval email:', emailError);
@@ -759,7 +760,7 @@ export const approveWaitlist = async (req, res) => {
         try {
           const frontendOrigin = process.env.APP_BASE_URL || 'http://localhost:8080';
           const dashboardUrl = `${frontendOrigin}/ambassador/${json._id.toString()}`;
-          
+
           const htmlTemplate = `
             <!DOCTYPE html>
             <html>
@@ -790,7 +791,7 @@ export const approveWaitlist = async (req, res) => {
                   <p><strong>Referral Link:</strong> ${dashboardUrl}</p>
                 </div>
 
-                <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 10% of their payment.</p>
+                <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 12% of their payment.</p>
 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${dashboardUrl}" class="button">Go to Dashboard</a>
@@ -852,7 +853,7 @@ export const approveWaitlist = async (req, res) => {
             html: htmlTemplate,
             text: textVersion,
           });
-          
+
           console.log('[approveWaitlist] Approval email sent to:', waitlistEntry.email);
         } catch (emailError) {
           console.error('[approveWaitlist] Failed to send approval email:', emailError);
@@ -892,8 +893,8 @@ export const rejectWaitlist = async (req, res) => {
     }
 
     if (waitlistEntry.status !== 'pending') {
-      return res.status(400).json({ 
-        message: `Waitlist entry is already ${waitlistEntry.status}` 
+      return res.status(400).json({
+        message: `Waitlist entry is already ${waitlistEntry.status}`
       });
     }
 

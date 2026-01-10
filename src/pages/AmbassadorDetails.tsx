@@ -15,8 +15,10 @@ import { CheckCircle, Clock, DollarSign, ArrowLeft } from 'lucide-react';
 import {
   getAmbassador,
   getAmbassadorRewards,
+  getAmbassadorGroups,
   AmbassadorResponse,
   AmbassadorRewardItem,
+  AmbassadorGroupItem,
   Paginated,
 } from '@/lib/ambassadorApi';
 import { paymentsApi } from '@/lib/api';
@@ -30,6 +32,7 @@ export default function AmbassadorDetails() {
 
   const [ambassador, setAmbassador] = useState<AmbassadorResponse | null>(null);
   const [rewards, setRewards] = useState<AmbassadorRewardItem[]>([]);
+  const [groups, setGroups] = useState<AmbassadorGroupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingRewardId, setPayingRewardId] = useState<string | null>(null);
 
@@ -46,6 +49,8 @@ export default function AmbassadorDetails() {
 
       const res: Paginated<AmbassadorRewardItem> = await getAmbassadorRewards(ambassadorId, 1, 200);
       setRewards(res.items || []);
+      const groupsRes: Paginated<AmbassadorGroupItem> = await getAmbassadorGroups(ambassadorId, 1, 200);
+      setGroups(groupsRes.items || []);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load ambassador details');
       navigate('/admin/ambassadors');
@@ -252,6 +257,64 @@ export default function AmbassadorDetails() {
           </Card>
         </div>
 
+
+        {/* Groups Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Referred Groups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {groups.length === 0 ? (
+              <p className="text-muted-foreground">No groups joined yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Group Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Members</TableHead>
+                    <TableHead>Created At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groups.map((group) => (
+                    <TableRow key={group.id}>
+                      <TableCell className="font-medium">{group.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            group.status === 'paid'
+                              ? 'default'
+                              : 'outline'
+                          }
+                        >
+                          {group.status === 'paid' ? 'Paid' : 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded">
+                            {group.currentMemberCount} / {group.totalMembers}
+                          </span>
+                          <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{ width: `${Math.min(100, (group.currentMemberCount / group.totalMembers) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{group.currentMemberCount}</TableCell>
+                      <TableCell>{new Date(group.createdAt).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Rewards</CardTitle>
@@ -283,15 +346,15 @@ export default function AmbassadorDetails() {
                             reward.status === 'Paid' || reward.status === 'paid'
                               ? 'default'
                               : reward.status === 'Approved'
-                              ? 'secondary'
-                              : 'outline'
+                                ? 'secondary'
+                                : 'outline'
                           }
                         >
                           {reward.status === 'Paid' || reward.status === 'paid'
                             ? 'Paid'
                             : reward.status === 'pending' || reward.status === 'Pending'
-                            ? 'Pending'
-                            : reward.status}
+                              ? 'Pending'
+                              : reward.status}
                         </Badge>
                       </TableCell>
                       <TableCell>{new Date(reward.createdAt).toLocaleDateString()}</TableCell>

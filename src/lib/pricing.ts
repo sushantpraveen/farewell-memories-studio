@@ -16,8 +16,8 @@ export interface PricingBreakdown {
 
 export function calculatePricing({
   quantity,
-  tshirtPrice = 299,
-  printPrice = 99,
+  tshirtPrice = 140,
+  printPrice = 40,
   gstRate = 0.05,
 }: PricingInput): PricingBreakdown {
   const perItemSubtotal = tshirtPrice + printPrice;

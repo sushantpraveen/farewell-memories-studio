@@ -77,6 +77,7 @@ export interface AmbassadorGroupItem {
   totalMembers: number;
   currentMemberCount: number;
   gridTemplate: string;
+  status: string;
   createdAt: string;
 }
 
@@ -198,7 +199,7 @@ export const createAmbassador = async (
     body: JSON.stringify(payload)
   });
   const data = await handleResponse(res);
-  
+
   // Check if it's a waitlist response
   if (data.waitlistId) {
     return {
@@ -207,7 +208,7 @@ export const createAmbassador = async (
       message: data.message
     };
   }
-  
+
   // Legacy ambassador response
   return data?.ambassador ?? data;
 };

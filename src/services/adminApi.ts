@@ -59,7 +59,7 @@ export const adminApi = {
     } as AdminDashboardData;
   },
 
-  markPayoutPaid: async (rewardId: string, txRef: string, paidVia: 'manual-upi' = 'manual-upi') => {
+  markPayoutPaid: async (rewardId: string, txRef: string, paidVia: 'manual-upi' | 'razorpay' | 'bank-transfer' = 'manual-upi') => {
     const token = LocalStorageService.loadAuthToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
