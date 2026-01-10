@@ -233,7 +233,15 @@ export default function AmbassadorAdmin() {
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium">{entry.name}</TableCell>
                         <TableCell>{entry.email}</TableCell>
-                        <TableCell>{entry.phone}</TableCell>
+                        <TableCell>
+                          {entry.phone.startsWith('+91')
+                            ? entry.phone
+                            : entry.phone.startsWith('+') && entry.phone.length === 11
+                              ? entry.phone.replace('+', '+91')
+                              : entry.phone.length === 10
+                                ? `+91${entry.phone}`
+                                : entry.phone}
+                        </TableCell>
                         <TableCell>{entry.college || '-'}</TableCell>
                         <TableCell>{entry.city || '-'}</TableCell>
                         <TableCell>
@@ -322,7 +330,15 @@ export default function AmbassadorAdmin() {
                       <TableCell className="font-medium">{ambassador.name}</TableCell>
                       <TableCell>{ambassador.college}</TableCell>
                       <TableCell>{ambassador.email}</TableCell>
-                      <TableCell>{ambassador.phone}</TableCell>
+                      <TableCell>
+                        {ambassador.phone.startsWith('+91')
+                          ? ambassador.phone
+                          : ambassador.phone.startsWith('+') && ambassador.phone.length === 11
+                            ? ambassador.phone.replace('+', '+91') // Fix +9876543210 case
+                            : ambassador.phone.length === 10
+                              ? `+91${ambassador.phone}`
+                              : ambassador.phone}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{ambassador.referralCode}</Badge>
                       </TableCell>

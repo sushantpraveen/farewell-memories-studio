@@ -101,7 +101,18 @@ const PhoneOtpBlock: React.FC<PhoneOtpBlockProps> = ({
         await verifyOtp(normalizedPhone, otp);
         setStatus('verified');
         setInfo('Phone number verified successfully.');
-        onVerified(normalizedPhone.startsWith('+') ? normalizedPhone : `+${normalizedPhone}`);
+
+        let finalPhone = normalizedPhone;
+        // Basic India logic: if 10 digits, add +91
+        if (finalPhone.length === 10) {
+          finalPhone = `+91${finalPhone}`;
+        } else if (finalPhone.length === 12 && finalPhone.startsWith('91')) {
+          finalPhone = `+${finalPhone}`;
+        } else if (!finalPhone.startsWith('+')) {
+          finalPhone = `+${finalPhone}`;
+        }
+
+        onVerified(finalPhone);
       } catch (err) {
         const nextAttempts = attempts + 1;
         setAttempts(nextAttempts);
