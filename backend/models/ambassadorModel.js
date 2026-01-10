@@ -74,6 +74,11 @@ const ambassadorSchema = new mongoose.Schema(
         default: 0,
         min: 0
       }
+    },
+    referralClicks: {
+      type: Number,
+      default: 0,
+      min: 0
     }
   },
   {
@@ -97,7 +102,7 @@ ambassadorSchema.pre('validate', async function (next) {
     let exists = true;
     let attempts = 0;
     const maxAttempts = 10; // Prevent infinite loop
-    
+
     while (exists && attempts < maxAttempts) {
       // Format: SD-CA-12345
       const randomNum = Math.floor(Math.random() * 90000) + 10000;
@@ -105,11 +110,11 @@ ambassadorSchema.pre('validate', async function (next) {
       exists = await this.constructor.findOne({ referralCode: code });
       attempts++;
     }
-    
+
     if (exists) {
       return next(new Error('Failed to generate unique referral code after multiple attempts'));
     }
-    
+
     this.referralCode = code;
     next();
   } catch (error) {

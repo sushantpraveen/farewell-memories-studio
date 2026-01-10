@@ -49,7 +49,7 @@ export const setReferralCookie = (res, code) => {
  */
 export const getReferralCode = (req) => {
   const cookieName = process.env.REFERRAL_COOKIE_NAME || 'sd_ref';
-  
+
   // Prefer cookie over body for security
   const cookieCode = req.cookies?.[cookieName];
   if (cookieCode) {
@@ -78,7 +78,13 @@ export const recordClick = async (ambassadorId, code, ipHash = null, uaHash = nu
       ambassadorId,
       referralCode: code,
       ipHash: ipHash || null,
+      ipHash: ipHash || null,
       uaHash: uaHash || null
+    });
+
+    // Increment ambassador total clicks
+    await Ambassador.findByIdAndUpdate(ambassadorId, {
+      $inc: { referralClicks: 1 }
     });
   } catch (error) {
     // Non-blocking: analytics failures shouldn't break the flow

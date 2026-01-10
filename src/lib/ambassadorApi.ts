@@ -27,6 +27,7 @@ export interface AmbassadorStatsResponse {
   paidRewards: number;
   completedOrders: number;
   referredGroups: number;
+  totalClicks?: number;
 }
 
 export interface Paginated<T> {

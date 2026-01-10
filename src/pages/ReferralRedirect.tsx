@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -7,12 +7,16 @@ export default function ReferralRedirect() {
   const { referralCode } = useParams<{ referralCode: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const processedRef = useRef(false);
 
   useEffect(() => {
     if (!referralCode) {
       navigate('/');
       return;
     }
+
+    if (processedRef.current) return;
+    processedRef.current = true;
 
     const run = async () => {
       try {

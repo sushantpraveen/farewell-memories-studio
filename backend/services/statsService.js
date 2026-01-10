@@ -1,5 +1,6 @@
 import Group from '../models/groupModel.js';
 import AmbassadorReward from '../models/ambassadorRewardModel.js';
+import Ambassador from '../models/ambassadorModel.js';
 import Order from '../models/orderModel.js';
 
 /**
@@ -57,10 +58,14 @@ export const getAmbassadorStats = async (ambassadorId) => {
     status: { $in: ['Approved', 'Paid'] }
   });
 
+  // Get ambassador details for clicks
+  const ambassador = await Ambassador.findById(ambassadorId).select('referralClicks').lean();
+
   return {
     totalGroups: referredGroupsCount,
     referredGroups: referredGroupsCount,
     totalMembers,
+    totalClicks: ambassador?.referralClicks || 0,
     totalRewards: stats.totalRewards || 0,
     pendingRewards: stats.pendingRewards || 0,
     paidRewards: stats.paidRewards || 0,

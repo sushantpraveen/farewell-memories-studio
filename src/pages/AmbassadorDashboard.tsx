@@ -199,6 +199,17 @@ export default function AmbassadorDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Clicks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalClicks || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                visits to referral link
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Groups</CardTitle>
             </CardHeader>
             <CardContent>
