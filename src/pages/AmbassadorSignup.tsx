@@ -1,14 +1,57 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { createAmbassador, loginAmbassadorByPhone } from '@/lib/ambassadorApi';
 import { toast } from 'sonner';
 import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
-import { Clock } from 'lucide-react';
+import {
+  Clock, User, School, MapPin, Mail,
+  Smartphone, ShieldCheck, ArrowLeft, Shirt, Heart, Star, Camera
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import SEOHead from '@/components/seo/SEOHead';
+
+// Shared Animated Background component logic
+const FloatingElement = ({ children, className = "", delay = 0 }: { children: React.ReactNode, className?: string, delay?: number }) => (
+  <motion.div
+    className={`absolute ${className}`}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{
+      opacity: [0.3, 0.6, 0.3],
+      y: [0, -20, 0],
+      rotate: [0, 5, 0]
+    }}
+    transition={{
+      duration: 5,
+      delay,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }}
+  >
+    {children}
+  </motion.div>
+);
+
+const AnimatedBackground = () => (
+  <div className="absolute inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50" />
+    <FloatingElement className="top-20 left-[10%] text-purple-200" delay={0}>
+      <Shirt className="w-16 h-16 opacity-30" />
+    </FloatingElement>
+    <FloatingElement className="top-40 right-[15%] text-pink-200" delay={1.2}>
+      <Camera className="w-12 h-12 opacity-30" />
+    </FloatingElement>
+    <FloatingElement className="bottom-32 left-[20%] text-yellow-200" delay={2.4}>
+      <Heart className="w-10 h-10 opacity-30" />
+    </FloatingElement>
+    <FloatingElement className="top-60 right-[25%] text-purple-300" delay={1.8}>
+      <Star className="w-8 h-8 opacity-30" />
+    </FloatingElement>
+  </div>
+);
 
 export default function AmbassadorSignup() {
   const navigate = useNavigate();
@@ -29,6 +72,10 @@ export default function AmbassadorSignup() {
   const [submitted, setSubmitted] = useState(false);
   const [waitlistId, setWaitlistId] = useState<string | null>(null);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -38,7 +85,7 @@ export default function AmbassadorSignup() {
     }
 
     if (!verifiedPhone) {
-      toast.error('Please verify your phone number with the OTP before continuing');
+      toast.error('Please verify your phone number with the OTP');
       return;
     }
 
@@ -51,20 +98,17 @@ export default function AmbassadorSignup() {
         college: formData.college,
         city: formData.city,
       });
-      
-      // Check if response has waitlistId (new waitlist flow)
+
       if ('waitlistId' in response && response.waitlistId) {
         setWaitlistId(response.waitlistId);
         setSubmitted(true);
-        toast.success('Application submitted! Your request is pending admin approval.');
+        toast.success('Waitlist registration successful!');
       } else if ('id' in response && response.id) {
-        // Legacy flow - direct ambassador creation (shouldn't happen now)
-        toast.success('Welcome! Your ambassador account has been created');
+        toast.success('Account created successfully!');
         navigate(`/ambassador/${response.id}`);
       }
     } catch (err: any) {
-      const message = err?.message || 'Failed to submit application';
-      toast.error(message);
+      toast.error(err?.message || 'Submission failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -81,7 +125,7 @@ export default function AmbassadorSignup() {
     e.preventDefault();
 
     if (!loginVerifiedPhone) {
-      toast.error('Please verify your phone number with the OTP before logging in');
+      toast.error('Please verify your phone number first');
       return;
     }
 
@@ -89,200 +133,239 @@ export default function AmbassadorSignup() {
       setIsSubmitting(true);
       const ambassador = await loginAmbassadorByPhone(loginVerifiedPhone);
       if (!ambassador?.id) {
-        toast.error('Login failed. Please try again.');
+        toast.error('Ambassador not found');
         return;
       }
 
-      // Persist ambassador session
       localStorage.setItem('ambassadorId', ambassador.id);
       localStorage.setItem('ambassadorProfile', JSON.stringify(ambassador));
 
       toast.success(`Welcome back, ${ambassador.name}!`);
       navigate(`/ambassador/${ambassador.id}`);
     } catch (err: any) {
-      const message = err?.message || 'Failed to login as ambassador';
-      toast.error(message);
+      toast.error(err?.message || 'Login failed');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Show waitlist status if submitted
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-500" />
-              Application Submitted
-            </CardTitle>
-            <CardDescription>
-              Your application is pending admin approval
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <p className="text-sm text-orange-800">
-                Thank you for your interest in becoming a Campus Ambassador! 
-                Your application has been submitted and is currently under review.
-              </p>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-muted-foreground">
-                <strong>What happens next?</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
-                <li>Our team will review your application</li>
-                <li>You'll receive an email notification once approved</li>
-                <li>Upon approval, you'll get your unique referral link</li>
-                <li>You can start earning rewards by sharing your link</li>
-              </ul>
-            </div>
-            {waitlistId && (
-              <div className="text-xs text-muted-foreground pt-2 border-t">
-                Application ID: {waitlistId}
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        <AnimatedBackground />
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+          <Card className="w-full max-w-md border-none shadow-2xl bg-white/90 backdrop-blur-sm">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="h-8 w-8 text-orange-500" />
               </div>
-            )}
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => {
-                setSubmitted(false);
-                setWaitlistId(null);
-                setFormData({
-                  name: '',
-                  email: '',
-                  whatsapp: '',
-                  college: '',
-                  city: '',
-                });
-                setVerifiedPhone(null);
-              }}
-            >
-              Submit Another Application
-            </Button>
-          </CardContent>
-        </Card>
+              <CardTitle className="text-2xl font-heading">Application Received</CardTitle>
+              <CardDescription>We're reviewing your request to join us!</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center">
+                <p className="text-sm text-orange-800 leading-relaxed font-medium">
+                  We'll notify you via email and WhatsApp once your application is approved.
+                  Usually, this takes about 24-48 hours.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-slate-900 border-b pb-2">Next Steps</h4>
+                <div className="grid gap-3">
+                  {[
+                    "Profile Review",
+                    "Email Verification",
+                    "Activation & Unique Link",
+                    "Start Earning Commissions"
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
+                      <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">{i + 1}</div>
+                      {step}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {waitlistId && (
+                <p className="text-[10px] text-center text-slate-400 font-mono">ID: {waitlistId}</p>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => setSubmitted(false)}
+              >
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Campus Ambassador</CardTitle>
-          <CardDescription>
-            Join as a new ambassador or log in to your dashboard
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-4">
+      <SEOHead
+        title="Campus Ambassador - Signature Day Tshirt"
+        description="Join our exclusive Campus Ambassador program and earn while you share."
+      />
+      <AnimatedBackground />
+
+      {/* Header-like top bar */}
+      <div className="w-full max-w-md mb-6 flex items-center justify-between px-2">
+        <Link to="/" className="text-slate-500 hover:text-purple-600 transition-colors flex items-center gap-2 text-sm font-medium">
+          <ArrowLeft className="h-4 w-4" />
+          Back Home
+        </Link>
+        <div className="flex items-center gap-2">
+          <Shirt className="h-5 w-5 text-purple-600" />
+          <span className="font-heading font-bold text-slate-900">Signature Day</span>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md border-none shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-3xl font-heading bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+            Campus Ambassador
+          </CardTitle>
+          <CardDescription className="text-slate-500">
+            Earn rewards and build your student network
           </CardDescription>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="pt-4">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signup' | 'login')} className="w-full">
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="signup">Register as Ambassador</TabsTrigger>
-              <TabsTrigger value="login">Login as Ambassador</TabsTrigger>
+            <TabsList className="grid grid-cols-2 p-1 bg-slate-100/50 rounded-2xl mb-8">
+              <TabsTrigger value="signup" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">Join Program</TabsTrigger>
+              <TabsTrigger value="login" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">Login</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signup" className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="college">College Name</Label>
-              <Input
-                id="college"
-                name="college"
-                value={formData.college}
-                onChange={handleChange}
-                placeholder="Your College"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                placeholder="Your City"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="your@email.com"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp Number</Label>
-              <PhoneOtpBlock
-                value={formData.whatsapp}
-                onChange={(val) => {
-                  setFormData(prev => ({ ...prev, whatsapp: val }));
-                  setVerifiedPhone(null);
-                }}
-                onVerified={(normalized) => setVerifiedPhone(normalized)}
-                source="ambassadorSignup"
-              />
-              {!verifiedPhone && (
-                <p className="text-xs text-slate-600">Verify your phone via OTP to continue.</p>
-              )}
-            </div>
-
-            <Button type="submit" className="w-full" disabled={!verifiedPhone || isSubmitting}>
-              {isSubmitting ? 'Submitting…' : 'Register as Ambassador'}
-            </Button>
-          </form>
-            </TabsContent>
-
-            <TabsContent value="login" className="space-y-4">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-phone">Registered Phone Number</Label>
-                  <PhoneOtpBlock
-                    value={loginPhone}
-                    onChange={(val) => {
-                      setLoginPhone(val);
-                      setLoginVerifiedPhone(null);
-                    }}
-                    onVerified={(normalized) => setLoginVerifiedPhone(normalized)}
-                    source="ambassadorLogin"
+            <TabsContent value="signup">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="relative group">
+                  <User className="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                  <Input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Full Name"
+                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                    required
                   />
-                  {!loginVerifiedPhone && (
-                    <p className="text-xs text-slate-600">Verify your phone via OTP to log in.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative group">
+                    <School className="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                    <Input
+                      name="college"
+                      value={formData.college}
+                      onChange={handleChange}
+                      placeholder="College"
+                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                      required
+                    />
+                  </div>
+                  <div className="relative group">
+                    <MapPin className="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                    <Input
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      placeholder="City"
+                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                  <Input
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Email Address"
+                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Smartphone className="absolute left-4 top-3.5 z-10 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                    <PhoneOtpBlock
+                      value={formData.whatsapp}
+                      onChange={(val) => {
+                        setFormData(prev => ({ ...prev, whatsapp: val }));
+                        setVerifiedPhone(null);
+                      }}
+                      onVerified={(normalized) => setVerifiedPhone(normalized)}
+                      source="ambassadorSignup"
+                      hideLabel={true}
+                    />
+                  </div>
+                  {!verifiedPhone && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl">
+                      <ShieldCheck className="h-4 w-4 text-purple-500" />
+                      <p className="text-[11px] text-purple-600 font-medium">Verify WhatsApp via OTP to unlock registration</p>
+                    </div>
                   )}
                 </div>
 
-                <Button type="submit" className="w-full" disabled={!loginVerifiedPhone || isSubmitting}>
-                  {isSubmitting ? 'Logging in…' : 'Login to Dashboard'}
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-bold"
+                  disabled={!verifiedPhone || isSubmitting}
+                >
+                  {isSubmitting ? 'Processing...' : 'Register as Ambassador'}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Smartphone className="absolute left-4 top-3.5 z-10 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                    <PhoneOtpBlock
+                      value={loginPhone}
+                      onChange={(val) => {
+                        setLoginPhone(val);
+                        setLoginVerifiedPhone(null);
+                      }}
+                      onVerified={(normalized) => setLoginVerifiedPhone(normalized)}
+                      source="ambassadorLogin"
+                      hideLabel={true}
+                    />
+                  </div>
+                  {!loginVerifiedPhone && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl">
+                      <ShieldCheck className="h-4 w-4 text-purple-500" />
+                      <p className="text-[11px] text-purple-600 font-medium">Verify registered phone with OTP</p>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-bold"
+                  disabled={!loginVerifiedPhone || isSubmitting}
+                >
+                  {isSubmitting ? 'Authenticating...' : 'Access My Dashboard'}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+
+      <p className="mt-8 text-slate-400 text-xs">
+        By continuing, you agree to our <Link to="/terms-of-service" className="text-purple-500 hover:underline">Terms of Service</Link>
+      </p>
     </div>
   );
 }

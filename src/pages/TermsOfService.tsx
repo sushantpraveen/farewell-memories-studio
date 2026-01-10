@@ -385,16 +385,20 @@ const TermsOfService = () => {
                                             <MapPin className="text-purple-600 h-5 w-5 mt-1" />
                                             <div className="text-sm">
                                                 <p className="font-bold">Headquarters</p>
-                                                <p className="text-slate-600">Jubilee Hills, Hyderabad, Telangana, India.</p>
+                                                <p className="text-slate-600">Chitlu Innovations Private Limited</p>
+                                                <p className="text-slate-600">G2, Win Win Towers,
+                                                    Siddhi Vinayaka Nagar,
+                                                    Madhapur, Hyderabad,
+                                                    Telangana – 500081, India</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <Mail className="text-purple-600 h-5 w-5" />
-                                            <a href="mailto:contact@signatureday.com" className="text-sm hover:underline">contact@signatureday.com</a>
+                                            <a href="mailto:contact@signatureday.com" className="text-sm hover:underline">support@shelfmerch.com</a>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <Globe className="text-purple-600 h-5 w-5" />
-                                            <a href="https://www.signatureday.com" className="text-sm hover:underline">www.signatureday.com</a>
+                                            <a href="https://signaturedaytshirt.com/" className="text-sm hover:underline">https://signaturedaytshirt.com/</a>
                                         </div>
                                     </CardContent>
                                 </Card>
