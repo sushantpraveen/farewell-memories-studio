@@ -30,7 +30,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { groupId } = useParams<{ groupId?: string }>();
   const { getGroup, updateGroup, updateGroupTemplate } = useCollage();
-  
+
   // Load group data (getGroup is async)
   const [group, setGroup] = useState<Group | null>(null);
   const [isUpdatingGrid, setIsUpdatingGrid] = useState(false);
@@ -54,7 +54,7 @@ const Checkout = () => {
         navigate(`/checkout/${lastActive}`, { replace: true });
         return;
       }
-      
+
       // Otherwise redirect to dashboard
       navigate('/dashboard');
     }
@@ -83,7 +83,7 @@ const Checkout = () => {
     load();
     return () => { isMounted = false; };
   }, [groupId, getGroup]);
-  
+
   // Calculate winning template
   const winningTemplate = group ?
     (Object.keys(group.votes) as Array<keyof typeof group.votes>).reduce((a, b) =>
@@ -125,12 +125,12 @@ const Checkout = () => {
   }, [quantity]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+
   // ToteBag claim state
   const [wantsToteBag, setWantsToteBag] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [claimStatus, setClaimStatus] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
-  
+
   // Form state
   const [shippingForm, setShippingForm] = useState({
     firstName: '',
@@ -204,8 +204,8 @@ const Checkout = () => {
   const [codAvailable, setCodAvailable] = useState(false);
 
   // Pricing & totals (dynamic shipping)
-  const tshirtPrice = 140; // ₹140 per t-shirt
-  const printPrice = 40;  // ₹40 per print
+  const tshirtPrice = 28; // ₹28 per t-shirt
+  const printPrice = 10.10;  // ₹10.10 per print
   const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
   const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
@@ -295,7 +295,7 @@ const Checkout = () => {
       if (data.city) {
         setShippingForm(prev => ({ ...prev, city: data.city }));
       }
-      
+
       // Autofill state from state_code
       if (data.state_code) {
         const stateName = stateCodeToName[data.state_code] || data.state_code;
@@ -362,7 +362,7 @@ const Checkout = () => {
 
     try {
       const fullName = `${shippingForm.firstName} ${shippingForm.lastName}`.trim();
-      
+
       // Validate form data before sending
       if (!shippingForm.firstName || !shippingForm.lastName) {
         throw new Error('First name and last name are required');
@@ -382,11 +382,11 @@ const Checkout = () => {
       if (!shippingForm.zipCode) {
         throw new Error('ZIP code is required');
       }
-      
+
       // State should be autofilled from shipping quote
       // If not available, we need to get it from the shipping quote response or use a valid default
       let stateValue = shippingForm.state?.trim() || '';
-      
+
       if (!stateValue) {
         console.warn('[Checkout] State not available in form. This may cause claim to fail.');
         console.warn('[Checkout] Please ensure pincode has been validated to autofill state.');
@@ -405,16 +405,16 @@ const Checkout = () => {
         zipCode: shippingForm.zipCode,
         purpose: 'Personal use'
       };
-      
+
       console.log('[Checkout] Claim data with state:', claimData);
-      
+
       // Final validation - ensure state is not empty
       if (!claimData.state || claimData.state.trim() === '') {
         throw new Error('State is required. Please validate your pincode first to autofill state information.');
       }
 
       console.log('[Checkout] Sending claim request with data:', claimData);
-      
+
       const result = await claimToteBag(claimData);
 
       console.log('[Checkout] Claim result received:', {
@@ -443,24 +443,24 @@ const Checkout = () => {
       if (result.success) {
         console.log('[Checkout] ✅ ToteBag claim successful!');
         console.log('[Checkout] Claim details:', result.claim);
-        
+
         setClaimStatus({
           type: 'success',
           message: '✅ Free totebag claim submitted!'
         });
         toast.success('Free totebag claim submitted!');
-        
+
         return { success: true, claim: result.claim };
       } else {
         console.warn('[Checkout] ⚠️ ToteBag claim failed:', result.message);
         console.warn('[Checkout] Error details:', result.error);
-        
+
         setClaimStatus({
           type: 'warning',
           message: `⚠️ ${result.message}. Order will still be processed.`
         });
         toast.warning(result.message || 'ToteBag claim failed, but order will continue');
-        
+
         return { success: false, error: result.error || result.message };
       }
     } catch (error: any) {
@@ -484,7 +484,7 @@ const Checkout = () => {
         message: `❌ ${error.message || 'Failed to claim totebag'}. Order will still be processed.`
       });
       toast.error('ToteBag claim failed, but order will continue');
-      
+
       return { success: false, error: error.message };
     } finally {
       setClaiming(false);
@@ -494,10 +494,10 @@ const Checkout = () => {
 
   const handleRazorpayPayment = async () => {
     if (!group) return;
-    
+
     console.log('[Checkout] 💳 Starting payment process...');
     console.log('[Checkout] ToteBag requested:', wantsToteBag);
-    
+
     setIsProcessing(true);
 
     // If user wants totebag, submit claim first (non-blocking)
@@ -506,7 +506,7 @@ const Checkout = () => {
       console.log('[Checkout] Submitting totebag claim before payment...');
       claimResult = await handleToteBagClaim();
       console.log('[Checkout] ToteBag claim completed. Result:', claimResult);
-      
+
       if (claimResult?.success) {
         console.log('[Checkout] ✅ ToteBag claim was successful - proceeding with payment');
       } else {
@@ -548,18 +548,18 @@ const Checkout = () => {
               order_id: response.razorpay_order_id,
               payment_id: response.razorpay_payment_id
             });
-            
+
             // Check claim status from localStorage
             const claimDataStr = localStorage.getItem('lastToteBagClaim');
             const claimData = claimDataStr ? JSON.parse(claimDataStr) : null;
-            
+
             if (claimData) {
               console.log('[Checkout] ToteBag claim status at payment completion:', {
                 success: claimData.success,
                 hasClaim: !!claimData.claim,
                 timestamp: claimData.timestamp
               });
-              
+
               if (claimData.success) {
                 console.log('[Checkout] ✅ ToteBag claim was successfully created and sent!');
                 console.log('[Checkout] Claim ID:', claimData.claim?.id || claimData.claim?._id || 'N/A');
@@ -569,7 +569,7 @@ const Checkout = () => {
             } else {
               console.log('[Checkout] No totebag claim data found in localStorage');
             }
-            
+
             // 4) Verify payment signature on backend and send email confirmation
             // Prepare invoice PDF
             const invoiceBase64 = await generateInvoicePdfBase64(
@@ -657,11 +657,11 @@ const Checkout = () => {
               // Store in order notes or metadata if your Order type supports it
               // You may need to extend the Order type to include metadata
             }
-            
+
             console.log('[Checkout] Creating order:', newOrder.id);
             await ordersApi.createOrder(newOrder);
             console.log('[Checkout] ✅ Order created successfully');
-            
+
             // Trigger backend reward allocation (demo intent+confirm flow, non-blocking)
             try {
               if (group?.id) {
@@ -673,7 +673,7 @@ const Checkout = () => {
             } catch (err) {
               console.error('[Checkout] Failed to trigger backend ambassador reward allocation (non-blocking):', err);
             }
-            
+
             // Offer invoice download for the user immediately
             try {
               await downloadInvoice(invoiceBase64, `Invoice-${newOrder.id}.pdf`);
@@ -681,24 +681,24 @@ const Checkout = () => {
               // non-blocking
               console.warn('[Checkout] Invoice download failed:', e);
             }
-            
+
             // Update claim record with order ID
             if (claimData) {
               claimData.orderId = newOrder.id;
               localStorage.setItem('lastToteBagClaim', JSON.stringify(claimData));
               console.log('[Checkout] Updated claim record with order ID:', newOrder.id);
             }
-            
+
             // Navigate with claim status
-            const claimParam = claimData?.success ? '&toteBagClaimed=true' : 
-                              claimData ? '&toteBagClaimed=false' : '';
-            
+            const claimParam = claimData?.success ? '&toteBagClaimed=true' :
+              claimData ? '&toteBagClaimed=false' : '';
+
             console.log('[Checkout] Navigating to success page...');
             console.log('[Checkout] Claim status for success page:', {
               claimed: !!claimData?.success,
               param: claimParam
             });
-            
+
             if (group) {
               navigate(`/success?groupId=${group.id}${claimParam}`);
             } else {
@@ -728,13 +728,13 @@ const Checkout = () => {
 
   // Check if all form fields are filled
   const allFieldsFilled = Object.values(shippingForm).every(value => value.trim() !== '');
-  
+
   // For serviceability: only block if we've checked AND it's not serviceable
   // Allow form submission if ZIP is empty, being validated, or validated as serviceable
   const isZipValid = !shippingForm.zipCode || // ZIP not entered yet
-                     zipStatus.serviceable === true || // ZIP validated and serviceable
-                     zipStatus.serviceable === null; // ZIP validation pending
-  
+    zipStatus.serviceable === true || // ZIP validated and serviceable
+    zipStatus.serviceable === null; // ZIP validation pending
+
   const isFormValid = allFieldsFilled && isZipValid;
 
   // Guard: missing groupId in route
@@ -787,9 +787,9 @@ const Checkout = () => {
         <Card className="max-w-md w-full mx-4 text-center shadow-lg border-0">
           <CardContent className="pt-8 pb-6">
             <div className="mb-6">
-             <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center"> 
-              <img src="/congrats.gif" alt="success" width={400} />
-             </div>
+              <div className="mx-auto mb-4 bg-white rounded-full flex items-center justify-center">
+                <img src="/congrats.gif" alt="success" width={400} />
+              </div>
             </div>
             <div className="bg-green-50 rounded-lg p-4 mb-4">
               <p className="text-sm text-green-700">Order ID: #RZP{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
@@ -802,15 +802,15 @@ const Checkout = () => {
   }
 
   // Background doodle component
-const BackgroundDoodle = () => (
-  <div className="absolute inset-0 -z-10">
-    <div 
-      className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
-      style={{ backgroundSize: '400px' }}
-    />
-    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
-  </div>
-);
+  const BackgroundDoodle = () => (
+    <div className="absolute inset-0 -z-10">
+      <div
+        className="absolute inset-0 bg-[url('/images/background-doodle-image.png')] bg-repeat opacity-[0.5]"
+        style={{ backgroundSize: '400px' }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-pink-50/50 to-yellow-50/50 backdrop-blur-[1px]" />
+    </div>
+  );
 
   const hasMismatch = group && group.members.length !== group.totalMembers;
 
@@ -821,8 +821,8 @@ const BackgroundDoodle = () => (
       <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => navigate(group ? `/editor/${group.id}` : '/dashboard')}
               className="flex items-center gap-2"
             >
@@ -844,7 +844,7 @@ const BackgroundDoodle = () => (
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
                 <p className="text-sm text-yellow-800">
-                  Group has {group!.members.length} members but grid is set to {group!.totalMembers}. 
+                  Group has {group!.members.length} members but grid is set to {group!.totalMembers}.
                   Update grid to fit all current members?
                 </p>
               </div>
@@ -903,7 +903,7 @@ const BackgroundDoodle = () => (
                     <span className="text-gray-600">T-Shirt (each)</span>
                     <span className="font-semibold">₹{tshirtPrice}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Print Cost (each)</span>
                     <span className="font-semibold">₹{printPrice}</span>
@@ -941,7 +941,7 @@ const BackgroundDoodle = () => (
                 </div>
 
                 <Separator />
-                
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Subtotal ({quantity} items)</span>
@@ -956,9 +956,9 @@ const BackgroundDoodle = () => (
                     <span>₹{tax}</span>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
                   <span>₹{finalTotal}</span>
@@ -984,80 +984,80 @@ const BackgroundDoodle = () => (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">First Name *</Label>
-                    <Input 
-                      id="firstName" 
+                    <Input
+                      id="firstName"
                       value={shippingForm.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <Label htmlFor="lastName">Last Name *</Label>
-                    <Input 
-                      id="lastName" 
+                    <Input
+                      id="lastName"
                       value={shippingForm.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      required 
+                      required
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="email">Email Address *</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
+                  <Input
+                    id="email"
+                    type="email"
                     value={shippingForm.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder="john@example.com"
-                    required 
+                    required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input 
-                    id="phone" 
-                    type="tel" 
+                  <Input
+                    id="phone"
+                    type="tel"
                     value={shippingForm.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     placeholder="+91 98765 43210"
-                    required 
+                    required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="address">Address *</Label>
-                  <Input 
-                    id="address" 
+                  <Input
+                    id="address"
                     value={shippingForm.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
                     placeholder="123 Main Street, Apartment 4B"
-                    required 
+                    required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">City *</Label>
-                    <Input 
-                      id="city" 
+                    <Input
+                      id="city"
                       value={shippingForm.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <Label htmlFor="zipCode">ZIP Code *</Label>
                     <div className="relative">
-                      <Input 
-                        id="zipCode" 
+                      <Input
+                        id="zipCode"
                         value={shippingForm.zipCode}
                         onChange={(e) => handlePincodeChange(e.target.value)}
                         onBlur={handlePincodeBlur}
                         placeholder="110001"
                         maxLength={6}
-                        required 
+                        required
                         className={zipStatus.serviceable === false ? 'border-red-500' : ''}
                       />
                       {zipStatus.loading && (
@@ -1136,7 +1136,7 @@ const BackgroundDoodle = () => (
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Button 
+                <Button
                   onClick={handleRazorpayPayment}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg font-semibold shadow"
                   disabled={isProcessing || claiming || !isFormValid}
@@ -1153,7 +1153,7 @@ const BackgroundDoodle = () => (
                     </>
                   )}
                 </Button>
-                
+
                 {!isFormValid && (
                   <p className="text-sm text-red-600 mt-2 text-center">
                     {zipStatus.serviceable === false
@@ -1161,7 +1161,7 @@ const BackgroundDoodle = () => (
                       : 'Please fill in all required fields'}
                   </p>
                 )}
-                
+
                 <div className="flex items-center justify-center mt-4 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4" />

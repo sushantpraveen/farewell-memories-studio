@@ -86,18 +86,18 @@ export const verifyPayment = async (req, res) => {
       let customerEmail = req.body.email;
       let customerName = req.body.name;
       let orderDetails = null;
-      
+
       // If no email in request body, try to find it from the associated order
       if (!customerEmail && (clientOrderId || orderId)) {
         const orderRef = clientOrderId || orderId;
         orderDetails = await Order.findOne({ clientOrderId: orderRef }).lean();
-        
+
         if (orderDetails && orderDetails.shipping && orderDetails.shipping.email) {
           customerEmail = orderDetails.shipping.email;
           customerName = orderDetails.shipping.name;
         }
       }
-      
+
       // If still no email, use the authenticated user's email
       if (!customerEmail && req.user && req.user.email) {
         customerEmail = req.user.email;
@@ -244,7 +244,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
     const { name, email, memberRollNumber, photo, vote, size } = member;
 
     // if (!name || !email || !memberRollNumber || !photo || !vote || !phone) {
-    if (!name || !email || !memberRollNumber || !photo || !vote ) {
+    if (!name || !email || !memberRollNumber || !photo || !vote) {
       return res.status(400).json({ success: false, message: 'Incomplete member details provided' });
     }
 
@@ -290,11 +290,11 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Member with this roll number already exists' });
     }
 
-    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 140);
-    const printPrice = Number(process.env.PRINT_PRICE || 40);
+    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 28);
+    const printPrice = Number(process.env.PRINT_PRICE || 10.10);
     const gstRate = Number(process.env.GST_RATE || 0.05);
     const perItemSubtotal = tshirtPrice + printPrice;
-    const perItemGst = Math.round(perItemSubtotal * gstRate);
+    const perItemGst = Math.floor(perItemSubtotal * gstRate * 100) / 100;
     const perItemTotal = perItemSubtotal + perItemGst;
     const paymentAmountPaise = perItemTotal * 100;
 

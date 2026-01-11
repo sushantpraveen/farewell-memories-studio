@@ -16,13 +16,13 @@ export interface PricingBreakdown {
 
 export function calculatePricing({
   quantity,
-  tshirtPrice = 140,
-  printPrice = 40,
+  tshirtPrice = 28,
+  printPrice = 10.10,
   gstRate = 0.05,
 }: PricingInput): PricingBreakdown {
   const perItemSubtotal = tshirtPrice + printPrice;
-  const perItemGst = Math.round(perItemSubtotal * gstRate);
-  const perItemTotal = perItemSubtotal + perItemGst;
+  const perItemGst = Math.floor(perItemSubtotal * gstRate * 100) / 100;
+  const perItemTotal = Number((perItemSubtotal + perItemGst).toFixed(2));
 
   const subtotal = perItemSubtotal * quantity;
   const gst = perItemGst * quantity;

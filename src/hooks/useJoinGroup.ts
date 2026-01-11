@@ -82,12 +82,12 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
   const joinPricing = useMemo(
     () => ({
-      perItemSubtotal: 179.52,
-      perItemGst: 9.48,
-      perItemTotal: 189,
-      subtotal: 179.52,
-      gst: 9.48,
-      total: 189
+      perItemSubtotal: 38.10,
+      perItemGst: 1.90,
+      perItemTotal: 40.00,
+      subtotal: 38.10,
+      gst: 1.90,
+      total: 40.00
     }),
     []
   );
@@ -274,9 +274,9 @@ export const useJoinGroup = (groupId: string | undefined) => {
                 {
                   description: `${activeGroup?.name ?? 'Group'} T-Shirt + Print`,
                   quantity: 1,
-                  unitPrice: 299,
-                  printPrice: 0,
-                  gstRate: 0
+                  unitPrice: 28,
+                  printPrice: 10.10,
+                  gstRate: 0.05
                 }
               ]
             );

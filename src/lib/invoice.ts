@@ -129,8 +129,8 @@ export async function generateInvoicePdfBase64(
 
   items.forEach((it) => {
     const perItemSubtotal = it.unitPrice + it.printPrice;
-    const perItemGst = Math.round(perItemSubtotal * it.gstRate);
-    const perItemTotal = perItemSubtotal + perItemGst;
+    const perItemGst = Math.floor(perItemSubtotal * it.gstRate * 100) / 100;
+    const perItemTotal = Number((perItemSubtotal + perItemGst).toFixed(2));
     const lineSubtotal = perItemSubtotal * it.quantity;
     const lineGst = perItemGst * it.quantity;
     const lineTotal = perItemTotal * it.quantity;
@@ -154,14 +154,14 @@ export async function generateInvoicePdfBase64(
   doc.line(left, y, 560, y);
   y += 18;
   doc.text('Subtotal', 480, y, { align: 'right' });
-  doc.text(String(subtotal), 560, y, { align: 'right' });
+  doc.text(String(subtotal.toFixed(2)), 560, y, { align: 'right' });
   y += 16;
   doc.text('GST', 480, y, { align: 'right' });
-  doc.text(String(gstTotal), 560, y, { align: 'right' });
+  doc.text(String(gstTotal.toFixed(2)), 560, y, { align: 'right' });
   y += 16;
   doc.setFontSize(12);
   doc.text('Total', 480, y, { align: 'right' });
-  doc.text(String(grand), 560, y, { align: 'right' });
+  doc.text(String(grand.toFixed(2)), 560, y, { align: 'right' });
 
   const base64 = doc.output('datauristring');
   // Strip the prefix "data:application/pdf;base64,"
