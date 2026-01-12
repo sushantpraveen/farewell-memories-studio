@@ -118,7 +118,7 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
     }
     // Bottom-most extension 34-36 (3 cells)
     if (index >= 34 && index <= 39) {
-      const col = index - 39; // 0..2
+      const col = index - 34; // 0..2
       keys.push(cid('bottom-most-extension', 0, col + 2));
       keys.push(cid('bottom-most-extension', -1, col + 2));
       return keys;

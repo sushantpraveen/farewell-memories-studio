@@ -122,8 +122,8 @@ const getKeysForIndex = (index: number): string[] => {
     return keys;
   }
   // Top extension most 45..50 (6 cells centered)
-  if (index >= 46 && index <= 51) {
-    const col = index - 46; // 0..7
+  if (index >= 45 && index <= 51) {
+    const col = index - 45; // 0..7
     keys.push(cid('topExt-most', 0, col + 2));
     keys.push(cid('topExt-most', -1, col + 2));
     return keys;

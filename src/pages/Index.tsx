@@ -983,9 +983,10 @@ const Index = () => {
               <div>
                 <h3 className="font-semibold text-white mb-4">Quick Links</h3>
                 <ul className="space-y-2 text-sm">
-                  <li><Link to="/" className="text-slate-400 hover:text-white transition-colors">Home</Link></li>
+                  <li><Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-slate-400 hover:text-white transition-colors">Home</Link></li>
                   <li><Link to="/create-group" className="text-slate-400 hover:text-white transition-colors">Create Group</Link></li>
                   <li><Link to="/how-it-works" className="text-slate-400 hover:text-white transition-colors">How It Works</Link></li>
+                  <li><Link to="/ambassador/signup" className="text-slate-400 hover:text-white transition-colors">Campus Ambassador</Link></li>
 
                 </ul>
               </div>
