@@ -350,9 +350,11 @@ const HowItWorks = () => {
                             </div>
 
                             <div className="flex flex-wrap justify-center gap-8 text-sm text-slate-400">
-                                <Link to="/" className="hover:text-white transition-colors">Home</Link>
+                                <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-white transition-colors">Home</Link>
                                 <Link to="/how-it-works" className="hover:text-white transition-colors">How It Works</Link>
                                 <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
+                                <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                                <Link to="/help-center" className="hover:text-white transition-colors">Help Center</Link>
                                 <Link to="/ambassador/signup" className="hover:text-white transition-colors">Campus Ambassador</Link>
                             </div>
 

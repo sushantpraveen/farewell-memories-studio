@@ -2,9 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Shirt, Heart, Star, Camera, Mail, Clock, Globe,
-    MessageCircle, X, MapPin, Shield,
-    Briefcase, Lock, Ban, Scale, FileText, CheckCircle2,
-    Database, Handshake
+    MessageCircle, X, Shield,
+    Lock, Info, Eye, Share2, UserCheck, Trash2, Scale, Database, MapPin
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -50,26 +49,37 @@ const AnimatedBackground = () => (
     </div>
 );
 
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+    <svg
+        viewBox="0 0 24 24"
+        className={className}
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.438 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+);
+
 const WhatsAppSupport = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-4">
+        <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-4 font-body">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="bg-white rounded-2xl shadow-2xl p-6 border border-green-100 min-w-[240px]"
+                        className="bg-white rounded-2xl shadow-2xl p-6 border border-green-100 min-w-[280px]"
                     >
                         <div className="flex flex-col gap-3">
-                            <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 text-transparent bg-clip-text flex items-center gap-2">
-                                <MessageCircle className="h-5 w-5 text-green-600" />
-                                Chat with Support
+                            <h3 className="text-xl font-bold text-[#075E54] flex items-center gap-2">
+                                <WhatsAppIcon className="h-6 w-6 text-[#25D366]" />
+                                WhatsApp Support
                             </h3>
-                            <p className="text-sm text-muted-foreground">
-                                Message us on WhatsApp for any help with your Signature Day Tee!
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                                Need help with your order? Our team is available 9AM - 6PM IST.
                             </p>
                             <a
                                 href="https://wa.me/917036365724"
@@ -77,8 +87,8 @@ const WhatsAppSupport = () => {
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-2 text-lg font-bold text-white transition-all bg-[#25D366] hover:bg-[#128C7E] p-3 rounded-xl shadow-md"
                             >
-                                <MessageCircle className="h-5 w-5" />
-                                Message Us
+                                <WhatsAppIcon className="h-5 w-5" />
+                                Start Chat
                             </a>
                         </div>
                     </motion.div>
@@ -89,7 +99,7 @@ const WhatsAppSupport = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 relative group"
+                className="w-16 h-16 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:shadow-2xl transition-all duration-300 relative group"
                 aria-label="Chat on WhatsApp"
             >
                 <AnimatePresence mode="wait">
@@ -111,20 +121,22 @@ const WhatsAppSupport = () => {
                             exit={{ rotate: -90, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <MessageCircle className="h-7 w-7" />
+                            <WhatsAppIcon className="h-9 w-9" />
                         </motion.div>
                     )}
                 </AnimatePresence>
-                <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
-                </span>
+                {!isOpen && (
+                    <span className="absolute top-3 right-3 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                    </span>
+                )}
             </motion.button>
         </div>
     );
 };
 
-const TermsOfService = () => {
+const PrivacyPolicy = () => {
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -132,75 +144,97 @@ const TermsOfService = () => {
     const sections = [
         {
             id: 1,
-            title: "Eligibility",
-            icon: CheckCircle2,
-            content: "To be eligible for the Program, the Ambassador must be a student currently enrolled in a recognized college or university.",
+            title: "Collection of Data",
+            icon: Database,
+            content: "The Company may collect and process limited personal information of the Campus Ambassador, including but not limited to:",
+            items: [
+                "Full name",
+                "Contact details (phone number, email address)",
+                "College / institution name",
+                "Bank or UPI details for commission payouts",
+                "Order-related performance data"
+            ],
+            footer: "Such data shall be collected only for operational, payment, verification, and communication purposes related to the Campus Ambassador Program.",
             color: "purple"
         },
         {
             id: 2,
-            title: "Role and Responsibilities",
-            icon: Briefcase,
+            title: "Use of Data",
+            icon: Eye,
+            content: "The data provided by the Ambassador shall be used strictly for:",
             items: [
-                { label: "Promotion", text: "Ambassadors shall promote the Company's products and services within their campus and social circles." },
-                { label: "Conduct", text: "Ambassadors must maintain high ethical standards and represent the Company positively." },
-                { label: "IP", text: "Use of Company trademarks or logos requires prior written consent." }
+                "Processing commission payments",
+                "Verifying orders and delivery status",
+                "Program-related communication",
+                "Internal analytics and compliance"
             ],
+            footer: "The Company shall not sell, rent, or commercially exploit the Ambassador's personal data.",
             color: "pink"
         },
         {
             id: 3,
-            title: "Compensation",
-            icon: Star,
-            items: [
-                { label: "Commissions", text: "Eligible for commissions based on verified sales using their unique code." },
-                { label: "Incentives", text: "Performance-based bonuses or perks as communicated by the Company." },
-                { label: "Payment", text: "Commissions will be paid on a monthly basis or as otherwise specified." }
-            ],
+            title: "Confidentiality & Security",
+            icon: Lock,
+            content: "The Company shall take reasonable technical and organizational measures to safeguard the Ambassador's personal data against unauthorized access, disclosure, loss or misuse. Access to such data is limited to authorized personnel only.",
             color: "yellow"
         },
         {
             id: 4,
-            title: "Independent Contractor",
-            icon: Handshake,
-            content: "The Ambassador is an independent contractor and not an employee of the Company. This Agreement does not create a partnership, joint venture, or agency relationship.",
+            title: "Data Sharing",
+            icon: Share2,
+            content: "The Company may share necessary data only with:",
+            items: [
+                "Payment processors",
+                "Logistics partners",
+                "Government or legal authorities (if required by law)"
+            ],
+            footer: "Such sharing shall be limited to what is strictly required for execution of services or legal compliance.",
             color: "purple"
         },
         {
             id: 5,
-            title: "Confidentiality",
-            icon: Lock,
-            content: "The Ambassador may have access to confidential information of the Company and agrees not to disclose such information to any third party without prior written consent.",
+            title: "Ambassador Responsibilities",
+            icon: UserCheck,
+            items: [
+                "Any customer, student, or group data received during promotions shall be treated as confidential",
+                "Such data shall not be misused, stored unnecessarily, shared, or sold",
+                "Data shall not be used for any purpose outside SignatureDayTshirt orders"
+            ],
+            footer: "Any misuse of customer or student data will result in immediate termination and may attract legal action.",
             color: "pink"
         },
         {
             id: 6,
-            title: "Termination",
-            icon: Ban,
+            title: "Data Retention",
+            icon: Trash2,
             items: [
-                { label: "By Ambassador", text: "The Ambassador may terminate their participation with 7 days' notice." },
-                { label: "By Company", text: "The Company may terminate participation immediately for any breach of these terms." }
+                "Ambassador data shall be retained only for as long as necessary to fulfill business, legal, or compliance requirements.",
+                "Upon termination of the program, non-essential personal data may be deleted or anonymized, subject to statutory obligations."
             ],
             color: "yellow"
         },
         {
             id: 7,
-            title: "Legal Info",
-            icon: Scale,
-            items: [
-                { label: "Liability", text: "The Company shall not be liable for any indirect, incidental, or consequential damages." },
-                { label: "Law", text: "Agreement governed by laws of India. Disputes subject to courts in Hyderabad." }
-            ],
+            title: "Consent",
+            icon: Info,
+            content: "By enrolling in the Campus Ambassador Program, the Ambassador explicitly consents to the collection, processing, and use of their personal data as outlined above, in accordance with applicable Indian data protection laws, including the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023.",
             color: "purple"
+        },
+        {
+            id: 8,
+            title: "No Ownership of Data",
+            icon: Scale,
+            content: "All data collected, generated, or processed through the SignatureDayTshirt platform, including order and performance data, shall remain the exclusive property of the Company.",
+            color: "pink"
         }
     ];
 
     return (
         <>
             <SEOHead
-                title="Terms of Service - Signature Day Tshirt"
-                description="Terms and conditions for our Campus Ambassador Program."
-                keywords="terms of service, signature day, ambassador program"
+                title="Privacy Policy - Signature Day Tshirt"
+                description="Our commitment to protecting your data and privacy."
+                keywords="privacy policy, data protection, signature day, campus ambassador"
             />
 
             <style>
@@ -262,13 +296,13 @@ const TermsOfService = () => {
                     >
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium">
                             <Shield className="h-4 w-4" />
-                            <span>Legal Agreement & Terms</span>
+                            <span>Privacy & Security</span>
                         </div>
                         <h1 className="text-4xl lg:text-6xl font-heading bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
-                            Terms of Service
+                            Privacy Policy
                         </h1>
                         <p className="text-lg text-muted-foreground leading-relaxed">
-                            Everything you need to know about our Campus Ambassador Program and how we work together to create memories.
+                            How we protect and manage your data in the Campus Ambassador Program.
                         </p>
                     </motion.div>
                 </section>
@@ -277,25 +311,6 @@ const TermsOfService = () => {
                 <section className="container mx-auto px-4 py-12">
                     <div className="max-w-6xl mx-auto">
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Intro Card */}
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                className="col-span-full mb-8"
-                            >
-                                <Card className="border-none shadow-xl bg-gradient-to-br from-purple-600 to-pink-600 text-white overflow-hidden relative">
-                                    <div className="absolute top-0 right-0 p-8 opacity-10">
-                                        <FileText className="w-48 h-48" />
-                                    </div>
-                                    <CardContent className="p-8 lg:p-12 relative z-10">
-                                        <h2 className="text-3xl font-heading mb-4">Welcome to our Program</h2>
-                                        <p className="text-lg opacity-90 leading-relaxed max-w-3xl">
-                                            These Terms of Service ("Agreement") govern your participation in the Campus Ambassador Program ("Program") offered by SignatureDayTshirt ("Company"). By enrolling in the Program, you ("Ambassador") agree to be bound by these terms.
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
 
                             {sections.map((section, idx) => (
                                 <motion.div
@@ -315,90 +330,63 @@ const TermsOfService = () => {
                                                 {section.title}
                                             </CardTitle>
                                         </CardHeader>
-                                        <CardContent className="text-slate-600 leading-relaxed">
-                                            {section.content && <p>{section.content}</p>}
+                                        <CardContent className="text-slate-600 leading-relaxed space-y-3">
+                                            {section.content && <p className="text-sm">{section.content}</p>}
                                             {section.items && (
-                                                <ul className="space-y-3">
+                                                <ul className="space-y-2">
                                                     {section.items.map((item, i) => (
-                                                        <li key={i} className="flex flex-col gap-1">
-                                                            <span className="font-bold text-slate-800 text-sm underline decoration-purple-200">{item.label}</span>
-                                                            <span className="text-sm">{item.text}</span>
+                                                        <li key={i} className="flex gap-2 text-sm">
+                                                            <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
+                                                            <span>{item}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
+                                            )}
+                                            {section.footer && (
+                                                <p className="text-xs italic text-slate-500 pt-2 border-t border-slate-100">
+                                                    {section.footer}
+                                                </p>
                                             )}
                                         </CardContent>
                                     </Card>
                                 </motion.div>
                             ))}
 
-                            {/* Data Privacy Specialized Card */}
+                            {/* Address Card Specialized */}
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                className="col-span-full lg:col-span-2"
+                                className="col-span-full mt-12"
                             >
-                                <Card className="h-full border-none shadow-xl bg-slate-900 text-white overflow-hidden">
-                                    <CardHeader className="bg-slate-800/50 p-6">
-                                        <CardTitle className="flex items-center gap-3 font-heading text-2xl">
-                                            <Database className="text-pink-500" />
-                                            Data Privacy & Protection
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="p-8 grid md:grid-cols-2 gap-8">
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-pink-400">Collection & Use</h4>
-                                            <p className="text-sm text-slate-400 leading-relaxed">
-                                                We collect limited data (Name, College, UPI) strictly for verifying orders and processing payments. We never sell or commercially exploit your personal information.
-                                            </p>
-                                            <ul className="text-xs text-slate-500 space-y-2">
-                                                <li className="flex gap-2"><CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" /> Encrypted storage</li>
-                                                <li className="flex gap-2"><CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" /> Limited access protocol</li>
-                                            </ul>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-pink-400">Your Consent</h4>
-                                            <p className="text-sm text-slate-400 leading-relaxed">
-                                                By enrolling, you explicitly consent to the collection and use of data as outlined, in accordance with the IT Act 2000 and Digital Personal Data Protection Act 2023.
-                                            </p>
-                                            <div className="p-3 bg-slate-800 rounded-lg border border-slate-700">
-                                                <p className="text-xs italic text-slate-400">"Data is retained only as long as necessary for business, legal, or compliance requirements."</p>
+                                <Card className="border-none shadow-xl bg-slate-900 text-white overflow-hidden relative">
+                                    <CardContent className="p-8 lg:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
+                                        <div className="space-y-4 text-center md:text-left">
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-purple-400 text-xs font-medium border border-slate-700">
+                                                <MapPin className="h-3.3 w-3.5" />
+                                                <span>Registered Office</span>
                                             </div>
+                                            <h2 className="text-3xl font-heading">Chitlu Innovations Private Limited</h2>
+                                            <p className="text-slate-400 max-w-md">
+                                                G2, Win Win Towers, Siddhi Vinayaka Nagar, <br />
+                                                Madhapur, Hyderabad – 500081, India
+                                            </p>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-
-                            {/* Contact Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                            >
-                                <Card className="h-full border-none shadow-xl bg-purple-50">
-                                    <CardHeader>
-                                        <CardTitle className="font-heading text-xl">Get in Touch</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="flex items-start gap-3">
-                                            <MapPin className="text-purple-600 h-5 w-5 mt-1" />
-                                            <div className="text-sm">
-                                                <p className="font-bold">Headquarters</p>
-                                                <p className="text-slate-600">Chitlu Innovations Private Limited</p>
-                                                <p className="text-slate-600">G2, Win Win Towers,
-                                                    Siddhi Vinayaka Nagar,
-                                                    Madhapur, Hyderabad,
-                                                    Telangana – 500081, India</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Mail className="text-purple-600 h-5 w-5" />
-                                            <a href="mailto:support@shelfmerch.com" className="text-sm hover:underline">support@shelfmerch.com</a>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Globe className="text-purple-600 h-5 w-5" />
-                                            <a href="https://signaturedaytshirt.com/" className="text-sm hover:underline">https://signaturedaytshirt.com/</a>
+                                        <div className="flex flex-col gap-4 w-full md:w-auto">
+                                            <a
+                                                href="mailto:support@shelfmerch.com"
+                                                className="flex items-center justify-center gap-2 bg-slate-800 text-white font-bold px-8 py-4 rounded-full shadow-lg hover:bg-slate-700 transition-colors border border-slate-700"
+                                            >
+                                                <Mail className="h-5 w-5" />
+                                                Contact Support
+                                            </a>
+                                            <Link
+                                                to="/terms-of-service"
+                                                className="flex items-center justify-center gap-2 bg-purple-600 text-white font-bold px-8 py-4 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
+                                            >
+                                                <Shield className="h-5 w-5" />
+                                                Terms of Service
+                                            </Link>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -418,8 +406,8 @@ const TermsOfService = () => {
                             <div className="flex flex-wrap justify-center gap-8 text-sm text-slate-400">
                                 <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-white transition-colors">Home</Link>
                                 <Link to="/how-it-works" className="hover:text-white transition-colors">How It Works</Link>
-                                <Link to="/terms-of-service" className="hover:text-white transition-colors font-bold text-purple-400">Terms of Service</Link>
-                                <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                                <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
+                                <Link to="/privacy-policy" className="hover:text-white transition-colors font-bold text-purple-400">Privacy Policy</Link>
                                 <Link to="/help-center" className="hover:text-white transition-colors">Help Center</Link>
                                 <Link to="/ambassador/signup" className="hover:text-white transition-colors">Campus Ambassador</Link>
                             </div>
@@ -436,4 +424,4 @@ const TermsOfService = () => {
     );
 };
 
-export default TermsOfService;
+export default PrivacyPolicy;

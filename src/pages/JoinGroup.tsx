@@ -152,7 +152,7 @@ const JoinGroup = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-            <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
+            <div className="space-y-4 lg:space-y-6 order-1">
 
               {/* Join Form */}
               <Card className="shadow-xl border-0 backdrop-blur-lg bg-white/80">
@@ -314,7 +314,7 @@ const JoinGroup = () => {
             </div>
 
             {/* Grid Preview - 2/3 width */}
-            <div className="lg:col-span-2 order-1 lg:order-2">
+            <div className="lg:col-span-2 order-2">
               <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] backdrop-blur-lg bg-white/80">
                 <CardHeader className="pb-2 sm:pb-4">
                   <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Grid Preview</CardTitle>
