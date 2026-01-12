@@ -260,23 +260,30 @@ export const useJoinGroup = (groupId: string | undefined) => {
             const invoiceBase64 = await generateInvoicePdfBase64(
               {
                 name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+                address: 'G2, Win Win Towers, Siddhi Vinayaka Nagar, Madhapur, Hyderabad, Telangana – 500081, India',
                 gstin: '36AAHCC5155C1ZW',
                 cin: 'U74999TG2018PTC123754',
-                logoUrl: '/chitlu-logo.png'
+                email: 'support@shelfmerch.com',
+                logoUrl: '/shelf-merch-logo.webp'
               },
               {
                 invoiceId: `INV-JOIN-${Date.now()}`,
+                orderId: response.razorpay_order_id,
                 dateISO: new Date().toISOString(),
                 customerName: memberData.name,
-                customerEmail: memberData.email
+                customerEmail: memberData.email,
+                placeOfSupply: 'Telangana', // Defaulting to local for now, or could be dynamic
+                paymentMethod: 'Razorpay UPI/Card/Netbanking',
+                transactionRef: response.razorpay_payment_id
               },
               [
                 {
                   description: `${activeGroup?.name ?? 'Group'} T-Shirt + Print`,
+                  hsn: '6109',
                   quantity: 1,
-                  unitPrice: 28,
+                  unitPrice: 28.00,
                   printPrice: 10.10,
-                  gstRate: 0.05
+                  taxRate: 0.05
                 }
               ]
             );

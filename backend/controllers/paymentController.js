@@ -1,5 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import { sendMail } from '../utils/email.js';
 import Order from '../models/orderModel.js';
 import Group from '../models/groupModel.js';
@@ -340,62 +342,113 @@ export const verifyPaymentAndJoin = async (req, res) => {
             <html>
             <head>
               <meta charset="utf-8">
-              <title>Welcome to ${group.name}</title>
+              <title>Confirmation of Registration - ${group.name}</title>
               <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-                .header { background: linear-gradient(135deg, #6d28d9 0%, #db2777 100%); color: white; padding: 20px; text-align: center; }
-                .content { padding: 20px; }
-                .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #666; }
-                .details { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 5px; padding: 15px; margin: 20px 0; }
-                h1 { margin: 0; }
+                body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+                .container { background-color: #ffffff; border: 1px solid #e1e8ed; margin-top: 20px; }
+                .header { text-align: center; padding: 30px 20px; background-color: #f8fafc; border-bottom: 2px solid #6d28d9; }
+                .logo { max-width: 150px; margin-bottom: 20px; }
+                .content { padding: 40px 30px; }
+                .footer { background-color: #f8fafc; padding: 30px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
+                .details-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 25px; margin: 30px 0; }
+                .details-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+                .details-row:last-child { border-bottom: none; }
+                .details-label { color: #64748b; }
+                .details-value { color: #1e293b; font-weight: 600; }
+                h1 { margin: 0; font-size: 20px; color: #1e293b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+                p { margin-bottom: 15px; font-size: 15px; color: #475569; }
+                .company-info { margin-top: 40px; font-size: 11px; color: #94a3b8; line-height: 1.6; text-align: left; }
+                .thank-you { font-weight: 700; color: #6d28d9; margin-top: 30px; font-size: 16px; }
               </style>
             </head>
             <body>
-              <div class="header">
-                <h1>🎉 Welcome to ${group.name}!</h1>
-              </div>
-              <div class="content">
-                <p>Hi ${name},</p>
-                <p>Congratulations! Your payment has been received and you've successfully joined <strong>${group.name}</strong> (Class of ${group.yearOfPassing}).</p>
-
-                <div class="details">
-                  <h3>Your Purchase</h3>
-                  <p><strong>Amount Paid:</strong> ₹${perItemTotal}</p>
-                  <p><strong>Includes GST (5%):</strong> ₹${perItemGst}</p>
-                  <p><strong>Payment ID:</strong> ${razorpay_payment_id}</p>
-                  <p><strong>Order ID:</strong> ${razorpay_order_id}</p>
+              <div class="container">
+                <div class="header">
+                  <img src="https://signatureday.com/shelf-merch-logo.webp" alt="Signature Day Logo" class="logo">
+                  <h1>Confirmation of Registration</h1>
                 </div>
+                <div class="content">
+                  <p>Dear ${name},</p>
+                  <p>This is to confirm that your registration for the group <strong>${group.name}</strong> (Class of ${group.yearOfPassing}) has been successfully completed. Your payment has been received and verified.</p>
+                  
+                  <div class="details-card">
+                    <p style="margin-top: 0; font-weight: 700; color: #1e293b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Transaction Details</p>
+                    <div class="details-row">
+                      <span class="details-label">Order Reference:</span>
+                      <span class="details-value">${razorpay_order_id}</span>
+                    </div>
+                    <div class="details-row">
+                      <span class="details-label">Payment ID:</span>
+                      <span class="details-value">${razorpay_payment_id}</span>
+                    </div>
+                    <div class="details-row">
+                      <span class="details-label">Total Amount:</span>
+                      <span class="details-value">₹${perItemTotal.toFixed(2)}</span>
+                    </div>
+                    <div class="details-row">
+                      <span class="details-label">Transaction Date:</span>
+                      <span class="details-value">${new Date().toLocaleDateString('en-IN')}</span>
+                    </div>
+                  </div>
 
-                <p>You're now part of the group collage! We'll start printing once all members have joined.</p>
+                  <p>We've attached your official <strong>Tax Invoice</strong> to this email for your records.</p>
+                  
+                  <p><strong>What's next?</strong><br>
+                  We are waiting for more members to join. Once the group is complete, we'll start the high-quality printing process and keep you updated on the delivery status.</p>
 
-                <p>Your tax invoice is attached to this email for your records.</p>
+                  <p>Thank you for being part of this memorable journey!</p>
 
-                <p>Thank you for being part of this memorable journey!</p>
-
-                <p>Best regards,<br>The Signature Day Team</p>
-              </div>
-              <div class="footer">
-                <p>This is an automated message, please do not reply to this email.</p>
-                <p>&copy; ${new Date().getFullYear()} Signature Day. All rights reserved.</p>
+                  <p>Best regards,<br><strong>The Signature Day Team</strong></p>
+                  
+                  <div class="company-info">
+                    <strong>Chitlu Innovations Private Limited</strong><br>
+                    G2, Win Win Towers, Siddhi Vinayaka Nagar,<br>
+                    Madhapur, Hyderabad, Telangana – 500081, India<br>
+                    GST: 36AAHCC5155C1ZW
+                  </div>
+                </div>
+                <div class="footer">
+                  <p>This is an automated message from Signature Day. Please do not reply.</p>
+                  <p>&copy; ${new Date().getFullYear()} Signature Day. All rights reserved.</p>
+                </div>
               </div>
             </body>
             </html>
           `;
 
-          const attachments = invoicePdfBase64 && invoiceFileName ? [
-            {
-              filename: invoiceFileName,
-              content: invoicePdfBase64,
-              encoding: 'base64',
-              contentType: 'application/pdf'
+          const logoPath = path.join(process.cwd(), '..', 'public', 'shelf-merch-logo.webp');
+          let logoContent = null;
+          try {
+            if (fs.existsSync(logoPath)) {
+              logoContent = fs.readFileSync(logoPath);
             }
-          ] : [];
+          } catch (logoErr) {
+            console.error('Failed to read logo for email embedding:', logoErr);
+          }
+
+          const attachments = [
+            ...(invoicePdfBase64 && invoiceFileName ? [
+              {
+                filename: invoiceFileName,
+                content: invoicePdfBase64,
+                encoding: 'base64',
+                contentType: 'application/pdf'
+              }
+            ] : []),
+            ...(logoContent ? [
+              {
+                filename: 'shelf-merch-logo.webp',
+                content: logoContent,
+                cid: 'shelf-merch-logo'
+              }
+            ] : [])
+          ];
 
           await sendMail({
             to: email,
-            subject: `Welcome to ${group.name} - Signature Day`,
-            html: htmlTemplate,
-            attachments: attachments.length ? attachments : undefined
+            subject: `Confirmation of Registration - ${group.name}`,
+            html: htmlTemplate.replace('https://signatureday.com/shelf-merch-logo.webp', 'cid:shelf-merch-logo'),
+            attachments
           });
         } catch (emailError) {
           console.error('Failed to send join invoice email:', emailError);
