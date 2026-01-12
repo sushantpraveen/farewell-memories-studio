@@ -5,25 +5,33 @@ type JsPDFCtor = new (options?: any) => any;
 
 export interface InvoiceCompany {
   name: string;
+  address: string;
   gstin: string;
   cin?: string;
-  logoUrl?: string; // optional logo image URL
+  email: string;
+  website?: string;
+  logoUrl?: string;
 }
 
 export interface InvoiceItem {
   description: string;
+  hsn: string;
   quantity: number;
-  unitPrice: number;
-  printPrice: number;
-  gstRate: number; // e.g., 0.05 for 5%
+  unitPrice: number; // Base T-shirt price
+  printPrice: number; // Printing price
+  taxRate: number; // e.g., 0.05 for 5%
 }
 
 export interface InvoiceMeta {
   invoiceId: string;
+  orderId: string;
   dateISO: string;
   customerName: string;
   customerEmail: string;
-  shippingAddress?: string;
+  billingAddress?: string;
+  placeOfSupply?: string;
+  paymentMethod?: string;
+  transactionRef?: string;
 }
 
 async function loadJsPDF(): Promise<JsPDFCtor> {
@@ -34,13 +42,10 @@ async function loadJsPDF(): Promise<JsPDFCtor> {
     const existing = document.getElementById('jspdf-cdn') as HTMLScriptElement | null;
 
     if (existing) {
-      // Script tag already exists; if it finished loading we resolve immediately.
       if (existing.dataset.loaded === 'true') {
         resolve();
         return;
       }
-
-      // Otherwise wait for the existing script to complete.
       existing.addEventListener('load', () => resolve(), { once: true });
       existing.addEventListener('error', () => reject(new Error('Failed to load jsPDF')), { once: true });
       return;
@@ -74,99 +79,215 @@ export async function generateInvoicePdfBase64(
   const jsPDF = await loadJsPDF();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
+  const pageWidth = doc.internal.pageSize.getWidth();
   const left = 40;
-  let y = 50;
+  const right = pageWidth - 40;
+  let y = 40;
 
-  // Logo
+  // --- Header Section ---
   if (company.logoUrl) {
     try {
       const img = await fetch(company.logoUrl).then(r => r.blob());
       const dataUrl = await blobToDataURL(img);
-      // 80x80 logo
-      doc.addImage(dataUrl, 'PNG', left, y, 60, 60);
-    } catch (_) {
-      // ignore logo failures
-    }
+      doc.addImage(dataUrl, 'WEBP', left, y, 50, 50);
+    } catch (_) { /* ignore */ }
   }
 
-  // Company
-  doc.setFontSize(16);
-  doc.text(company.name, left + 70, y + 20);
-  doc.setFontSize(10);
-  doc.text(`GSTIN: ${company.gstin}`, left + 70, y + 38);
-  if (company.cin) doc.text(`CIN: ${company.cin}`, left + 70, y + 54);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(40, 40, 40);
+  doc.text('TAX INVOICE', right, y + 20, { align: 'right' });
 
-  // Invoice meta
-  y += 90;
-  doc.setFontSize(14);
-  doc.text('TAX INVOICE', left, y);
+  y += 65;
+
+  // --- Company Details (Left) vs Invoice Info (Right) ---
+  const midY = y;
   doc.setFontSize(10);
-  y += 18;
-  doc.text(`Invoice #: ${meta.invoiceId}`, left, y);
-  y += 16;
-  doc.text(`Date: ${new Date(meta.dateISO).toLocaleString()}`, left, y);
-  y += 16;
-  doc.text(`Bill To: ${meta.customerName}`, left, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text(company.name, left, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
   y += 14;
-  doc.text(`Email: ${meta.customerEmail}`, left, y);
-  if (meta.shippingAddress) { y += 14; doc.text(`Ship To: ${meta.shippingAddress}`, left, y); }
+  const addressLines = doc.splitTextToSize(company.address, 200);
+  doc.text(addressLines, left, y);
+  y += (addressLines.length * 12) + 2;
+  doc.text(`GSTIN: ${company.gstin}`, left, y);
+  if (company.cin) {
+    y += 12;
+    doc.text(`CIN: ${company.cin}`, left, y);
+  }
+  y += 12;
+  doc.text(`Email: ${company.email}`, left, y);
 
-  // Table header
-  y += 26;
+  y = midY;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text(`Invoice Number:`, right - 130, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(meta.invoiceId, right, y, { align: 'right' });
+  
+  y += 14;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Invoice Date:`, right - 130, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(new Date(meta.dateISO).toLocaleDateString('en-IN'), right, y, { align: 'right' });
+
+  y += 14;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Order ID:`, right - 130, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(meta.orderId, right, y, { align: 'right' });
+
+  y += 14;
+  if (meta.placeOfSupply) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Place of Supply:`, right - 130, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(meta.placeOfSupply, right, y, { align: 'right' });
+  }
+
+  y = Math.max(y, midY + (addressLines.length * 12) + 60) + 30;
+
+  // --- Bill To / Ship To ---
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('Description', left, y);
-  doc.text('Qty', 330, y);
-  doc.text('Unit', 370, y);
-  doc.text('Print', 430, y);
-  doc.text('GST', 490, y);
-  doc.text('Amount', 540, y);
-  y += 8;
-  doc.line(left, y, 560, y);
+  doc.setTextColor(40, 40, 40);
+  doc.text('BILL TO:', left, y);
+  
+  y += 16;
+  doc.setFontSize(10);
+  doc.text(meta.customerName, left, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  y += 14;
+  doc.text(meta.customerEmail, left, y);
+  if (meta.billingAddress) {
+    y += 14;
+    const billLines = doc.splitTextToSize(meta.billingAddress, 250);
+    doc.text(billLines, left, y);
+    y += (billLines.length * 12);
+  }
 
-  let subtotal = 0;
-  let gstTotal = 0;
-  let grand = 0;
+  y += 30;
 
-  items.forEach((it) => {
-    const perItemSubtotal = it.unitPrice + it.printPrice;
-    const perItemGst = Math.floor(perItemSubtotal * it.gstRate * 100) / 100;
-    const perItemTotal = Number((perItemSubtotal + perItemGst).toFixed(2));
-    const lineSubtotal = perItemSubtotal * it.quantity;
-    const lineGst = perItemGst * it.quantity;
-    const lineTotal = perItemTotal * it.quantity;
+  // --- Items Table ---
+  // Headers
+  doc.setFillColor(245, 245, 245);
+  doc.rect(left, y, right - left, 25, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+  const tableY = y + 17;
+  doc.text('Description', left + 5, tableY);
+  doc.text('HSN', left + 140, tableY);
+  doc.text('Qty', left + 185, tableY, { align: 'right' });
+  doc.text('T-shirt', left + 245, tableY, { align: 'right' });
+  doc.text('Print', left + 295, tableY, { align: 'right' });
+  doc.text('Tax %', left + 345, tableY, { align: 'right' });
+  doc.text('Tax Amt', left + 410, tableY, { align: 'right' });
+  doc.text('Total', right - 10, tableY, { align: 'right' });
 
-    subtotal += lineSubtotal;
-    gstTotal += lineGst;
-    grand += lineTotal;
+  y += 25;
+  let totalSubtotal = 0;
+  let totalTax = 0;
+  let totalGrand = 0;
 
-    y += 18;
-    doc.setFontSize(10);
-    doc.text(it.description, left, y);
-    doc.text(String(it.quantity), 330, y, { align: 'right' });
-    doc.text(String(it.unitPrice), 400, y, { align: 'right' });
-    doc.text(String(it.printPrice), 460, y, { align: 'right' });
-    doc.text(`${Math.round(it.gstRate * 100)}%`, 510, y, { align: 'right' });
-    doc.text(String(lineTotal), 560, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  
+  items.forEach((item) => {
+    const perItemSubtotal = item.unitPrice + item.printPrice;
+    const lineSubtotal = perItemSubtotal * item.quantity;
+    const lineTax = Math.floor(lineSubtotal * item.taxRate * 100) / 100;
+    const lineTotal = lineSubtotal + lineTax;
+
+    totalSubtotal += lineSubtotal;
+    totalTax += lineTax;
+    totalGrand += lineTotal;
+
+    y += 25;
+    // Row separation line
+    doc.setDrawColor(230, 230, 230);
+    doc.line(left, y, right, y);
+    
+    const rowY = y - 8;
+    doc.text(item.description, left + 5, rowY);
+    doc.text(item.hsn, left + 140, rowY);
+    doc.text(String(item.quantity), left + 185, rowY, { align: 'right' });
+    doc.text(item.unitPrice.toFixed(2), left + 245, rowY, { align: 'right' });
+    doc.text(item.printPrice.toFixed(2), left + 295, rowY, { align: 'right' });
+    doc.text(`${(item.taxRate * 100).toFixed(0)}%`, left + 345, rowY, { align: 'right' });
+    doc.text(lineTax.toFixed(2), left + 410, rowY, { align: 'right' });
+    doc.text(lineTotal.toFixed(2), right - 10, rowY, { align: 'right' });
   });
 
-  // Totals
-  y += 14;
-  doc.line(left, y, 560, y);
-  y += 18;
-  doc.text('Subtotal', 480, y, { align: 'right' });
-  doc.text(String(subtotal.toFixed(2)), 560, y, { align: 'right' });
+  y += 20;
+
+  // --- Summary Section ---
+  const summaryX = right - 180;
+  doc.setFont('helvetica', 'normal');
+  doc.text('Subtotal:', summaryX, y);
+  doc.text(totalSubtotal.toFixed(2), right - 10, y, { align: 'right' });
+  
   y += 16;
-  doc.text('GST', 480, y, { align: 'right' });
-  doc.text(String(gstTotal.toFixed(2)), 560, y, { align: 'right' });
-  y += 16;
+  doc.text('Tax (GST):', summaryX, y);
+  doc.text(totalTax.toFixed(2), right - 10, y, { align: 'right' });
+
+  y += 20;
+  doc.setDrawColor(40, 40, 40);
+  doc.setLineWidth(1);
+  doc.line(summaryX, y - 10, right, y - 10);
+  
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.text('Total', 480, y, { align: 'right' });
-  doc.text(String(grand.toFixed(2)), 560, y, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+  doc.text('GRAND TOTAL:', summaryX, y + 5);
+  doc.text(`INR ${totalGrand.toFixed(2)}`, right - 10, y + 5, { align: 'right' });
+
+  y += 40;
+
+  // --- Amount in Words ---
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Amount in words:', left, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${numberToWords(Math.round(totalGrand))} Rupees Only`, left + 85, y);
+
+  y += 40;
+
+  // --- Footer / Signature ---
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Declaration:', left, y);
+  y += 12;
+  doc.text('We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.', left, y);
+
+  y += 40;
+  doc.line(right - 150, y, right, y);
+  doc.text('Authorized Signatory', right, y + 12, { align: 'right' });
+  doc.text(`for ${company.name}`, right, y - 10, { align: 'right' });
 
   const base64 = doc.output('datauristring');
-  // Strip the prefix "data:application/pdf;base64,"
   const commaIdx = base64.indexOf(',');
   return base64.substring(commaIdx + 1);
+}
+
+function numberToWords(num: number): string {
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  let numStr = num.toString();
+  if (numStr.length > 9) return 'overflow';
+  const n = ('000000000' + numStr).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return ''; 
+  let str = '';
+  str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
+  str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
+  str += (Number(n[3]) !== 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
+  str += (Number(n[4]) !== 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
+  str += (Number(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+  return str.trim();
 }
 
 export async function downloadInvoice(base64: string, filename: string) {
