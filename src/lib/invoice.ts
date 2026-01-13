@@ -32,6 +32,7 @@ export interface InvoiceMeta {
   placeOfSupply?: string;
   paymentMethod?: string;
   transactionRef?: string;
+  shipping?: number;
 }
 
 async function loadJsPDF(): Promise<JsPDFCtor> {
@@ -198,8 +199,9 @@ export async function generateInvoicePdfBase64(
   
   items.forEach((item) => {
     const perItemSubtotal = item.unitPrice + item.printPrice;
+    const perItemTax = Math.floor(perItemSubtotal * item.taxRate * 100) / 100;
     const lineSubtotal = perItemSubtotal * item.quantity;
-    const lineTax = Math.floor(lineSubtotal * item.taxRate * 100) / 100;
+    const lineTax = perItemTax * item.quantity;
     const lineTotal = lineSubtotal + lineTax;
 
     totalSubtotal += lineSubtotal;
@@ -233,6 +235,13 @@ export async function generateInvoicePdfBase64(
   y += 16;
   doc.text('Tax (GST):', summaryX, y);
   doc.text(totalTax.toFixed(2), right - 10, y, { align: 'right' });
+
+  if (meta.shipping && meta.shipping > 0) {
+    y += 16;
+    doc.text('Shipping:', summaryX, y);
+    doc.text(meta.shipping.toFixed(2), right - 10, y, { align: 'right' });
+    totalGrand += meta.shipping;
+  }
 
   y += 20;
   doc.setDrawColor(40, 40, 40);

@@ -38,7 +38,7 @@ export const protect = async (req, res, next) => {
  * Check if user is a group leader
  */
 export const isLeader = (req, res, next) => {
-  if (req.user && req.user.isLeader) {
+  if (req.user && (req.user.isLeader || req.user.isAdmin)) {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as a leader' });
