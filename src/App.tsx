@@ -97,7 +97,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/checkout/:groupId" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiresLeader>
                   <Checkout />
                 </ProtectedRoute>
               } />

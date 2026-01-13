@@ -12,7 +12,7 @@ import { useCollage } from '@/context/CollageContext';
 import type { Group } from '@/context/CollageContext';
 import { ordersApi, paymentsApi } from '@/lib/api';
 import { calculatePricing } from '@/lib/pricing';
-import { generateInvoicePdfBase64, downloadInvoice } from '@/lib/invoice';
+import { generateInvoicePdfBase64 } from '@/lib/invoice';
 import type { Order, AdminMember } from '@/types/admin';
 import { toast } from 'sonner';
 
@@ -210,7 +210,7 @@ const Checkout = () => {
   const itemTotal = pricing.subtotal; // before GST
   const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
   const tax = pricing.gst; // 5% GST correctly applied
-  const finalTotal = tax + shipping;
+  const finalTotal = itemTotal + tax + shipping;
 
   // Quantity handlers
   const handleQuantityChange = (change: number) => {
@@ -572,27 +572,33 @@ const Checkout = () => {
 
             // 4) Verify payment signature on backend and send email confirmation
             // Prepare invoice PDF
+            const invoiceFileName = `Invoice-${Date.now()}.pdf`;
             const invoiceBase64 = await generateInvoicePdfBase64(
               {
                 name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+                address: 'G2, Win Win Towers, Siddhi Vinayaka Nagar, Madhapur, Hyderabad, Telangana – 500081, India',
                 gstin: '36AAHCC5155C1ZW',
                 cin: 'U74999TG2018PTC123754',
+                email: 'support@signatureday.com',
                 logoUrl: '/chitlu-logo.png',
               },
               {
                 invoiceId: `INV-${Date.now()}`,
+                orderId: response.razorpay_order_id,
                 dateISO: new Date().toISOString(),
                 customerName: `${shippingForm.firstName} ${shippingForm.lastName}`.trim() || 'Customer',
                 customerEmail: shippingForm.email,
-                shippingAddress: `${shippingForm.address}, ${shippingForm.city} ${shippingForm.zipCode}`,
+                billingAddress: `${shippingForm.address}, ${shippingForm.city} ${shippingForm.zipCode}`,
+                shipping: shipping,
               },
               [
                 {
                   description: `${group?.name || 'Group'} T-Shirt + Print (${group?.yearOfPassing || ''})`,
+                  hsn: '6109',
                   quantity,
                   unitPrice: tshirtPrice,
                   printPrice: printPrice,
-                  gstRate: 0.05,
+                  taxRate: 0.05,
                 },
               ]
             );
@@ -605,6 +611,8 @@ const Checkout = () => {
               email: shippingForm.email,
               name: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
               amount: finalTotal * 100,
+              invoicePdfBase64: invoiceBase64,
+              invoiceFileName: invoiceFileName
             });
             if (!verify.valid) throw new Error('Payment verification failed');
 
@@ -674,13 +682,6 @@ const Checkout = () => {
               console.error('[Checkout] Failed to trigger backend ambassador reward allocation (non-blocking):', err);
             }
 
-            // Offer invoice download for the user immediately
-            try {
-              await downloadInvoice(invoiceBase64, `Invoice-${newOrder.id}.pdf`);
-            } catch (e) {
-              // non-blocking
-              console.warn('[Checkout] Invoice download failed:', e);
-            }
 
             // Update claim record with order ID
             if (claimData) {
@@ -700,9 +701,9 @@ const Checkout = () => {
             });
 
             if (group) {
-              navigate(`/success?groupId=${group.id}${claimParam}`);
+              window.location.href = `/success?groupId=${group.id}${claimParam}`;
             } else {
-              navigate(`/success${claimParam}`);
+              window.location.href = `/success${claimParam.replace('&', '?')}`;
             }
           } catch (err) {
             console.error('Payment finalize error:', err);
@@ -961,7 +962,8 @@ const Checkout = () => {
 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>₹{finalTotal}</span>
+                  <span>₹{Number(finalTotal).toFixed(2)}</span>
+
                 </div>
 
                 {shipping === 0 && (
@@ -1149,7 +1151,7 @@ const Checkout = () => {
                   ) : (
                     <>
                       <div className="mr-2 font-bold text-lg">₹</div>
-                      Pay ₹{finalTotal} with Razorpay
+                      Pay ₹{Number(finalTotal).toFixed(2)} with Razorpay
                     </>
                   )}
                 </Button>

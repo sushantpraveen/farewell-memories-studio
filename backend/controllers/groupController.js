@@ -427,9 +427,8 @@ export const joinGroup = async (req, res) => {
 
       await User.findByIdAndUpdate(req.user._id, {
         groupId: group._id,
-        // Only set isLeader to false if user is not already the leader
-        // This allows leaders to join their own group without losing leader status
-        isLeader: isCurrentLeader ? true : false
+        // Preserve leader status if already a leader, or set it if they are the creator
+        isLeader: user?.isLeader || (group.createdByUserId && group.createdByUserId.toString() === user._id.toString()) ? true : false
       });
     }
 

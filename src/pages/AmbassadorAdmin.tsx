@@ -24,6 +24,7 @@ export default function AmbassadorAdmin() {
       id: string;
       name: string;
       email: string;
+      city: string;
       phone: string;
       college?: string;
       referralCode: string;
@@ -316,6 +317,7 @@ export default function AmbassadorAdmin() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>College</TableHead>
+                   <TableHead>City</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>WhatsApp</TableHead>
                   <TableHead>Referral Code</TableHead>
@@ -329,6 +331,7 @@ export default function AmbassadorAdmin() {
                     <TableRow key={ambassador.id}>
                       <TableCell className="font-medium">{ambassador.name}</TableCell>
                       <TableCell>{ambassador.college}</TableCell>
+                      <TableCell>{ambassador.city || '-'}</TableCell>
                       <TableCell>{ambassador.email}</TableCell>
                       <TableCell>
                         {ambassador.phone.startsWith('+91')

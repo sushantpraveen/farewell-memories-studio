@@ -315,6 +315,8 @@ export const paymentsApi = {
     email?: string;
     name?: string;
     amount?: number;
+    invoicePdfBase64?: string;
+    invoiceFileName?: string;
   }) => apiRequest<{ valid: boolean; emailed: boolean }>(`/payments/verify`, 'POST', payload),
   // Demo payment flow (internal reward bookkeeping)
   // NOTE: backend currently expects { groupId, itemTotal }
