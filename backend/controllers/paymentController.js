@@ -477,6 +477,10 @@ export const verifyPaymentAndJoin = async (req, res) => {
   }
 };
 
+
+
+
+
 /**
  * @desc    Create payment intent (demo)
  * @route   POST /api/payments/intent

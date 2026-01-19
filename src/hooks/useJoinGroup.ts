@@ -346,9 +346,11 @@ export const useJoinGroup = (groupId: string | undefined) => {
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
+
+
     } catch (error) {
-      console.error('[JoinGroup] Payment initiation error', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to initiate payment.');
+      console.error('[JoinGroup] Join error', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to join group.');
       setIsSubmitting(false);
       setIsProcessingPayment(false);
     }
