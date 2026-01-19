@@ -139,7 +139,7 @@ const getKeysForIndex = (index: number): string[] => {
   }
   // Top most extension 54..56 (3 cells centered)
   if (index >= 85 && index <= 94) {
-    const col = index - 84; // 0..
+    const col = index - 85; // 0..
     keys.push(cid('topExt-most', 0, col + 2));
     keys.push(cid('topExt-most', -1, col + 2));
     return keys;

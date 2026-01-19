@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {useGrid} from './context/GridContext';
@@ -53,9 +52,8 @@ const GridBoard: React.FC<GridBoardProps> = ({ previewMember, existingMembers = 
       }
     };
   }, []);
-
   // Unique component-scoped ID helpers
-  const COMP_ID = 'grid-76';
+  const COMP_ID = 'grid-75';
   const cid = (section: string, row: number, col: number) => `${COMP_ID}:${section}:${row}-${col}`;
 
   const handleCellClick = (cellKey: string) => handleCellActivate(cellKey);
@@ -138,7 +136,7 @@ const getKeysForIndex = (index: number): string[] => {
     return keys;
   }
   // Top most extension 54..56 (3 cells centered)
-  if (index >= 69 && index <= 74) {
+  if (index >= 69 && index <= 75) {
     const col = index - 69; // 0..9
     keys.push(cid('topExt-most', 0, col + 2));
     keys.push(cid('topExt-most', -1, col + 2));
@@ -257,6 +255,7 @@ useEffect(() => {
   console.log('==================');
 }, [existingMembers, cellImages]);
 
+
   // Canvas helpers and renderer for this 11x11 layout
   const loadImage = (src: string) =>
     new Promise<HTMLImageElement>((resolve, reject) => {
@@ -372,106 +371,24 @@ useEffect(() => {
         className="grid grid-cols-11 bg-white rounded-xl shadow-2xl p-1 md:p-3 sm:-ml-4"
         style={{
           gap: 'var(--gap)',
-          // 10 gaps across 11 cols
+        // 10 gaps across 11 cols
           // cell = min(fit width, fit height)
           // ratio keeps cells slightly taller than wide
           // pad approximates container padding on mobile
           ['--gap' as any]: '2px',
           ['--pad' as any]: '8px',
           ['--cell' as any]: isDesktop
-            ? 'min(calc((35vw - (var(--pad)*2) - (10 * var(--gap))) / 11), calc((100vh - (var(--pad)*2) - (10 * var(--gap))) / 11))'
-            : 'min(calc((100vw - (var(--pad)*2) - (10 * var(--gap))) / 11), calc((100vh - (var(--pad)*2) - (10 * var(--gap))) / 11))',
+          ? 'min(calc((35vw - (var(--pad)*2) - (10 * var(--gap))) / 11), calc((100vh - (var(--pad)*2) - (10 * var(--gap))) / 11))'
+          : 'min(calc((100vw - (var(--pad)*2) - (10 * var(--gap))) / 11), calc((100vh - (var(--pad)*2) - (10 * var(--gap))) / 11))',
           ['--ratio' as any]: '1.2',
           ['--row' as any]: 'calc(var(--cell) * var(--ratio))',
           gridAutoRows: 'var(--row)',
-          gridTemplateColumns: 'repeat(11, var(--cell))'
+        gridTemplateColumns: 'repeat(11, var(--cell))'
         } as React.CSSProperties}
       >
-
-  {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-  <div className="col-span-11">
-         <div
-            className="grid"
-            style={{
-              display: 'grid',
-              gap: 'var(--gap)',
-              gridAutoFlow: 'column',
-              gridAutoColumns: 'var(--cell)',
-              gridAutoRows: 'var(--row)',
-              justifyContent: 'center',
-            } as React.CSSProperties}
-          >
-          {Array.from({ length: 6 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
-            return (
-              <div
-                key={cellKey}
-                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={{ ...(getCellStyleWithFallback(cellKey) as any) }}
-                onClick={() => handleCellClick(cellKey)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleCellClick(cellKey);
-                  }
-                }}
-              >
-                {!cellImages[cellKey] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </div>
-        </div>
-
-         {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-         <div className="col-span-11">
-         <div
-            className="grid"
-            style={{
-              display: 'grid',
-              gap: 'var(--gap)',
-              gridAutoFlow: 'column',
-              gridAutoColumns: 'var(--cell)',
-              gridAutoRows: 'var(--row)',
-              justifyContent: 'center',
-            } as React.CSSProperties}
-          >
-          {Array.from({ length: 8 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
-            return (
-              <div
-                key={cellKey}
-                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={{ ...(getCellStyleWithFallback(cellKey) as any) }}
-                onClick={() => handleCellClick(cellKey)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleCellClick(cellKey);
-                  }
-                }}
-              >
-                {!cellImages[cellKey] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </div>
-        </div>
         
          {/* Top extension - 1 cells centered (non-intrusive full-row) */}
-         <div className="col-span-11">
+<div className="col-span-11">
          <div
             className="grid"
             style={{
@@ -483,13 +400,13 @@ useEffect(() => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-          {Array.from({ length: 9 }, (_, colIndex) => {
-            const cellKey = cid('topExt', -1, colIndex + 2);
+        {Array.from({ length: 7 }, (_, colIndex) => {
+          const cellKey = cid('topExt-most', -1, colIndex + 2);
             return (
               <div
                 key={cellKey}
                 className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={{ ...(getCellStyleWithFallback(cellKey) as any) }}
+                style={{ ...(getCellStyle(cellKey) as any) }}
                 onClick={() => handleCellClick(cellKey)}
                 role="button"
                 tabIndex={0}
@@ -511,8 +428,90 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Middle rows (5) with 3-col left/right borders and 5-col center */}
-        {Array.from({ length: 5 }, (_, rowIndex) => (
+       {/* Top extension - 1 cells centered (non-intrusive full-row) */}
+       <div className="col-span-11">
+         <div
+            className="grid"
+            style={{
+              display: 'grid',
+              gap: 'var(--gap)',
+              gridAutoFlow: 'column',
+              gridAutoColumns: 'var(--cell)',
+              gridAutoRows: 'var(--row)',
+              justifyContent: 'center',
+            } as React.CSSProperties}
+          >
+        {Array.from({ length: 8 }, (_, colIndex) => {
+          const cellKey = cid('topExt', -1, colIndex + 2);
+            return (
+              <div
+                key={cellKey}
+                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+                style={{ ...(getCellStyle(cellKey) as any) }}
+                onClick={() => handleCellClick(cellKey)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleCellClick(cellKey);
+                  }
+                }}
+              >
+                {!cellImages[cellKey] && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                    +
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          </div>
+        </div>
+
+       {/* Top extension - 1 cells centered (non-intrusive full-row) */}
+       <div className="col-span-11">
+       <div
+          className="grid"
+          style={{
+            display: 'grid',
+            gap: 'var(--gap)',
+            gridAutoFlow: 'column',
+            gridAutoColumns: 'var(--cell)',
+            gridAutoRows: 'var(--row)',
+            justifyContent: 'center',
+          } as React.CSSProperties}
+        >
+        {Array.from({ length: 9 }, (_, colIndex) => {
+          const cellKey = cid('top', 0, colIndex);
+          return (
+            <div
+              key={cellKey}
+              className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+              style={{ ...(getCellStyle(cellKey) as any) }}
+              onClick={() => handleCellClick(cellKey)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleCellClick(cellKey);
+                }
+              }}
+            >
+              {!cellImages[cellKey] && (
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
+                </div>
+              )}
+            </div>
+          );
+        })}
+        </div>
+      </div>
+
+      {/* Middle rows (5) with 3-col left/right borders and 5-col center */}
+      {Array.from({ length: 5 }, (_, rowIndex) => (
           <React.Fragment key={`middle-row-${rowIndex}`}>
             {/* Left border cell */}
             {/* <div className="col-span-2">
@@ -537,18 +536,18 @@ useEffect(() => {
             </div>
             </div> */}
 
-            {/* Left 3 columns */}
+          {/* Left 3 columns */}
             <div className="col-span-3 grid grid-cols-3" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
               {Array.from({ length: 3 }, (_, colIndex) => (
                 <div
                   key={`left-side-${colIndex}`}
                   className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                  style={getCellStyleWithFallback(cid('left', rowIndex, colIndex))}
-                  onClick={() => handleCellClick(cid('left', rowIndex, colIndex))}
+                  style={getCellStyle(cid('left-side', rowIndex, colIndex))}
+                  onClick={() => handleCellClick(cid('left-side', rowIndex, colIndex))}
                   role="button"
                   tabIndex={0}
                 >
-                  {!cellImages[cid('left', rowIndex, colIndex)] && (
+                  {!cellImages[cid('left-side', rowIndex, colIndex)] && (
                     <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
                       +
                     </div>
@@ -557,11 +556,11 @@ useEffect(() => {
               ))}
             </div>
 
-            {/* Center cell - span 5 columns over 5 rows */}
+          {/* Center cell - span 5 columns over 5 rows */}
             {rowIndex === 0 && (
               <div
                 className="col-span-5 row-span-5 grid-cell active:animate-grid-pulse flex items-center justify-center text-white font-bold text-lg relative overflow-hidden"
-                style={getCellStyleWithFallback(cid('center', 0, 0))}
+                style={getCellStyle(cid('center', 0, 0))}
                 onClick={() => handleCellClick(cid('center', 0, 0))}
                 role="button"
                 tabIndex={0}
@@ -574,18 +573,18 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Right 3 columns */}
+          {/* Right 3 columns */}
             <div className="col-span-3 grid grid-cols-3" style={{ gap: 'var(--gap)' } as React.CSSProperties}>
               {Array.from({ length: 3 }, (_, colIndex) => (
                 <div
                   key={`right-side-${colIndex}`}
                   className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                  style={getCellStyleWithFallback(cid('right', rowIndex, colIndex))}
-                  onClick={() => handleCellClick(cid('right', rowIndex, colIndex))}
+                  style={getCellStyle(cid('right-side', rowIndex, colIndex))}
+                  onClick={() => handleCellClick(cid('right-side', rowIndex, colIndex))}
                   role="button"
                   tabIndex={0}
                 >
-                  {!cellImages[cid('right', rowIndex, colIndex)] && (
+                  {!cellImages[cid('right-side', rowIndex, colIndex)] && (
                     <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
                       +
                     </div>
@@ -619,8 +618,51 @@ useEffect(() => {
           </React.Fragment>
         ))}
 
-        {/* Bottom extension - 4 cells centered */}
-        <div className="col-span-11">
+      {/* Bottom extension - 4 cells centered */}
+      <div className="col-span-11">
+        <div
+          className="grid"
+          style={{
+            display: 'grid',
+            gap: 'var(--gap)',
+            gridAutoFlow: 'column',
+            gridAutoColumns: 'var(--cell)',
+            gridAutoRows: 'var(--row)',
+            justifyContent: 'center',
+          } as React.CSSProperties}
+        >
+        {Array.from({ length: 9 }, (_, colIndex) => {
+            const key = cid('bottom', 9, colIndex + 1);
+          return (
+            <div
+              key={key}
+              className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+              style={{ ...(getCellStyle(key) as any) }}
+              onMouseDown={(e) => startDrag(e, key)}
+              onTouchStart={(e) => startDrag(e, key)}
+              onClick={() => handleCellActivate(key)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleCellActivate(key);
+                }
+              }}
+            >
+              {!cellImages[key] && (
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                  +
+                </div>
+              )}
+            </div>
+          );
+        })}
+        </div>
+      </div>
+
+      {/* Bottom extension - 4 cells centered */}
+      <div className="col-span-11">
           <div
             className="grid"
             style={{
@@ -632,38 +674,38 @@ useEffect(() => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 9 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+          {Array.from({ length: 7 }, (_, colIndex) => {
+            const key = cid('bottom-extension', -1, colIndex + 2 );
               return (
                 <div
-                key={key}
-                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={{ ...(getCellStyle(key) as any) }}
-                onMouseDown={(e) => startDrag(e, key)}
-                onTouchStart={(e) => startDrag(e, key)}
-                onClick={() => handleCellActivate(key)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleCellActivate(key);
-                  }
-                }}
-              >
-                {!cellImages[key] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  key={key}
+                  className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
+                  style={{ ...(getCellStyle(key) as any) }}
+                  onMouseDown={(e) => startDrag(e, key)}
+                  onTouchStart={(e) => startDrag(e, key)}
+                  onClick={() => handleCellActivate(key)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleCellActivate(key);
+                    }
+                  }}
+                >
+                  {!cellImages[key] && (
+                    <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
+                      +
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Bottom extension - 4 cells centered */}
-        <div className="col-span-11">
+      <div className="col-span-11">
           <div
             className="grid"
             style={{
@@ -675,8 +717,8 @@ useEffect(() => {
               justifyContent: 'center',
             } as React.CSSProperties}
           >
-            {Array.from({ length: 8 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
+          {Array.from({ length: 6 }, (_, colIndex) => {
+            const key = cid('bottomExt-most', -1, colIndex + 2 );
               return (
                 <div
                 key={key}
@@ -704,50 +746,7 @@ useEffect(() => {
           })}
           </div>
         </div>
-
-        {/* Bottom extension - 4 cells centered */}
-        <div className="col-span-11">
-          <div
-            className="grid"
-            style={{
-              display: 'grid',
-              gap: 'var(--gap)',
-              gridAutoFlow: 'column',
-              gridAutoColumns: 'var(--cell)',
-              gridAutoRows: 'var(--row)',
-              justifyContent: 'center',
-            } as React.CSSProperties}
-          >
-            {Array.from({ length: 6 }, (_, colIndex) => {
-              const key = cid('bottom-most-extension', -1, colIndex + 2);
-              return (
-                <div
-                key={key}
-                className="grid-cell active:animate-grid-pulse relative overflow-hidden cursor-pointer"
-                style={{ ...(getCellStyle(key) as any) }}
-                onMouseDown={(e) => startDrag(e, key)}
-                onTouchStart={(e) => startDrag(e, key)}
-                onClick={() => handleCellActivate(key)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleCellActivate(key);
-                  }
-                }}
-              >
-                {!cellImages[key] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-70">
-                    +
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </div>
-        </div>
-        {/* No bottom extensions for 11x11 layout */}
+      {/* No bottom extensions for 11x11 layout */}
 
       </div>
       
