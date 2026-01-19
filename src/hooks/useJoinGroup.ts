@@ -15,6 +15,7 @@ interface MemberData {
   photo: string;
   vote: GridTemplate;
   size: undefined | 's' | 'm' | 'l' | 'xl' | 'xxl';
+  zoomLevel: number;
 }
 
 interface Errors {
@@ -55,7 +56,8 @@ export const useJoinGroup = (groupId: string | undefined) => {
     memberRollNumber: '',
     photo: '',
     vote: 'square',
-    size: undefined
+    size: undefined,
+    zoomLevel: 0.4
   });
 
   const [errors, setErrors] = useState<Errors>({
@@ -299,7 +301,8 @@ export const useJoinGroup = (groupId: string | undefined) => {
                 member: {
                   ...memberData,
                   photo: submitPhotoUrl || memberData.photo,
-                  phone: verifiedPhone
+                  phone: verifiedPhone,
+                  zoomLevel: memberData.zoomLevel
                 },
                 invoicePdfBase64: invoiceBase64,
                 invoiceFileName: `Invoice-${activeGroup?.name ?? 'Join'}-${Date.now()}.pdf`

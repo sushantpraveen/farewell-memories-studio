@@ -98,7 +98,7 @@ export const joinGroupPaid = async (req, res) => {
       return res.status(400).json({ message: 'Missing member or payment payload' });
     }
 
-    const { name, email, memberRollNumber, photo, vote, size, phone } = member;
+    const { name, email, memberRollNumber, photo, vote, size, phone, zoomLevel } = member;
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment;
 
     if (!name || !memberRollNumber || !photo || !vote) {
@@ -147,6 +147,7 @@ export const joinGroupPaid = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
+      zoomLevel: typeof zoomLevel === 'number' ? zoomLevel : 0.4,
       phone: phone || undefined,
       paidDeposit: true,
       depositAmountPaise,
@@ -364,7 +365,7 @@ export const joinGroup = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, memberRollNumber, photo, vote, size, phone } = req.body;
+    const { name, memberRollNumber, photo, vote, size, phone, zoomLevel } = req.body;
     const normalizedPhone = standardizePhoneNumber(phone);
     if (!normalizedPhone) {
       return res.status(400).json({ message: 'Valid phone number is required' });
@@ -410,6 +411,7 @@ export const joinGroup = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
+      zoomLevel: typeof zoomLevel === 'number' ? zoomLevel : 0.4,
       phone: normalizedPhone,
       joinedAt: new Date()
     };
@@ -574,10 +576,10 @@ export const deleteGroup = async (req, res) => {
     // Check if user is the leader of this group
     // 1. Check if they are the 'active' leader (User.groupId matches)
     const isActiveLeader = req.user.isLeader && req.user.groupId == group._id.toString();
-    
+
     // 2. Legacy member-based leader detection is no longer used
     const isMemberLeader = false;
-    
+
     // 3. Check explicit ownership if field exists
     const isOwner = group.createdByUserId && group.createdByUserId.toString() === req.user._id.toString();
 

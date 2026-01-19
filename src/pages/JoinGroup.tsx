@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import PhoneOtpBlock from "@/components/otp/PhoneOtpBlock";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 
@@ -263,16 +264,41 @@ const JoinGroup = () => {
                         className={errors.photo ? "border-red-300 focus:border-red-500" : ""}
                         aria-invalid={!!errors.photo}
                       />
-                      {/* {memberData.photo && (
-                      <div className="mt-4 flex justify-center">
-                        <LazyImage
-                          src={memberData.photo}
-                          alt="Preview"
-                          className="w-32 h-32 rounded-lg border"
-                          placeholderSrc="/placeholder.svg"
-                        />
-                      </div>
-                    )} */}
+
+                      {/* Zoom Slider - appears after photo is uploaded */}
+                      {memberData.photo && memberData.photo.includes('/image/upload') && (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Zoom Level</Label>
+                            <span className="text-xs text-gray-500">{memberData.zoomLevel.toFixed(1)}x</span>
+                          </div>
+                          <Slider
+                            value={[memberData.zoomLevel]}
+                            onValueChange={(value) => handleInputChange('zoomLevel', value[0])}
+                            min={0.1}
+                            max={2.0}
+                            step={0.1}
+                            disabled={isUploadingPhoto || isSubmitting}
+                            className="w-full"
+                          />
+                          <div className="flex justify-between text-xs text-gray-400">
+                            <span>Zoom out</span>
+                            <span>Zoom in</span>
+                          </div>
+
+                          {/* Live Preview with zoom applied */}
+                          <div className="mt-4 flex flex-col items-center">
+                            <p className="text-xs text-gray-500 mb-2">Preview with zoom</p>
+                            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-purple-200 shadow-md">
+                              <img
+                                src={memberData.photo.replace('/image/upload/', `/image/upload/c_thumb,g_auto:face,z_${memberData.zoomLevel},ar_1:1,w_200,h_200,q_auto,f_auto/`)}
+                                alt="Zoom Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
 
@@ -340,7 +366,8 @@ const JoinGroup = () => {
                             memberRollNumber: memberData.memberRollNumber,
                             photo: memberData.photo,
                             vote: memberData.vote,
-                            joinedAt: new Date()
+                            joinedAt: new Date(),
+                            zoomLevel: memberData.zoomLevel
                           }}
                           size="large"
                         />

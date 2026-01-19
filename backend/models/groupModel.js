@@ -30,6 +30,13 @@ const memberSchema = new mongoose.Schema({
     enum: ['s', 'm', 'l', 'xl', 'xxl'],
     default: 'm'
   },
+  zoomLevel: {
+    type: Number,
+    required: false,
+    default: 0.4,
+    min: 0.1,
+    max: 2.0
+  },
   phone: {
     type: String,
     required: false

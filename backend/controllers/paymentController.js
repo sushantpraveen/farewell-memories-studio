@@ -84,9 +84,9 @@ export const verifyPayment = async (req, res) => {
     // Attempt to send confirmation email to the customer
     let emailed = false;
     try {
-      const { 
-        email: bodyEmail, 
-        name: bodyName, 
+      const {
+        email: bodyEmail,
+        name: bodyName,
         amount: bodyAmount,
         invoicePdfBase64,
         invoiceFileName
@@ -258,7 +258,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing group or member data' });
     }
     // phone missing intentionally
-    const { name, email, memberRollNumber, photo, vote, size } = member;
+    const { name, email, memberRollNumber, photo, vote, size, zoomLevel } = member;
 
     // if (!name || !email || !memberRollNumber || !photo || !vote || !phone) {
     if (!name || !email || !memberRollNumber || !photo || !vote) {
@@ -322,6 +322,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
       photo,
       vote,
       size: size || 'm',
+      zoomLevel: typeof zoomLevel === 'number' ? zoomLevel : 0.4,
       // phone: normalizedPhone,
       paidDeposit: true,
       depositAmountPaise: paymentAmountPaise,

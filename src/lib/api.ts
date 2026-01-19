@@ -32,7 +32,7 @@ async function apiRequest<T>(
   requiresAuth: boolean = true
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -80,7 +80,7 @@ async function apiRequest<T>(
     if (error instanceof ApiError) {
       throw error;
     }
-    
+
     throw new ApiError(
       error instanceof Error ? error.message : 'Network error',
       500
@@ -102,22 +102,22 @@ export const authApi = {
       throw error;
     }
   },
-  
+
   // Login user
   login: (email: string, password: string) => {
     return apiRequest<any>('/users/login', 'POST', { email, password }, false);
   },
-  
+
   // Get user profile
   getProfile: () => {
     return apiRequest<any>('/users/profile', 'GET');
   },
-  
+
   // Update user profile
   updateProfile: (userData: any) => {
     return apiRequest<any>('/users/profile', 'PUT', userData);
   },
-  
+
   // Get all users (admin only)
   getUsers: () => {
     return apiRequest<any[]>('/users', 'GET');
@@ -167,7 +167,7 @@ export const groupApi = {
   createGroup: (groupData: any) => {
     return apiRequest<any>('/groups', 'POST', groupData);
   },
-  
+
   // Get all groups with pagination (admin only)
   getGroups: (params: PaginationParams = {}) => {
     // Build query string
@@ -178,18 +178,18 @@ export const groupApi = {
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.search) queryParams.append('search', params.search);
     if (params.yearOfPassing) queryParams.append('yearOfPassing', params.yearOfPassing);
-    
+
     const queryString = queryParams.toString();
     const endpoint = queryString ? `/groups?${queryString}` : '/groups';
-    
+
     return apiRequest<PaginatedResponse<any>>(endpoint, 'GET');
   },
-  
+
   // Get group by ID
   getGroupById: (groupId: string) => {
     return apiRequest<any>(`/groups/${groupId}`, 'GET', undefined, false);
   },
-  
+
   // Get group members with pagination
   getGroupMembers: (groupId: string, params: PaginationParams = {}) => {
     // Build query string
@@ -199,30 +199,30 @@ export const groupApi = {
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.search) queryParams.append('search', params.search);
-    
+
     const queryString = queryParams.toString();
     const endpoint = queryString ? `/groups/${groupId}/members?${queryString}` : `/groups/${groupId}/members`;
-    
+
     return apiRequest<PaginatedResponse<any>>(endpoint, 'GET');
   },
-  
+
   // Join a group
   joinGroup: (groupId: string, memberData: any) => {
     console.log('API Layer - joinGroup called with:', memberData);
     console.log('API Layer - Phone in memberData:', memberData.phone);
     return apiRequest<any>(`/groups/${groupId}/join`, 'POST', memberData, false);
   },
-  
+
   // Update group template
   updateGroupTemplate: (groupId: string, templateData?: { gridTemplate?: string }) => {
     return apiRequest<any>(`/groups/${groupId}/template`, 'PUT', templateData);
   },
-  
+
   // Update group
   updateGroup: (groupId: string, groupData: any) => {
     return apiRequest<any>(`/groups/${groupId}`, 'PUT', groupData);
   },
-  
+
   // Delete group
   deleteGroup: (groupId: string) => {
     return apiRequest<any>(`/groups/${groupId}`, 'DELETE');
@@ -259,7 +259,7 @@ export const ordersApi = {
   },
 
   getOrderCount: () => {
-    return apiRequest<{count:number}>('/orders/count', 'GET');
+    return apiRequest<{ count: number }>('/orders/count', 'GET');
   },
 
   // Update order (admin)
@@ -307,10 +307,10 @@ export const paymentsApi = {
       'POST',
       { amount: amountPaise, currency: 'INR', receipt, notes }
     ),
-  verify: (payload: { 
-    razorpay_order_id: string; 
-    razorpay_payment_id: string; 
-    razorpay_signature: string; 
+  verify: (payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
     clientOrderId?: string;
     email?: string;
     name?: string;

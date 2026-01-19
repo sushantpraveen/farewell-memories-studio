@@ -84,19 +84,19 @@
 //     const loadGroups = async () => {
 //       setIsLoading(true);
 //       setError(null);
-      
+
 //       try {
 //         if (isAuthenticated && user?.isLeader) {
 //           // If user is a leader, try to get all groups from API
 //           try {
 //             const apiGroups = await groupApi.getGroups();
 //             const formattedGroups: Record<string, Group> = {};
-            
+
 //             apiGroups.data.forEach((group: any) => {
 //               const id = group._id || group.id;
 //               formattedGroups[id] = convertDates(group);
 //             });
-            
+
 //             setGroups(formattedGroups);
 //           } catch (error) {
 //             console.warn('API get groups failed, using localStorage fallback:', error);
@@ -126,7 +126,7 @@
 //       } catch (error) {
 //         console.error('Error loading groups:', error);
 //         setError('Failed to load groups');
-        
+
 //         // Fallback to localStorage in case of any error
 //         try {
 //           const savedGroups = LocalStorageService.loadGroups();
@@ -159,26 +159,26 @@
 //   const createGroup = async (groupData: Omit<Group, 'id' | 'shareLink' | 'createdAt' | 'members' | 'votes'> & { phone?: string; phoneVerified?: boolean }): Promise<string> => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // Try API first
 //       try {
 //         const newGroupData = await groupApi.createGroup(groupData as any);
 //         const formattedGroup = convertDates(newGroupData);
-        
+
 //         setGroups(prev => ({ 
 //           ...prev, 
 //           [formattedGroup.id]: formattedGroup 
 //         }));
-        
+
 //         return formattedGroup.id;
 //       } catch (error) {
 //         console.warn('API create group failed, using localStorage fallback:', error);
-        
+
 //         // Fallback to localStorage
 //         const id = Math.random().toString(36).substr(2, 9);
 //         const shareLink = `/join/${id}`;
-        
+
 //         const newGroup: Group = {
 //           ...groupData,
 //           id,
@@ -203,25 +203,25 @@
 //   const joinGroup = async (groupId: string, memberData: Omit<Member, 'id' | 'joinedAt'> & { phone?: string; phoneVerified?: boolean }): Promise<boolean> => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // Try API first
 //       try {
 //         const joinResponse = await groupApi.joinGroup(groupId, memberData as any);
-        
+
 //         // Refresh group data after joining
 //         const updatedGroupData = await groupApi.getGroupById(groupId);
 //         const formattedGroup = convertDates(updatedGroupData);
-        
+
 //         setGroups(prev => ({
 //           ...prev,
 //           [groupId]: formattedGroup
 //         }));
-        
+
 //         return true;
 //       } catch (error) {
 //         console.warn('API join group failed, using localStorage fallback:', error);
-        
+
 //         // Fallback to localStorage
 //         const group = groups[groupId];
 //         if (!group || group.members.length >= group.totalMembers) {
@@ -262,11 +262,11 @@
 
 //   // Cache for template update requests to prevent excessive API calls
 //   const templateUpdateCache = React.useRef<Record<string, { timestamp: number }>>({});
-  
+
 //   const updateGroupTemplate = async (groupId: string): Promise<void> => {
 //     // Don't show loading state for template updates to avoid UI flicker
 //     setError(null);
-    
+
 //     try {
 //       // Check cache first (valid for 30 seconds)
 //       const now = Date.now();
@@ -275,19 +275,19 @@
 //         console.log('Skipping template update - recently updated');
 //         return;
 //       }
-      
+
 //       // Update cache timestamp immediately to prevent duplicate calls
 //       templateUpdateCache.current[groupId] = { timestamp: now };
-      
+
 //       // Use the group from state if available to calculate template
 //       const group = groups[groupId];
 //       if (!group) return;
-      
+
 //       // Calculate winning template locally
 //       const winningTemplate = (Object.keys(group.votes) as GridTemplate[]).reduce((a, b) => 
 //         group.votes[a] > group.votes[b] ? a : b
 //       );
-      
+
 //       // Only update if template has changed
 //       if (winningTemplate !== group.gridTemplate) {
 //         // Update local state immediately
@@ -295,12 +295,12 @@
 //           ...group,
 //           gridTemplate: winningTemplate
 //         };
-        
+
 //         setGroups(prev => ({
 //           ...prev,
 //           [groupId]: updatedGroup
 //         }));
-        
+
 //         // Try API update in background
 //         try {
 //           // Use a timeout to delay the API call slightly
@@ -324,7 +324,7 @@
 
 //   // Cache for getGroup requests to prevent excessive API calls
 //   const groupRequestCache = React.useRef<Record<string, { data: Group | undefined, timestamp: number }>>({});
-  
+
 //   const getGroup = async (groupId: string, forceRefresh: boolean = false): Promise<Group | undefined> => {
 //     try {
 //       // Skip cache checks if force refresh is requested
@@ -335,7 +335,7 @@
 //           console.log('Using local group data');
 //           return localGroup;
 //         }
-        
+
 //         // Check cache (valid for 30 seconds)
 //         const now = Date.now();
 //         const cachedRequest = groupRequestCache.current[groupId];
@@ -346,19 +346,19 @@
 //       } else {
 //         console.log('Force refresh requested, skipping cache');
 //       }
-      
+
 //       // Try API with minimal loading state
 //       const loadingTimeout = setTimeout(() => setIsLoading(true), 500); // Only show loading after 500ms
-      
+
 //       try {
 //         const groupData = await groupApi.getGroupById(groupId);
 //         const formattedGroup = convertDates(groupData);
-        
+
 //         // Update caches
 //         const now = Date.now();
 //         setGroups(prev => ({ ...prev, [groupId]: formattedGroup }));
 //         groupRequestCache.current[groupId] = { data: formattedGroup, timestamp: now };
-        
+
 //         return formattedGroup;
 //       } catch (error) {
 //         console.warn('API get group failed:', error);
@@ -378,19 +378,19 @@
 //   const getAllGroups = async (): Promise<Group[]> => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // Try API first
 //       try {
 //         const apiGroups = await groupApi.getGroups();
 //         const formattedGroups = apiGroups.data.map((group: any) => convertDates(group));
-        
+
 //         // Update local cache
 //         const groupsMap: Record<string, Group> = {};
 //         formattedGroups.forEach(group => {
 //           groupsMap[group.id] = group;
 //         });
-        
+
 //         setGroups(groupsMap);
 //         return formattedGroups;
 //       } catch (error) {
@@ -410,12 +410,12 @@
 //   const deleteGroup = async (groupId: string): Promise<void> => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // Try API first
 //       try {
 //         await groupApi.deleteGroup(groupId);
-        
+
 //         // Update local cache
 //         setGroups(prev => {
 //           const newGroups = { ...prev };
@@ -424,7 +424,7 @@
 //         });
 //       } catch (error) {
 //         console.warn('API delete group failed, using localStorage fallback:', error);
-        
+
 //         // Fallback to localStorage
 //         setGroups(prev => {
 //           const newGroups = { ...prev };
@@ -443,23 +443,23 @@
 //   const updateGroup = async (groupId: string, updates: Partial<Group>): Promise<void> => {
 //     setIsLoading(true);
 //     setError(null);
-    
+
 //     try {
 //       // Try API first
 //       try {
 //         await groupApi.updateGroup(groupId, updates);
-        
+
 //         // Refresh group data after updating
 //         const updatedGroupData = await groupApi.getGroupById(groupId);
 //         const formattedGroup = convertDates(updatedGroupData);
-        
+
 //         setGroups(prev => ({
 //           ...prev,
 //           [groupId]: formattedGroup
 //         }));
 //       } catch (error) {
 //         console.warn('API update group failed, using localStorage fallback:', error);
-        
+
 //         // Fallback to localStorage
 //         const group = groups[groupId];
 //         if (!group) return;
@@ -517,6 +517,7 @@ export interface Member {
   memberRollNumber: string;
   size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
   phone?: string;
+  zoomLevel?: number;
 }
 
 export interface Group {

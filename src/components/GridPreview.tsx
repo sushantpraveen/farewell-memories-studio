@@ -24,14 +24,14 @@ const AnimatedPreloader = () => {
         {/* Inner pulsing circle */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-purple-600 rounded-full animate-pulse"></div>
       </div>
-      
+
       {/* Animated dots */}
       <div className="flex space-x-1">
         <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
         <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
         <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
       </div>
-      
+
       <div className="text-center">
         <p className="text-sm font-medium text-gray-700 animate-pulse">Processing photos</p>
         <p className="text-xs text-gray-500 mt-1">Optimizing for best quality...</p>
@@ -56,10 +56,10 @@ const withCloudinaryTransform = (url: string, transform: string): string => {
   }
 };
 
-export const GridPreview: React.FC<GridPreviewProps> = ({ 
-  template, 
-  memberCount, 
-  members = [], 
+export const GridPreview: React.FC<GridPreviewProps> = ({
+  template,
+  memberCount,
+  members = [],
   size = 'medium',
   activeMember,
   centerEmptyDefault = false,
@@ -75,7 +75,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     const id = (m as any).id || (m as any)._id || m.name || 'unknown';
     const p = m.photo || '';
     // Use a short signature to keep keys compact but stable
-    return `${id}:${p.length}:${p.slice(0,64)}`;
+    return `${id}:${p.length}:${p.slice(0, 64)}`;
   };
 
   // Map of all TSX components in this folder
@@ -92,9 +92,12 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     }
   }, [size]);
 
-  // Face-aware gravity with gentler zoom to avoid over-cropping
-  const cloudTransform = React.useMemo(
-    () => `c_thumb,g_auto:face,z_0.4,ar_1:1,w_${targetPx},h_${targetPx},q_auto,f_auto,dpr_auto`,
+  // Helper function to generate cloud transform with member's zoom level
+  const getCloudTransform = React.useCallback(
+    (zoomLevel?: number) => {
+      const zoom = typeof zoomLevel === 'number' ? zoomLevel : 0.4;
+      return `c_thumb,g_auto:face,z_${zoom},ar_1:1,w_${targetPx},h_${targetPx},q_auto,f_auto,dpr_auto`;
+    },
     [targetPx]
   );
 
@@ -107,9 +110,10 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       }
 
       try {
-        // If Cloudinary URL, use server-side subject-aware crop
+        // If Cloudinary URL, use server-side subject-aware crop with member's zoom level
         if (!activeMember.photo.startsWith('data:') && isCloudinaryUrl(activeMember.photo)) {
-          const transformed = withCloudinaryTransform(activeMember.photo, cloudTransform);
+          const memberZoom = (activeMember as any).zoomLevel;
+          const transformed = withCloudinaryTransform(activeMember.photo, getCloudTransform(memberZoom));
           setProcessedActiveMember({ ...activeMember, photo: transformed });
           return;
         }
@@ -124,7 +128,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     };
 
     processActiveMember();
-  }, [activeMember]);
+  }, [activeMember, getCloudTransform]);
 
   // Process existing members photos with face cropping
   useEffect(() => {
@@ -136,7 +140,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
 
       // Process members one by one instead of all at once to avoid resource issues
       const processed = [];
-      
+
       for (const member of members) {
         if (!member.photo) {
           processed.push(member);
@@ -144,9 +148,10 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
         }
 
         try {
-          // If Cloudinary URL, use server-side subject-aware crop
+          // If Cloudinary URL, use server-side subject-aware crop with member's zoom level
           if (!member.photo.startsWith('data:') && isCloudinaryUrl(member.photo)) {
-            const transformed = withCloudinaryTransform(member.photo, cloudTransform);
+            const memberZoom = (member as any).zoomLevel;
+            const transformed = withCloudinaryTransform(member.photo, getCloudTransform(memberZoom));
             processed.push({ ...member, photo: transformed });
             continue;
           }
@@ -157,7 +162,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
           // Fallback to original photo
           processed.push(member);
         }
-        
+
         // Add a small delay between processing each member to avoid resource issues
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -166,7 +171,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     };
 
     processMembers();
-  }, [members]);
+  }, [members, getCloudTransform]);
 
   // Load the specific grid template component based on member count
   useEffect(() => {
@@ -214,7 +219,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       existingMembers?: Member[];
       centerEmptyDefault?: boolean;
     }>;
-    
+
     // Show loading if members are still being processed
     if (members.length > 0 && processedMembers.length === 0) {
       // return (
@@ -224,12 +229,12 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       // );
       return <AnimatedPreloader />;
     }
-    
+
     return (
       <GridProvider>
         <Suspense fallback={<div className="p-6 text-sm text-slate-600">Loading grid template...</div>}>
           {/* Pass the processed active member as a prop to the grid template */}
-          <GridComponent 
+          <GridComponent
             previewMember={processedActiveMember}
             existingMembers={processedMembers}
             centerEmptyDefault={centerEmptyDefault}
