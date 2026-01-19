@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { ArrowLeft, Users, Calendar, Hash, Layout, Type, AlertCircle, Sparkles, Camera, Rocket, Heart, Download, Drama } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Hash, Layout, Type, AlertCircle, Sparkles, Camera, Rocket, Heart, Download, Drama, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { GridProvider } from './square/context/GridContext';
+import { GridProvider as SquareGridProvider } from './square/context/GridContext';
 import { Link, useNavigate } from "react-router-dom";
 import { useCollage, GridTemplate } from '../context/CollageContext';
 import { useAuth } from '../context/AuthContext';
@@ -220,6 +220,10 @@ const GridBoard = () => {
   const [PreviewComp, setPreviewComp] = useState<React.LazyExoticComponent<React.ComponentType> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Template navigation state
+  const [availableTemplates, setAvailableTemplates] = useState<Array<{ type: GridTemplate, path: string }>>([]);
+  const [currentTemplateIndex, setCurrentTemplateIndex] = useState(0);
+
   const [formData, setFormData] = useState({
     name: "",
     yearOfPassing: "",
@@ -325,8 +329,8 @@ const GridBoard = () => {
   ), [tourStorageKey, showTour]);
 
   // Map of all TSX components in this folder
-  // We will look for files like "33.tsx", "37.tsx", or any "n.tsx"
-  const componentModules = import.meta.glob('./square/*.tsx');
+  // We look for files in both square and hexagon directories
+  const componentModules = import.meta.glob(['./square/*.tsx', './hexagon/*.tsx']);
 
   // Validation functions
   const validateGroupName = (name: string): string | undefined => {
@@ -534,24 +538,77 @@ const GridBoard = () => {
     return {};
   };
 
+  const switchTemplate = (index: number) => {
+    setCurrentTemplateIndex(index);
+    const template = availableTemplates[index];
+
+    // Check if the module exists before trying to load it
+    if (componentModules[template.path]) {
+      const loader = componentModules[template.path] as () => Promise<{ default: React.ComponentType<any> }>;
+      const LazyComp = lazy(loader);
+      setPreviewComp(() => LazyComp);
+
+      // Update form data
+      setFormData(prev => ({ ...prev, gridTemplate: template.type }));
+    }
+  };
+
+  const handleNextTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+
+    const nextIndex = (currentTemplateIndex + 1) % availableTemplates.length;
+    switchTemplate(nextIndex);
+  };
+
+  const handlePrevTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+
+    const prevIndex = (currentTemplateIndex - 1 + availableTemplates.length) % availableTemplates.length;
+    switchTemplate(prevIndex);
+  };
+
   const loadComponentByNumber = async (n: number) => {
     setLoadError(null);
     setPreviewComp(null);
+    setAvailableTemplates([]);
 
-    const path = `./square/${n}.tsx` as const;
-    // Only allow files with numeric names like 33.tsx, 37.tsx, etc.
-    if (!/^[0-9]+\.tsx$/.test(`${n}.tsx`)) {
+    // Only allow files with numeric names
+    if (!/^[0-9]+$/.test(`${n}`)) {
       setLoadError('Please enter a valid number.');
       return;
     }
 
-    if (componentModules[path]) {
-      // Wrap the dynamic import in React.lazy
-      const loader = componentModules[path] as () => Promise<{ default: React.ComponentType<any> }>;
+    const templates: Array<{ type: GridTemplate, path: string }> = [];
+
+    // Check for square template
+    const squarePath = `./square/${n}.tsx`;
+    if (componentModules[squarePath]) {
+      templates.push({ type: 'square', path: squarePath });
+    }
+
+    // Check for hexagon template
+    const hexagonPath = `./hexagon/${n}.tsx`;
+    if (componentModules[hexagonPath]) {
+      templates.push({ type: 'hexagonal', path: hexagonPath });
+    }
+
+    if (templates.length > 0) {
+      setAvailableTemplates(templates);
+      setCurrentTemplateIndex(0); // Reset to first available
+
+      // Load the first one immediately
+      const firstTemplate = templates[0];
+      const loader = componentModules[firstTemplate.path] as () => Promise<{ default: React.ComponentType<any> }>;
       const LazyComp = lazy(loader);
       setPreviewComp(() => LazyComp);
+
+      // Update form data default
+      setFormData(prev => ({ ...prev, gridTemplate: firstTemplate.type }));
     } else {
-      console.log(`Template ${n} will be available soon.`);
+      console.log(`Template ${n} not found in square or hexagon.`);
+      setLoadError(`No template found for ${n} members yet.`);
     }
   };
 
@@ -878,8 +935,40 @@ const GridBoard = () => {
           transition={{ delay: 0.4 }}
         >
           {PreviewComp ? (
-            <Card className="w-full h-full backdrop-blur-lg bg-white/80 border-none shadow-xl overflow-hidden">
-              <CardContent className="p-2 sm:p-3 md:p-4">
+            <Card className="w-full h-full backdrop-blur-lg bg-white/80 border-none shadow-xl overflow-hidden relative group">
+              <CardContent className="p-2 sm:p-3 md:p-4 h-full flex flex-col">
+                {/* Template Navigation Overlay */}
+                {availableTemplates.length > 1 && (
+                  <>
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10 transition-all hover:scale-110"
+                        onClick={handlePrevTemplate}
+                      >
+                        <ChevronLeft className="h-6 w-6 text-gray-700" />
+                      </Button>
+                    </div>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10 transition-all hover:scale-110"
+                        onClick={handleNextTemplate}
+                      >
+                        <ChevronRight className="h-6 w-6 text-gray-700" />
+                      </Button>
+                    </div>
+                    {/* Template Type Indicator */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <span className="px-3 py-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
+                        {availableTemplates[currentTemplateIndex].type}
+                      </span>
+                    </div>
+                  </>
+                )}
+
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -900,9 +989,13 @@ const GridBoard = () => {
                     }
                   >
                     <div className="w-full aspect-square">
-                      <GridProvider>
+                      {availableTemplates[currentTemplateIndex]?.type === 'square' ? (
+                        <SquareGridProvider>
+                          <PreviewComp />
+                        </SquareGridProvider>
+                      ) : (
                         <PreviewComp />
-                      </GridProvider>
+                      )}
                     </div>
                   </Suspense>
                 </motion.div>
