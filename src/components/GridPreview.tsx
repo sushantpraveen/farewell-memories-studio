@@ -94,7 +94,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
 
   // Face-aware gravity with gentler zoom to avoid over-cropping
   const cloudTransform = React.useMemo(
-    () => `c_thumb,g_auto:face,z_0.8,ar_1:1,w_${targetPx},h_${targetPx},q_auto,f_auto,dpr_auto`,
+    () => `c_thumb,g_auto:face,z_0.4,ar_1:1,w_${targetPx},h_${targetPx},q_auto,f_auto,dpr_auto`,
     [targetPx]
   );
 
