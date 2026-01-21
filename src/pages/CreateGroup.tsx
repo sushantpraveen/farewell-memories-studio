@@ -170,6 +170,8 @@ const CreateGroup = () => {
       }
 
       toast.success("Group created successfully!");
+      // Set flag to show dashboard tour
+      sessionStorage.setItem('showDashboardTour', 'true');
       navigate(`/dashboard/${groupId}`);
     } catch (error) {
       toast.error("Failed to create group. Please try again.");

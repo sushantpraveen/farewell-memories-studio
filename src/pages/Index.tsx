@@ -275,28 +275,28 @@ const Index = () => {
     }
   ];
 
+  const [shouldShowTour, setShouldShowTour] = useState(false);
+
+  useEffect(() => {
+    // Check for the flag set during registration
+    const showTour = sessionStorage.getItem('showWelcomeTour');
+    if (showTour === 'true') {
+      setShouldShowTour(true);
+      // Clear immediately so it doesn't show on refresh
+      sessionStorage.removeItem('showWelcomeTour');
+    }
+  }, []);
+
   return (
     <>
-      {(!groupCheckLoading && !hasGroup) && (
+      {shouldShowTour && (
         <UserWalkthrough
           steps={tourSteps}
           storageKey={`home_guide_${user ? user.id : 'anon'}_v1`}
-          forceStart={user ? !user.guidesSeen?.home : undefined}
-          onFinish={async () => {
-            if (user) {
-              await updateUser({
-                guidesSeen: {
-                  ...user.guidesSeen,
-                  dashboard: user.guidesSeen?.dashboard || false,
-                  editor: user.guidesSeen?.editor || false,
-                  createGroup: user.guidesSeen?.createGroup || false,
-                  home: true
-                }
-              });
-            }
-          }}
+          forceStart={true}
+          onFinish={() => setShouldShowTour(false)}
+          onCancel={() => setShouldShowTour(false)}
         />
-
       )}
       <SEOHead
         title="Signature Day Tshirt - Create Custom Farewell T-Shirts with Photo Collages"

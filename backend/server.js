@@ -38,7 +38,8 @@ app.use(cors({
     "https://signaturedaytshirt.com",
     "http://www.signaturedaytshirt.com",
     "https://www.signaturedaytshirt.com",
-    "http://localhost:8080"
+    "http://localhost:8080",
+    "http://localhost:8081"
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
