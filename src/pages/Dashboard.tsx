@@ -1116,19 +1116,41 @@ const Dashboard = () => {
   const tourInitialized = React.useRef(false);
 
   // Determine if tour should start - run once when data is ready
+  // NOTE: Uses backend-synced user.guidesSeen.dashboard flag, NOT sessionStorage
+  // This ensures the tour runs only once per account, across all devices/tabs
   const startTourIfEligible = React.useCallback(() => {
     if (tourInitialized.current || !user?.id || !userGroups) return;
 
-    const hasSeenTour = localStorage.getItem(tourStorageKey);
-    const isFirstGroup = userGroups.length === 1;
-    console.log('>>> [Dashboard] Tour Eligibility Check:', { hasSeenTour, isFirstGroup });
+    // Check if user has seen the dashboard tour (synced from backend)
+    const hasSeenTour = user.guidesSeen?.dashboard;
+    // Check local storage as a fallback (for immediate persistence before backend sync)
+    const hasSeenTourLocal = localStorage.getItem(tourStorageKey) === 'true';
+    // Session flag set by CreateGroup (for immediate first-time experience)
+    const sessionTrigger = sessionStorage.getItem('showDashboardTour') === 'true';
 
-    if (!hasSeenTour && isFirstGroup) {
-      console.log('>>> [Dashboard] STARTING TOUR AFTER MODAL');
+    console.log('>>> [Dashboard] Tour Eligibility Check:', {
+      hasSeenTour,
+      hasSeenTourLocal,
+      sessionTrigger,
+      hasGroups: userGroups.length > 0
+    });
+
+    // Clear session flag if it exists (we've processed it)
+    if (sessionTrigger) {
+      sessionStorage.removeItem('showDashboardTour');
+    }
+
+    // Show tour if:
+    // 1. User has NOT seen the tour (backend flag)
+    // 2. User has NOT seen the tour (local fallback)
+    // 3. User has at least one group
+    if (!hasSeenTour && !hasSeenTourLocal && userGroups.length > 0) {
+      console.log('>>> [Dashboard] STARTING TOUR');
       setShowTour(true);
     }
+
     tourInitialized.current = true;
-  }, [user?.id, userGroups, tourStorageKey]);
+  }, [user?.id, userGroups, user?.guidesSeen?.dashboard, tourStorageKey]);
 
   // Handle modal interactions to trigger tour
   const handleShareModalClose = React.useCallback(() => {
@@ -1171,7 +1193,7 @@ const Dashboard = () => {
       title: "Delete This Group",
       description: "Need to remove this group? Click the delete button. Don't worry, we'll ask for confirmation first!"
     },
-    
+
     {
       targetId: "guide-invite-members",
       title: "Invite Your Friends",
@@ -1655,7 +1677,11 @@ const Dashboard = () => {
                       </Button>
                     </div>
                     <div className="w-full">
-                      <Link to={`/editor/${groupId}`} className="w-full">
+                      <Link
+                        to={`/editor/${groupId}`}
+                        className="w-full"
+                        onClick={() => sessionStorage.setItem('showEditorTour', 'true')}
+                      >
                         <Button id="guide-preview-order" size="sm" className="w-full bg-purple-600 hover:bg-purple-700 px-2 sm:px-4 text-xs sm:text-sm">
                           <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                           <span>Preview & Order</span>

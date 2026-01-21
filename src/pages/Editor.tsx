@@ -99,19 +99,20 @@ const Editor = () => {
 
   // Determine if tour should start - run once when data is ready
   useEffect(() => {
-    if (isAuthLoading || !user?.id || userGroupsCount === null || tourInitialized.current) return;
+    if (isAuthLoading || !user?.id || tourInitialized.current) return;
 
     // Safety check: wait for group data if we're theoretically in "tour" mode
-    if (!group && userGroupsCount === 1) return;
+    if (!group) return;
 
-    const hasSeenTour = localStorage.getItem(tourStorageKey);
-    const isFirstGroup = userGroupsCount === 1;
+    const shouldShow = sessionStorage.getItem('showEditorTour') === 'true';
+    const hasSeenTour = user?.guidesSeen?.editor;
 
-    if (!hasSeenTour && isFirstGroup) {
+    if (shouldShow && !hasSeenTour) {
       setShowTour(true);
+      sessionStorage.removeItem('showEditorTour');
     }
     tourInitialized.current = true;
-  }, [isAuthLoading, user?.id, userGroupsCount, tourStorageKey, group]);
+  }, [isAuthLoading, user?.id, user?.guidesSeen?.editor, group]);
 
   const guideSteps: Step[] = useMemo(() => {
     const memberCount = group?.members?.length || 0;

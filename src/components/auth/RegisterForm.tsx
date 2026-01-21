@@ -25,7 +25,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -37,12 +37,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       const success = await register(formData.name, formData.email, formData.password);
       if (success) {
         toast.success('Registration successful!');
+        // Set flag to show welcome tour on next page load
+        sessionStorage.setItem('showWelcomeTour', 'true');
         navigate('/');
       } else {
         toast.error('Registration failed');
       }
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
+    } catch (error: any) {
+      toast.error(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
