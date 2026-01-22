@@ -306,7 +306,7 @@ const Index = () => {
 
       <style>
         {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Permanent+Marker&family=Comfortaa:wght@400;500;600;700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Permanent+Marker&family=Comfortaa:wght@400;500;600;700&family=Bebas+Neue&display=swap');
           
           .font-brand {
             font-family: 'Permanent Marker', cursive;
@@ -326,6 +326,10 @@ const Index = () => {
           .font-decorative {
             font-family: 'Permanent Marker', cursive;
           }
+          
+          .font-bebas {
+            font-family: 'Bebas Neue', cursive;
+          }
         `}
       </style>
 
@@ -333,12 +337,12 @@ const Index = () => {
         <AnimatedBackground />
 
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b" role="banner">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16 lg:h-20">
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b overflow-visible" role="banner">
+          <div className="container mx-auto px-4 overflow-visible">
+            <div className="flex items-center justify-between min-h-16 lg:min-h-20 py-2 overflow-visible">
               <motion.div
                 id="tour-logo"
-                className="flex items-center gap-3"
+                className="flex items-center gap-3 overflow-visible"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
@@ -351,8 +355,8 @@ const Index = () => {
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                 </div>
-                <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">
-                  Signature Day Tshirt
+                <h1 className="text-3xl lg:text-5xl font-bold italic bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text font-bebas leading-none lg:leading-tight overflow-visible pr-2">
+                  Signature<br className="lg:hidden" /><span className="block -mt-1 lg:mt-0 lg:inline">Day Tshirt</span>
                 </h1>
               </motion.div>
 
