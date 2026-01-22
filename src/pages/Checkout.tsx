@@ -117,12 +117,12 @@ const Checkout = () => {
     }
   }, [group]);
 
-  // Update shipping quote when quantity changes
-  useEffect(() => {
-    if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
-      updateShippingQuote(shippingForm.zipCode, quantity);
-    }
-  }, [quantity]);
+  // Update shipping quote when quantity changes (temporarily disabled)
+  // useEffect(() => {
+  //   if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
+  //     updateShippingQuote(shippingForm.zipCode, quantity);
+  //   }
+  // }, [quantity]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -143,12 +143,12 @@ const Checkout = () => {
     phone: ''
   });
 
-  // Automatically fetch shipping info when ZIP code is filled (e.g. via browser autofill)
-  useEffect(() => {
-    if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
-      updateShippingQuote(shippingForm.zipCode, quantity);
-    }
-  }, [shippingForm.zipCode]);
+  // Automatically fetch shipping info when ZIP code is filled (e.g. via browser autofill) - temporarily disabled
+  // useEffect(() => {
+  //   if (shippingForm.zipCode && shippingForm.zipCode.length === 6) {
+  //     updateShippingQuote(shippingForm.zipCode, quantity);
+  //   }
+  // }, [shippingForm.zipCode]);
 
   // Map state codes to full state names
   const stateCodeToName: Record<string, string> = {
@@ -203,14 +203,15 @@ const Checkout = () => {
   const [shippingCharge, setShippingCharge] = useState<number | null>(null);
   const [codAvailable, setCodAvailable] = useState(false);
 
-  // Pricing & totals (dynamic shipping)
+  // Pricing & totals (hardcoded shipping)
   const tshirtPrice = 28; // ₹28 per t-shirt
   const printPrice = 10.10;  // ₹10.10 per print
   const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
   const itemTotal = pricing.subtotal; // before GST
-  const shipping = shippingCharge ?? (itemTotal > 999 ? 0 : 99); // Use live quote or fallback
-  const tax = pricing.gst; // 5% GST correctly applied
-  const finalTotal = itemTotal + tax + shipping;
+  const shipping = 150; // Hardcoded shipping to ₹150
+  const gstRate = 0.05; // 5% GST
+  const tax = parseFloat((shipping * gstRate).toFixed(2)); // GST (5%) calculated on shipping only
+  const finalTotal = shipping + tax; // Total is Shipping + GST
 
   // Quantity handlers
   const handleQuantityChange = (change: number) => {
@@ -945,16 +946,12 @@ const Checkout = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Subtotal ({quantity} items)</span>
-                    <span><strong className="text-green-500">PAID</strong> - ₹{itemTotal}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
+                    <span>₹{shipping}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>GST (5%)</span>
-                    <span>₹{tax}</span>
+                    <span>GST (5% on Shipping)</span>
+                    <span>₹{tax.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -963,14 +960,14 @@ const Checkout = () => {
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
                   <span>₹{Number(finalTotal).toFixed(2)}</span>
-
                 </div>
 
-                {shipping === 0 && (
+                {/* Free shipping message disabled - shipping is hardcoded to ₹150 */}
+                {/* {shipping === 0 && (
                   <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg">
                     🎉 You're eligible for free shipping!
                   </div>
-                )}
+                )} */}
               </CardContent>
             </Card>
           </div>

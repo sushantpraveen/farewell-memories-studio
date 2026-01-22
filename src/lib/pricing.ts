@@ -21,7 +21,7 @@ export function calculatePricing({
   gstRate = 0.05,
 }: PricingInput): PricingBreakdown {
   const perItemSubtotal = tshirtPrice + printPrice;
-  const perItemGst = Math.floor(perItemSubtotal * gstRate * 100) / 100;
+  const perItemGst = Math.floor(Math.floor((perItemSubtotal * gstRate * 100) / 100));
   const perItemTotal = Number((perItemSubtotal + perItemGst).toFixed(2));
 
   const subtotal = perItemSubtotal * quantity;
