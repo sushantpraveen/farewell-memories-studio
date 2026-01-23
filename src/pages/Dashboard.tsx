@@ -1184,6 +1184,16 @@ const Dashboard = () => {
   // Memoize steps to prevent prop-change triggers in UserWalkthrough which cause restarts
   const TOUR_STEPS: Step[] = React.useMemo(() => [
     {
+      targetId: "guide-invite-members",
+      title: "Invite Your Friends",
+      description: "Share your group link with friends! They can join and upload their photos to complete the collage."
+    },
+    {
+      targetId: "guide-preview-order",
+      title: "Preview & Order",
+      description: "Ready to see your T-shirt design? Click here to preview the final collage and place your order!"
+    },
+    {
       targetId: "guide-create-group-btn",
       title: "Create Another Group",
       description: "Want to create a new squad? Click here to start a fresh group for a different batch or occasion."
@@ -1194,16 +1204,7 @@ const Dashboard = () => {
       description: "Need to remove this group? Click the delete button. Don't worry, we'll ask for confirmation first!"
     },
 
-    {
-      targetId: "guide-invite-members",
-      title: "Invite Your Friends",
-      description: "Share your group link with friends! They can join and upload their photos to complete the collage."
-    },
-    {
-      targetId: "guide-preview-order",
-      title: "Preview & Order",
-      description: "Ready to see your T-shirt design? Click here to preview the final collage and place your order!"
-    }
+    
   ], []);
 
   // Lock scrolling for the Dashboard only

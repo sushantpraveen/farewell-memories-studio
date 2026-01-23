@@ -5,7 +5,7 @@ import OTPVerification from '../models/OTPVerification.js';
 import crypto from 'crypto';
 import { validationResult } from 'express-validator';
 import { standardizePhoneNumber } from '../utils/otpUtils.js';
-import { getReferralCode, resolveReferralCode } from '../services/referralService.js';
+import { getReferralCode, resolveReferralCode, clearReferralCookie } from '../services/referralService.js';
 
 /**
  * @desc    Create a new group
@@ -34,19 +34,25 @@ export const createGroup = async (req, res) => {
         ambassadorId = ambassador._id;
         resolvedReferralCode = referralCode;
         referredAt = new Date();
+        console.log(`[Group Creation] Group created with ambassador referral: ${referralCode}, ambassadorId: ${ambassadorId}`);
+      } else {
+        console.log(`[Group Creation] Referral code found but invalid: ${referralCode}`);
       }
+    } else {
+      console.log(`[Group Creation] No referral code found - group will be created without ambassador (price: ₹189)`);
     }
 
     // Create new group
+    // Explicitly set ambassadorId to null if not provided (not undefined)
     const group = await Group.create({
       name,
       yearOfPassing,
       totalMembers,
       gridTemplate: gridTemplate || 'square',
       members: [],
-      ambassadorId,
-      referralCode: resolvedReferralCode,
-      referredAt,
+      ambassadorId: ambassadorId || null, // Explicitly set to null if no ambassador
+      referralCode: resolvedReferralCode || null, // Explicitly set to null if no referral
+      referredAt: referredAt || null, // Explicitly set to null if no referral
       createdByUserId: req.user?._id || null
     });
 
@@ -58,6 +64,12 @@ export const createGroup = async (req, res) => {
         groupId: group._id.toString() // Ensure stored as string
       });
 
+      // Clear referral cookie after group creation to prevent reuse
+      // This ensures the cookie is only used once per group creation
+      if (referralCode) {
+        clearReferralCookie(res);
+      }
+
       res.status(201).json({
         id: group._id,
         name: group.name,
@@ -67,9 +79,9 @@ export const createGroup = async (req, res) => {
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
         leaderId: group.createdByUserId, // Return leaderId for frontend filtering
-        ambassadorId: group.ambassadorId || undefined,
-        referralCode: group.referralCode || undefined,
-        referredAt: group.referredAt || undefined,
+        ambassadorId: group.ambassadorId ? group.ambassadorId.toString() : null,
+        referralCode: group.referralCode || null,
+        referredAt: group.referredAt || null,
         members: group.members.map(member => ({
           ...member,
           id: member._id || member.id // Include id field for frontend compatibility
@@ -253,6 +265,9 @@ export const getGroupById = async (req, res) => {
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
         leaderId: group.createdByUserId, // Return leaderId for frontend filtering
+        ambassadorId: (group.ambassadorId && group.ambassadorId.toString()) || null, // Include ambassadorId for pricing logic (convert to string or null)
+        referralCode: group.referralCode || null,
+        referredAt: group.referredAt || null,
         members: group.members.map(member => ({
           ...member,
           id: member._id || member.id // Include id field for frontend compatibility

@@ -526,6 +526,11 @@ export interface Group {
   yearOfPassing: string;
   totalMembers: number;
   leaderId?: string;
+  /**
+   * If set, this group was created via an ambassador referral.
+   * Used for ambassador vs non-ambassador pricing and rewards.
+   */
+  ambassadorId?: string | null;
   gridTemplate: GridTemplate;
   shareLink: string;
   createdAt: Date;

@@ -66,6 +66,29 @@ export const getReferralCode = (req) => {
 };
 
 /**
+ * Clear referral cookie (used after group creation to prevent reuse)
+ * @param {Object} res - Express response object
+ */
+export const clearReferralCookie = (res) => {
+  const cookieName = process.env.REFERRAL_COOKIE_NAME || 'sd_ref';
+  const domain = process.env.COOKIE_DOMAIN;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 0 // Expire immediately
+  };
+
+  if (domain) {
+    cookieOptions.domain = domain;
+  }
+
+  res.cookie(cookieName, '', cookieOptions);
+};
+
+/**
  * Record referral click (optional analytics)
  * @param {string} ambassadorId - Ambassador ID
  * @param {string} code - Referral code

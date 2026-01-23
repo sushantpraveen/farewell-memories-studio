@@ -242,7 +242,7 @@ export default function AmbassadorDashboard() {
                   groups
                     .filter(g => g.status !== 'paid' && g.status !== 'Paid')
                     .reduce((sum, g) => sum + (g.currentMemberCount || 0), 0)
-                  * 40 * 0.12
+                  * 149 * 0.16
                 )}
               </div>
 
@@ -251,7 +251,7 @@ export default function AmbassadorDashboard() {
                   groups
                     .filter(g => g.status !== 'paid' && g.status !== 'Paid')
                     .reduce((sum, g) => sum + (g.currentMemberCount || 0), 0)
-                } members joined (₹4.8/member)
+                } members joined (₹17.88/member)
               </p>
             </CardContent>
 
@@ -326,7 +326,7 @@ export default function AmbassadorDashboard() {
                           </div>
                         </td>
                         <td className="p-3 font-medium">
-                          ₹{Math.round((group.currentMemberCount || 0) * 40 * 0.12)}
+                          ₹{Math.round((group.currentMemberCount || 0) * 149 * 0.16)}
                         </td>
                         <td className="p-3 text-muted-foreground">
                           {new Date(group.createdAt).toLocaleDateString()}
@@ -349,12 +349,12 @@ export default function AmbassadorDashboard() {
           <CardContent>
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                Each member who joins a group pays <span className="font-semibold">₹40</span> (incl. GST). You earn
-                <span className="font-semibold"> 12%</span> of approx ₹40 value, i.e., <span className="font-semibold">₹4.8 per member</span>.
+                Each member who joins a group pays <span className="font-semibold">₹149</span> (incl. GST). You earn
+                <span className="font-semibold"> 16%</span> of ₹149 value, i.e., <span className="font-semibold">₹17.88 per member</span>.
               </p>
               <p className="text-xs">
                 Example: If 50 members complete their join payment across your referred groups, your reward is
-                <span className="font-semibold"> 50 × ₹4.8 = ₹240</span>.
+                <span className="font-semibold"> 50 × ₹17.88 = ₹894</span>.
               </p>
             </div>
           </CardContent>
