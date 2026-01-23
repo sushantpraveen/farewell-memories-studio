@@ -648,7 +648,7 @@ export const approveWaitlist = async (req, res) => {
                     <p><strong>Referral Link:</strong> ${dashboardUrl}</p>
                   </div>
 
-                  <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 12% of their payment.</p>
+                  <p>You can now start earning rewards by sharing your referral link! For every member who joins a group using your link, you'll earn 16% of their payment.</p>
 
                   <div style="text-align: center; margin: 30px 0;">
                     <a href="${dashboardUrl}" class="button">Go to Dashboard</a>

@@ -82,17 +82,29 @@ export const useJoinGroup = (groupId: string | undefined) => {
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(false);
 
-  const joinPricing = useMemo(
-    () => ({
-      perItemSubtotal: 38.10,
-      perItemGst: 1.90,
-      perItemTotal: 40.00,
-      subtotal: 38.10,
-      gst: 1.90,
-      total: 40.00
-    }),
-    []
-  );
+  // Join pricing depends on whether the group was created via an ambassador referral.
+  // - With ambassador (group.ambassadorId present and not null): ₹149
+  // - Without ambassador (null, undefined, or empty): ₹189
+  const joinPricing = useMemo(() => {
+    const groupAmbassadorId = (group as Group | undefined)?.ambassadorId;
+    // Explicitly check: only true if ambassadorId exists and is not null/undefined/empty string
+    const isAmbassadorGroup = !!(groupAmbassadorId && groupAmbassadorId !== null && groupAmbassadorId !== undefined && groupAmbassadorId !== '');
+    const perItemTotal = isAmbassadorGroup ? 149 : 189;
+
+    // Debug logging
+    if (group) {
+      console.log(`[JoinGroup Pricing] Group ID: ${group.id}, ambassadorId: ${JSON.stringify(groupAmbassadorId)}, type: ${typeof groupAmbassadorId}, isAmbassadorGroup: ${isAmbassadorGroup}, price: ₹${perItemTotal}`);
+    }
+
+    return {
+      perItemSubtotal: perItemTotal,
+      perItemGst: 0,
+      perItemTotal,
+      subtotal: perItemTotal,
+      gst: 0,
+      total: perItemTotal
+    };
+  }, [group]);
 
   const validateForm = useCallback((data: MemberData) => {
     const newErrors: Errors = {
@@ -280,12 +292,13 @@ export const useJoinGroup = (groupId: string | undefined) => {
               },
               [
                 {
-                  description: `${activeGroup?.name ?? 'Group'} T-Shirt + Print`,
+                  description: `${activeGroup?.name ?? 'Group'} Join Fee`,
                   hsn: '6109',
                   quantity: 1,
-                  unitPrice: 28.00,
-                  printPrice: 10.10,
-                  taxRate: 0.05
+                  // Treat the join amount as a single line item without GST breakdown
+                  unitPrice: joinPricing.total,
+                  printPrice: 0,
+                  taxRate: 0
                 }
               ]
             );
@@ -384,13 +397,14 @@ export const useJoinGroup = (groupId: string | undefined) => {
         if (!isMounted) return;
 
         if (groupData) {
-          const { id, name, yearOfPassing, totalMembers, gridTemplate } = groupData;
+          const { id, name, yearOfPassing, totalMembers, gridTemplate, ambassadorId } = groupData;
           setGroup({
             id,
             name,
             yearOfPassing,
             totalMembers,
             gridTemplate,
+            ambassadorId: ambassadorId || null,
             members: Array.isArray((groupData as any).members) ? (groupData as any).members : [],
             shareLink: '',
             createdAt: new Date(),

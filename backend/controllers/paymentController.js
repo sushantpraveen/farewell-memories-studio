@@ -307,12 +307,15 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Member with this roll number already exists' });
     }
 
-    const tshirtPrice = Number(process.env.TSHIRT_PRICE || 28);
-    const printPrice = Number(process.env.PRINT_PRICE || 10.10);
-    const gstRate = Number(process.env.GST_RATE || 0.05);
-    const perItemSubtotal = tshirtPrice + printPrice;
-    const perItemGst = Math.floor(perItemSubtotal * gstRate * 100) / 100;
-    const perItemTotal = perItemSubtotal + perItemGst;
+    // Determine per-member join price based on whether the group was referred by an ambassador.
+    // - With ambassador (group.ambassadorId present and not null): ₹149
+    // - Without ambassador (null, undefined, or empty): ₹189
+    const hasAmbassador = !!(group.ambassadorId && group.ambassadorId !== null && group.ambassadorId !== undefined && String(group.ambassadorId).trim() !== '');
+    const perItemTotal = hasAmbassador ? 149 : 189;
+    
+    console.log(`[Payment Verify] Group ID: ${groupId}, ambassadorId: ${JSON.stringify(group.ambassadorId)}, hasAmbassador: ${hasAmbassador}, price: ₹${perItemTotal}`);
+    const perItemSubtotal = perItemTotal;
+    const perItemGst = 0;
     const paymentAmountPaise = perItemTotal * 100;
 
     const newMember = {
@@ -614,8 +617,8 @@ export const confirmPayment = async (req, res) => {
       }).session(session);
 
       if (!existingReward) {
-        // Calculate reward: 12% rounded down
-        const rewardAmount = Math.floor(payment.amount * 0.12);
+        // Calculate reward: 16% rounded down
+        const rewardAmount = Math.floor(payment.amount * 0.16);
 
         // Create reward
         reward = await AmbassadorReward.create([{
