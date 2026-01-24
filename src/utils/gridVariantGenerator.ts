@@ -10,10 +10,35 @@ export interface GridVariant {
 
 export async function generateGridVariants(order: Order): Promise<GridVariant[]> {
   const variants: GridVariant[] = [];
-  const membersWithPhotos = order.members.filter(m => m.photo && m.photo.trim() !== '');
+  
+  // Validate order structure
+  if (!order || !order.members || !Array.isArray(order.members)) {
+    throw new Error('Invalid order data: members array is missing or invalid');
+  }
+  
+  if (order.members.length === 0) {
+    throw new Error('Order has no members');
+  }
+  
+  if (!order.gridTemplate) {
+    throw new Error('Order grid template is missing');
+  }
+  
+  // Filter members with valid photos
+  const membersWithPhotos = order.members.filter(m => {
+    if (!m) return false;
+    if (!m.photo) return false;
+    if (typeof m.photo !== 'string') return false;
+    return m.photo.trim() !== '';
+  });
+  
+  console.log('[generateGridVariants] Order:', order.id);
+  console.log('[generateGridVariants] Total members:', order.members.length);
+  console.log('[generateGridVariants] Members with photos:', membersWithPhotos.length);
+  console.log('[generateGridVariants] Members without photos:', order.members.length - membersWithPhotos.length);
   
   if (membersWithPhotos.length < 2) {
-    throw new Error('Not enough members with photos to generate variants');
+    throw new Error(`Not enough members with photos to generate variants (found ${membersWithPhotos.length}, need at least 2)`);
   }
   
   console.log('Generating variants for', membersWithPhotos.length, 'members with photos');
@@ -22,7 +47,7 @@ export async function generateGridVariants(order: Order): Promise<GridVariant[]>
   // Get the template-specific layout information
   const templateLayout = getTemplateLayout(order.gridTemplate, order.members.length);
   if (!templateLayout) {
-    throw new Error(`Unsupported grid template: ${order.gridTemplate}`);
+    throw new Error(`Unsupported grid template: ${order.gridTemplate} with ${order.members.length} members`);
   }
   
   console.log('Template layout:', templateLayout);
@@ -31,34 +56,77 @@ export async function generateGridVariants(order: Order): Promise<GridVariant[]>
   for (let centerMemberIndex = 0; centerMemberIndex < membersWithPhotos.length; centerMemberIndex++) {
     const centerMember = membersWithPhotos[centerMemberIndex];
     
+    if (!centerMember) {
+      console.warn(`Skipping invalid center member at index ${centerMemberIndex}`);
+      continue;
+    }
+    
+    // Ensure member has an ID - use memberRollNumber as fallback
+    const memberId = centerMember.id || centerMember.memberRollNumber || `member-${centerMemberIndex}`;
+    if (!centerMember.id) {
+      centerMember.id = memberId;
+      console.log(`Assigned ID to member ${centerMember.name}: ${memberId}`);
+    }
+    
     // Create a new arrangement that preserves the original grid structure
-    const variantMembers: AdminMember[] = [...order.members];
+    // Deep copy to avoid mutating the original, and ensure all members have IDs
+    const variantMembers: AdminMember[] = order.members.map((m, idx) => {
+      if (!m) return null;
+      const member = { ...m };
+      // Ensure each member has an ID
+      if (!member.id) {
+        member.id = member.memberRollNumber || `member-${idx}-${Date.now()}`;
+      }
+      return member;
+    }).filter((m): m is AdminMember => m !== null);
     
     // Find where the desired center member currently is in the original grid
-    const currentMemberIndex = variantMembers.findIndex(m => m.id === centerMember.id);
+    // Try multiple matching strategies
+    let currentMemberIndex = variantMembers.findIndex(m => m && (m.id === centerMember.id || m.id === memberId));
     
-    if (currentMemberIndex !== -1) {
-      // Get the member currently at the center position
-      const currentCenterMember = variantMembers[templateLayout.centerIndex];
+    // If still not found, try matching by memberRollNumber
+    if (currentMemberIndex === -1 && centerMember.memberRollNumber) {
+      currentMemberIndex = variantMembers.findIndex(m => m && m.memberRollNumber === centerMember.memberRollNumber);
+    }
+    
+    // If still not found, try matching by name (last resort)
+    if (currentMemberIndex === -1 && centerMember.name) {
+      currentMemberIndex = variantMembers.findIndex(m => m && m.name === centerMember.name);
+    }
+    
+    if (currentMemberIndex === -1) {
+      console.error(`Center member ${centerMember.name} (ID: ${centerMember.id || memberId}) not found in order.members array`);
+      console.error('Available member IDs:', variantMembers.map(m => ({ id: m.id, name: m.name, rollNo: m.memberRollNumber })));
+      continue;
+    }
+    
+    // Validate center index
+    if (templateLayout.centerIndex >= variantMembers.length) {
+      console.warn(`Center index ${templateLayout.centerIndex} is out of bounds for ${variantMembers.length} members`);
+      // Use a safe fallback
+      const safeCenterIndex = Math.min(templateLayout.centerIndex, variantMembers.length - 1);
+      templateLayout.centerIndex = safeCenterIndex;
+    }
+    
+    // Get the member currently at the center position
+    const currentCenterMember = variantMembers[templateLayout.centerIndex];
+    
+    // Only swap if the desired member isn't already at the center
+    if (currentMemberIndex !== templateLayout.centerIndex) {
+      // Swap the members to preserve grid structure
+      variantMembers[templateLayout.centerIndex] = centerMember;
+      variantMembers[currentMemberIndex] = currentCenterMember || centerMember; // Fallback if currentCenterMember is undefined
       
-      // Only swap if the desired member isn't already at the center
-      if (currentMemberIndex !== templateLayout.centerIndex) {
-        // Swap the members to preserve grid structure
-        variantMembers[templateLayout.centerIndex] = centerMember;
-        variantMembers[currentMemberIndex] = currentCenterMember;
-        
-        console.log(`Variant ${centerMemberIndex + 1}: Swapped ${centerMember.name} to center (${templateLayout.centerIndex}) and ${currentCenterMember.name} to position ${currentMemberIndex}`);
-      } else {
-        console.log(`Variant ${centerMemberIndex + 1}: ${centerMember.name} already at center position ${templateLayout.centerIndex}`);
-      }
+      console.log(`Variant ${centerMemberIndex + 1}: Swapped ${centerMember.name} to center (${templateLayout.centerIndex}) and ${currentCenterMember?.name || 'unknown'} to position ${currentMemberIndex}`);
+    } else {
+      console.log(`Variant ${centerMemberIndex + 1}: ${centerMember.name} already at center position ${templateLayout.centerIndex}`);
     }
     
     console.log(`Variant ${centerMemberIndex + 1}: ${centerMember.name} at center position ${templateLayout.centerIndex}`);
-    console.log('Members arrangement:', variantMembers.map((m, idx) => `${m.name}(${idx})`));
     
     variants.push({
-      id: `variant-${centerMember.id}`,
-      centerMember,
+      id: `variant-${memberId}`,
+      centerMember: { ...centerMember, id: memberId },
       members: variantMembers,
       centerIndex: templateLayout.centerIndex,
     });

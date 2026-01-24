@@ -143,7 +143,13 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
   useEffect(() => {
     const generateVariantImage = async () => {
       try {
-        console.log('Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
+        console.log('[VariantRenderer] Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
+        console.log('[VariantRenderer] Center member photo:', {
+          hasPhoto: !!variant.centerMember?.photo,
+          photoType: variant.centerMember?.photo?.startsWith('data:') ? 'data URL' : 'URL',
+          photoLength: variant.centerMember?.photo?.length || 0,
+          photoPreview: variant.centerMember?.photo ? (variant.centerMember.photo.startsWith('data:') ? 'data:...' : variant.centerMember.photo.substring(0, 50)) : 'none'
+        });
 
         // 0) Ensure face-api models are loaded (once per session)
         await ensureModelsLoaded();
@@ -208,21 +214,117 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
 
         const drawCover = async (src: string, c: number, r: number, cspan = 1, rspan = 1) => {
           const { x, y, w, h } = rect(c, r, cspan, rspan);
-          return new Promise<void>((resolve, reject) => {
+          return new Promise<void>((resolve) => {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
+            
+            // Handle data URLs differently - they don't need CORS
+            if (src.startsWith('data:')) {
+              img.crossOrigin = undefined;
+            } else {
+              img.crossOrigin = 'anonymous';
+            }
+            
+            let timeoutId: NodeJS.Timeout | null = null;
+            let resolved = false;
+            
+            const cleanup = () => {
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+            };
+            
+            const drawPlaceholder = () => {
+              if (resolved) return;
+              ctx.fillStyle = '#f3f4f6';
+              ctx.fillRect(x, y, w, h);
+              ctx.fillStyle = '#9ca3af';
+              ctx.font = `${Math.min(12, w / 8)}px Arial`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('No Image', x + w / 2, y + h / 2);
+            };
+            
             img.onload = async () => {
+              cleanup();
+              if (resolved) return;
+              
               try {
                 // Try face-aware crop first (await detection)
                 const { sx, sy, sw, sh } = await getFaceAwareCropAsync(img, w, h);
                 ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+                resolved = true;
                 resolve();
               } catch (e) {
-                reject(e);
+                // If face detection fails, try to draw the image anyway
+                try {
+                  ctx.drawImage(img, 0, 0, img.width, img.height, x, y, w, h);
+                  resolved = true;
+                  resolve();
+                } catch (drawError) {
+                  // If drawing fails, draw a placeholder
+                  console.warn(`Failed to draw image at (${c}, ${r}):`, drawError);
+                  drawPlaceholder();
+                  resolved = true;
+                  resolve();
+                }
               }
             };
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = src;
+            
+            img.onerror = (error) => {
+              cleanup();
+              if (resolved) return;
+              
+              // Instead of rejecting, draw a placeholder and continue
+              const srcPreview = src.length > 100 ? src.substring(0, 100) + '...' : src;
+              console.warn(`[VariantRenderer] Failed to load image at (${c}, ${r}):`, {
+                srcPreview,
+                isDataUrl: src.startsWith('data:'),
+                srcLength: src.length,
+                error
+              });
+              drawPlaceholder();
+              resolved = true;
+              resolve();
+            };
+            
+            // Set a timeout to prevent hanging
+            timeoutId = setTimeout(() => {
+              if (!resolved && !img.complete) {
+                const srcPreview = src.length > 100 ? src.substring(0, 100) + '...' : src;
+                console.warn(`[VariantRenderer] Image load timeout at (${c}, ${r}):`, srcPreview);
+                drawPlaceholder();
+                resolved = true;
+                resolve();
+              }
+            }, 15000); // 15 second timeout per image
+            
+            // Validate and start loading the image
+            try {
+              // Validate the source
+              if (!src || src.trim() === '') {
+                throw new Error('Empty image source');
+              }
+              
+              // For data URLs, validate the format
+              if (src.startsWith('data:')) {
+                if (!src.includes(',')) {
+                  throw new Error('Invalid data URL format');
+                }
+              }
+              
+              img.src = src;
+            } catch (srcError) {
+              cleanup();
+              if (resolved) return;
+              console.warn(`[VariantRenderer] Invalid image source at (${c}, ${r}):`, {
+                error: srcError,
+                srcPreview: src.substring(0, 100)
+              });
+              drawPlaceholder();
+              resolved = true;
+              resolve();
+            }
           });
         };
 
@@ -234,7 +336,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate45(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -244,7 +351,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -252,7 +364,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate12(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -262,7 +379,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -270,7 +392,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate13(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -280,7 +407,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -288,7 +420,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate14(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -298,7 +435,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -306,7 +448,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate15(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -316,7 +463,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -324,7 +476,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate16(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -334,7 +491,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -342,7 +504,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate17(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -352,7 +519,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } 
@@ -360,7 +532,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate18(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -370,7 +547,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }
@@ -378,7 +560,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate19(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -388,14 +575,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '20'){
           await enumerate20(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -405,14 +602,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '33') {
           await enumerate33(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -422,7 +629,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '34') {
@@ -463,7 +675,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate36(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -473,14 +690,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '37') {
           await enumerate37(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -490,7 +717,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
      
@@ -566,7 +798,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate39(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -576,7 +813,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
       
@@ -601,7 +843,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate41(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -611,14 +858,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '42') {
           await enumerate42(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -628,7 +885,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '43') {
@@ -669,7 +931,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate46(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -679,14 +946,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '47') {
           await enumerate47(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -696,14 +973,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '48') {
           await enumerate48(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -713,14 +1000,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '49') {
           await enumerate49(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -730,14 +1027,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '50') {
           await enumerate50(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -747,7 +1054,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '51') {
@@ -755,7 +1067,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
           await enumerate51(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -765,14 +1082,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '52') {
           await enumerate52(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -782,14 +1109,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '53') {
           await enumerate53(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -799,14 +1136,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '54') {
           await enumerate54(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -816,14 +1163,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '55') {
           await enumerate55(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -833,14 +1190,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '56') {
           await enumerate56(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -850,14 +1217,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '57') {
           await enumerate57(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -867,14 +1244,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '58') {
           await enumerate58(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -884,14 +1271,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '59') {
           await enumerate59(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -901,14 +1298,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '60') {
           await enumerate60(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -918,14 +1325,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '61') {
           await enumerate61(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -935,14 +1352,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '62') {
           await enumerate62(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -952,14 +1379,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '63') {
           await enumerate63(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -969,14 +1406,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '64') {
           await enumerate64(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -986,14 +1433,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '65') {
           await enumerate65(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1003,14 +1460,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '66') {
           await enumerate66(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1020,14 +1487,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '67') {
           await enumerate67(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1037,14 +1514,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '68') {
           await enumerate68(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1054,14 +1541,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '69') {
           await enumerate69(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1071,14 +1568,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '70') {
           await enumerate70(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1088,14 +1595,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '71') {
           await enumerate71(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1105,14 +1622,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '72') {
           await enumerate72(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1122,14 +1649,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '73') {
           await enumerate73(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1139,14 +1676,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '74') {
           await enumerate74(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1156,14 +1703,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '75') {
           await enumerate75(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1173,14 +1730,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '76') {
           await enumerate76(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1190,14 +1757,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '77') {
           await enumerate77(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1207,14 +1784,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '78') {
           await enumerate78(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1224,14 +1811,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '79') {
           await enumerate79(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1241,14 +1838,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '80') {
           await enumerate80(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1258,14 +1865,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '81') {
           await enumerate81(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1275,14 +1892,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '82') {
           await enumerate82(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1292,14 +1919,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '83') {
           await enumerate83(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1309,14 +1946,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '84') {
           await enumerate84(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1326,14 +1973,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '85') {
           await enumerate85(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1343,14 +2000,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }else if (effectiveKey === '86') {
           await enumerate86(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1360,14 +2027,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '87') {
           await enumerate87(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1377,14 +2054,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '88') {
           await enumerate88(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1394,14 +2081,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }else if (effectiveKey === '89') {
           await enumerate89(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1411,14 +2108,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '90') {
           await enumerate90(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1428,14 +2135,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '91') {
           await enumerate91(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1445,14 +2162,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '92') {
           await enumerate92(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1462,14 +2189,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         } else if (effectiveKey === '93') {
           await enumerate93(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1479,14 +2216,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }else if (effectiveKey === '94') {
           await enumerate94(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1496,14 +2243,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }else if (effectiveKey === '95') {
           await enumerate95(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1513,14 +2270,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }else if (effectiveKey === '96') {
           await enumerate96(async (slot) => {
             if (slot.kind === 'center') {
               if (variant.centerMember?.photo) {
-                await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                try {
+                  await drawCover(variant.centerMember.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+                } catch (imgError) {
+                  // drawCover should never reject now, but catch just in case
+                  console.warn(`[VariantRenderer] Center member image draw failed at (${c}, ${r}):`, imgError);
+                }
               } else {
                 const { x, y, w, h } = rect(slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
                 ctx.fillStyle = '#f3f4f6';
@@ -1530,7 +2297,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             }
             const m = slot.index >= 0 ? memberAt(slot.index) : null;
             if (m?.photo) {
-              await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              try {
+                await drawCover(m.photo, slot.c, slot.r, slot.cspan ?? 1, slot.rspan ?? 1);
+              } catch (imgError) {
+                // drawCover should never reject now, but catch just in case
+                console.warn(`[VariantRenderer] Image draw failed for member at (${c}, ${r}):`, imgError);
+              }
             }
           });
         }
@@ -1564,12 +2336,64 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         }
         // Export with embedded 300 DPI (pHYs chunk)
         const rawPng = canvas.toDataURL('image/png');
+        if (!rawPng || rawPng === 'data:,') {
+          throw new Error('Failed to generate canvas image data');
+        }
         const dpiPng = embedPngDpi300(rawPng);
+        console.log('[VariantRenderer] Successfully rendered variant:', variant.id, 'Image size:', dpiPng.length, 'bytes');
         onRendered(variant.id, dpiPng);
 
       } catch (error) {
-        console.error('Error generating variant image:', error);
-        onRendered(variant.id, '');
+        // Check if this is an image loading error that we're handling gracefully
+        const isImageLoadError = error instanceof Error && 
+          (error.message.includes('Failed to load image') || 
+           error.message.includes('timeout') ||
+           error.message.includes('Invalid image source'));
+        
+        if (isImageLoadError) {
+          // Image loading errors are handled gracefully with placeholders
+          // Log as warning instead of error to avoid confusion
+          // Note: These errors should not occur since drawCover now resolves instead of rejecting
+          console.warn(`[VariantRenderer] Image loading issue for variant ${variant.id} (should be handled gracefully):`, error.message);
+        } else {
+          // For other errors, log as error
+          console.error('[VariantRenderer] Error generating variant image:', error);
+          console.error('Variant details:', {
+            id: variant.id,
+            centerMember: variant.centerMember?.name,
+            centerMemberPhoto: variant.centerMember?.photo?.substring(0, 50) || 'no photo',
+            orderId: order.id,
+            memberCount: order.members.length,
+            templateKey,
+            effectiveKey,
+            membersWithPhotos: order.members.filter(m => m?.photo).length
+          });
+        }
+        
+        // Try to generate a fallback image with placeholders
+        try {
+          // Create a minimal valid canvas image
+          const fallbackCanvas = document.createElement('canvas');
+          fallbackCanvas.width = 100;
+          fallbackCanvas.height = 100;
+          const fallbackCtx = fallbackCanvas.getContext('2d');
+          if (fallbackCtx) {
+            fallbackCtx.fillStyle = '#f3f4f6';
+            fallbackCtx.fillRect(0, 0, 100, 100);
+            fallbackCtx.fillStyle = '#9ca3af';
+            fallbackCtx.font = '12px Arial';
+            fallbackCtx.textAlign = 'center';
+            fallbackCtx.textBaseline = 'middle';
+            fallbackCtx.fillText('Error', 50, 50);
+            const fallbackPng = fallbackCanvas.toDataURL('image/png');
+            onRendered(variant.id, fallbackPng);
+          } else {
+            onRendered(variant.id, '');
+          }
+        } catch (fallbackError) {
+          // If even fallback fails, send empty string
+          onRendered(variant.id, '');
+        }
       }
     };
 
