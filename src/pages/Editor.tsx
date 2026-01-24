@@ -11,7 +11,9 @@ import { GridTemplate, Member, Group as CollageGroup } from "@/context/CollageCo
 import { useCollage } from "@/context/CollageContext";
 import { useAuth } from "@/context/AuthContext";
 import { GridProvider } from "@/components/square/context/GridContext";
-import { userApi } from "@/lib/api";
+import { userApi, ordersApi } from "@/lib/api";
+import { generateInvoicePdfBase64 } from "@/lib/invoice";
+import type { Order, AdminMember } from "@/types/admin";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +46,7 @@ const Editor = () => {
   const [showCurrentMembers, setShowCurrentMembers] = useState(false);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isCheckoutUpdating, setIsCheckoutUpdating] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const [userGroupsCount, setUserGroupsCount] = useState<number | null>(null);
 
@@ -243,7 +246,7 @@ const Editor = () => {
   };
 
   const handleCheckout = async () => {
-    if (!group) return;
+    if (!group || !user) return;
 
     const current = group.members.length;
     const expected = group.totalMembers;
@@ -256,12 +259,124 @@ const Editor = () => {
       return;
     }
 
-    if (current === expected) {
-      navigate(`/checkout/${targetGroupId}`);
+    // If members count doesn't match expected, show modal to proceed with current count
+    if (current !== expected) {
+      setCheckoutModalOpen(true);
       return;
     }
 
-    setCheckoutModalOpen(true);
+    // Direct order creation without payment
+    await createOrderDirectly();
+  };
+
+  const createOrderDirectly = async () => {
+    if (!group || !user) return;
+
+    setIsProcessingOrder(true);
+
+    try {
+      // Calculate pricing breakdown
+      const hasAmbassador = !!(group.ambassadorId && group.ambassadorId !== null && group.ambassadorId !== undefined && String(group.ambassadorId).trim() !== '');
+      const tshirtPrice = hasAmbassador ? 112 : 140;
+      const printPrice = hasAmbassador ? 30 : 40;
+      const gstRate = 0.05;
+      const perItemGst = hasAmbassador ? 7 : 9;
+      const perItemTotal = hasAmbassador ? 149 : 189;
+      const quantity = group.members.length;
+      
+      const alreadyPaidAmount = perItemTotal * quantity;
+      const shipping = 150;
+      const shippingGst = parseFloat((shipping * gstRate).toFixed(2));
+      const finalTotal = shipping + shippingGst;
+
+      // Get winning template
+      const winningTemplate = getWinningTemplate(group.votes);
+
+      // Prepare members data
+      const members: AdminMember[] = group.members.map(m => ({
+        id: m.id,
+        name: m.name,
+        memberRollNumber: m.memberRollNumber,
+        photo: m.photo,
+        vote: m.vote,
+        joinedAt: m.joinedAt.toISOString(),
+        size: m.size,
+        phone: m.phone,
+      }));
+
+      // Generate invoice
+      const invoiceFileName = `Invoice-${Date.now()}.pdf`;
+      const invoiceBase64 = await generateInvoicePdfBase64(
+        {
+          name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
+          address: 'G2, Win Win Towers, Siddhi Vinayaka Nagar, Madhapur, Hyderabad, Telangana – 500081, India',
+          gstin: '36AAHCC5155C1ZW',
+          cin: 'U74999TG2018PTC123754',
+          email: 'support@signatureday.com',
+          logoUrl: '/chitlu-logo.png',
+        },
+        {
+          invoiceId: `INV-${Date.now()}`,
+          orderId: `ORD-${Date.now()}`,
+          dateISO: new Date().toISOString(),
+          customerName: user.name || 'Customer',
+          customerEmail: user.email || '',
+          billingAddress: '',
+          shipping: shipping,
+          shippingGst: shippingGst,
+        },
+        [] // Empty items array since items were already paid during join
+      );
+
+      // Create order
+      const newOrder: Order = {
+        id: `ORD-${Date.now()}`,
+        status: 'new',
+        paid: true,
+        paymentId: `DIRECT-${Date.now()}`,
+        paidAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        description: `${group.name} • ${group.yearOfPassing}`,
+        gridTemplate: winningTemplate as Order['gridTemplate'],
+        members,
+        shipping: {
+          name: user.name || 'Customer',
+          phone: '',
+          email: user.email || '',
+          line1: 'Address to be updated', // Placeholder - will be updated later
+          line2: '',
+          city: 'City to be updated', // Placeholder - will be updated later
+          state: '',
+          postalCode: '000000', // Placeholder - will be updated later
+          country: 'India',
+        },
+        settings: {
+          widthPx: 2550,
+          heightPx: 3300,
+          keepAspect: true,
+          gapPx: 4,
+          cellScale: 1.0,
+          dpi: 300,
+        },
+      };
+
+      // Create order with invoice and groupId
+      await ordersApi.createOrderDirect({
+        ...newOrder,
+        groupId: group.id, // Include groupId for reward allocation
+      }, invoiceBase64, invoiceFileName);
+
+      toast.success('Order placed successfully!');
+      
+      // Navigate to success page
+      navigate(`/success?groupId=${group.id}`);
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      toast.error(error.message || 'Failed to create order. Please try again.');
+    } finally {
+      setIsProcessingOrder(false);
+    }
   };
 
   const proceedWithCurrentTemplate = async () => {
@@ -281,7 +396,8 @@ const Editor = () => {
         setGroup(updatedGroup);
       }
       setCheckoutModalOpen(false);
-      navigate(`/checkout/${targetGroupId}`);
+      // Create order directly instead of navigating to checkout
+      await createOrderDirectly();
     } catch (error) {
       console.error('Failed to update group:', error);
       toast.error('Failed to update group size');
@@ -416,29 +532,36 @@ const Editor = () => {
 
                     <Button
                       id="guide-checkout-button"
-                      className={`w - full text - sm sm: text - base py - 2 sm: py - 3 ${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-pink-500 hover:bg-pink-800'}`}
+                      className={`w-full text-sm sm:text-base py-2 sm:py-3 ${isGridComplete ? 'bg-pink-500 hover:bg-pink-800' : 'bg-pink-500 hover:bg-pink-800'}`}
                       onClick={handleCheckout}
+                      disabled={isProcessingOrder || isCheckoutUpdating}
                       title={
                         showCurrentMembers
-                          ? `Checkout with ${group.members.length} current members`
-                          : `Checkout with ${group.totalMembers} expected members`
+                          ? `Place order with ${group.members.length} current members`
+                          : `Place order with ${group.totalMembers} expected members`
                       }
                     >
                       <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                      <span className="hidden sm:inline">
-                        {showCurrentMembers
-                          ? `Checkout(${group.members.length} members)`
-                          : isGridComplete
-                            ? 'Checkout'
-                            : `Checkout(${group.members.length} / ${group.totalMembers})`}
-                      </span>
-                      <span className="sm:hidden">
-                        {showCurrentMembers
-                          ? `(${group.members.length})`
-                          : isGridComplete
-                            ? 'Checkout'
-                            : `(${group.members.length} / ${group.totalMembers})`}
-                      </span>
+                      {isProcessingOrder ? (
+                        <span>Processing Order...</span>
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">
+                            {showCurrentMembers
+                              ? `Place Order (${group.members.length} members)`
+                              : isGridComplete
+                                ? 'Place Order'
+                                : `Place Order (${group.members.length} / ${group.totalMembers})`}
+                          </span>
+                          <span className="sm:hidden">
+                            {showCurrentMembers
+                              ? `(${group.members.length})`
+                              : isGridComplete
+                                ? 'Place Order'
+                                : `(${group.members.length} / ${group.totalMembers})`}
+                          </span>
+                        </>
+                      )}
                     </Button>
 
                     {/* <Button className="w-full bg-purple-600 hover:bg-purple-700 text-sm sm:text-base py-2 sm:py-3" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>

@@ -239,6 +239,15 @@ export const ordersApi = {
     return apiRequest<any>('/orders', 'POST', orderData, true);
   },
 
+  // Create order directly without payment (for Editor checkout)
+  createOrderDirect: (orderData: any, invoicePdfBase64?: string, invoiceFileName?: string) => {
+    return apiRequest<any>('/orders/create-direct', 'POST', {
+      ...orderData,
+      invoicePdfBase64,
+      invoiceFileName
+    }, true);
+  },
+
   // List orders (admin)
   getOrders: (params: PaginationParams & { status?: string; paid?: boolean; search?: string } = {}) => {
     const q = new URLSearchParams();
