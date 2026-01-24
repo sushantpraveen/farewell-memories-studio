@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, isAdmin, isLeader } from '../middleware/authMiddleware.js';
 import {
   createOrder,
+  createOrderDirect,
   getOrders,
   getOrderById,
   updateOrder,
@@ -13,6 +14,9 @@ const router = express.Router();
 
 // Create order (leaders only)
 router.post('/', protect, isLeader, createOrder);
+
+// Create order directly without payment (for Editor checkout)
+router.post('/create-direct', protect, isLeader, createOrderDirect);
 
 // Admin endpoints
 router.get('/', protect, isAdmin, getOrders);
