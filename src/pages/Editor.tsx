@@ -328,20 +328,6 @@ const Editor = () => {
               </Button>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="hidden sm:flex flex-wrap gap-2 sm:space-x-2">
-                  <Button
-                    className={`${isGridComplete ? 'bg-pink-500 hover:bg-pink-600' : 'bg-gray-400 cursor-not-allowed'} text-xs sm:text-sm px-3 sm:px-4 py-2`}
-                    onClick={handleCheckout}
-                    disabled={!isGridComplete}
-                    title={!isGridComplete ? `Need ${group.totalMembers - group.members.length} more members to complete the grid` : 'Ready to checkout'}
-                  >
-                    <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">{isGridComplete ? 'Checkout' : `Checkout (${group.members.length}/${group.totalMembers})`}</span>
-                    <span className="sm:hidden">{isGridComplete ? 'Checkout' : `(${group.members.length}/${group.totalMembers})`}</span>
-                  </Button>
-                  <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 sm:px-4 py-2">
-                    <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    Share
-                  </Button>
                   <Button className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm px-3 sm:px-4 py-2" onClick={() => window.dispatchEvent(new Event('grid-template-download'))}>
                     <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Download</span>

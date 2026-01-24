@@ -271,6 +271,17 @@ export const useJoinGroup = (groupId: string | undefined) => {
         notes: { groupId },
         handler: async (response: any) => {
           try {
+            // Calculate price breakdown for invoice
+            // With ambassador (₹149): T-shirt ₹112, Print ₹30, GST ₹7 (5% of ₹30)
+            // Without ambassador (₹189): T-shirt ₹140, Print ₹40, GST ₹9 (5% of ₹40)
+            const groupAmbassadorId = (activeGroup as Group | undefined)?.ambassadorId;
+            const isAmbassadorGroup = !!(groupAmbassadorId && groupAmbassadorId !== null && groupAmbassadorId !== undefined && String(groupAmbassadorId).trim() !== '');
+            
+            const tshirtPrice = isAmbassadorGroup ? 112 : 140;
+            const printPrice = isAmbassadorGroup ? 30 : 40;
+            const gstRate = 0.05; // 5% GST on print cost only (for display purposes)
+            const perItemGst = isAmbassadorGroup ? 7 : 9; // Fixed GST: ₹7 (with ambassador) or ₹9 (without ambassador)
+
             const invoiceBase64 = await generateInvoicePdfBase64(
               {
                 name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
@@ -295,10 +306,10 @@ export const useJoinGroup = (groupId: string | undefined) => {
                   description: `${activeGroup?.name ?? 'Group'} Join Fee`,
                   hsn: '6109',
                   quantity: 1,
-                  // Treat the join amount as a single line item without GST breakdown
-                  unitPrice: joinPricing.total,
-                  printPrice: 0,
-                  taxRate: 0
+                  unitPrice: tshirtPrice, // T-shirt price: ₹112 (with ambassador) or ₹140 (without)
+                  printPrice: printPrice, // Print cost: ₹30 (with ambassador) or ₹40 (without)
+                  taxRate: gstRate, // 5% for display purposes
+                  taxAmount: perItemGst // Fixed GST amount: ₹7 (with ambassador) or ₹9 (without)
                 }
               ]
             );
