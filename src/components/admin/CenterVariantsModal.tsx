@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -32,6 +32,17 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   // Load cached images on mount
   useEffect(() => {
     if (open) {
+      // Diagnostic logging for specific order
+      if (order.id === 'ORD-1769261339167' || order.id?.includes('1769261339167')) {
+        console.log('=== DIAGNOSTIC: Order ORD-1769261339167 ===');
+        console.log('Full order object:', JSON.stringify(order, null, 2));
+        console.log('Order members:', order.members);
+        console.log('Members count:', order.members?.length);
+        console.log('Grid template:', order.gridTemplate);
+        console.log('Members with photos:', order.members?.filter(m => m?.photo && m.photo.trim() !== '')?.length);
+        console.log('Members without photos:', order.members?.filter(m => !m?.photo || m.photo.trim() === '')?.map(m => ({ name: m.name, hasPhoto: !!m.photo })));
+      }
+      
       const cachedImages: Record<string, string> = {};
       let hasCache = false;
       
@@ -43,7 +54,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         for (const variant of preloadedVariants) {
           try {
             const cachedImage = localStorage.getItem(`variant-image-${variant.id}`);
-            if (cachedImage) {
+            if (cachedImage && cachedImage.trim() !== '') {
               cachedImages[variant.id] = cachedImage;
               hasCache = true;
             }
@@ -65,17 +76,28 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
             toast.success(`Loaded ${preloadedVariants.length} center variants from cache`);
           } else {
             // Start rendering from the first non-cached variant
-            setCurrentRenderIndex(Object.keys(cachedImages).length);
+            const startIndex = Object.keys(cachedImages).length;
+            setCurrentRenderIndex(startIndex);
             setIsGenerating(true);
+            console.log(`Starting to render from index ${startIndex}`);
           }
         } else {
           // No cached images, start rendering from the beginning
           setCurrentRenderIndex(0);
           setIsGenerating(true);
+          console.log('No cached images, starting to render from beginning');
         }
       } else if (variants.length === 0) {
         generateVariants();
       }
+    } else {
+      // Reset state when modal closes
+      setVariants([]);
+      setRenderedImages({});
+      setCurrentRenderIndex(0);
+      setProgress(0);
+      setIsGenerating(false);
+      setError(null);
     }
   }, [open, preloadedVariants]);
 
@@ -87,19 +109,53 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     setCurrentRenderIndex(0);
     
     try {
-      console.log('Generating variants for order:', order.id, 'Members:', order.members.length);
+      console.log('=== Generating variants for order:', order.id, '===');
+      console.log('Order details:', {
+        id: order.id,
+        gridTemplate: order.gridTemplate,
+        memberCount: order.members?.length || 0,
+        members: order.members?.map(m => ({
+          id: m.id,
+          name: m.name,
+          hasPhoto: !!(m.photo && m.photo.trim() !== ''),
+          photoLength: m.photo?.length || 0,
+          photoPreview: m.photo ? (m.photo.startsWith('data:') ? 'data:...' : m.photo.substring(0, 50) + '...') : 'no photo',
+          photoIsDataUrl: m.photo?.startsWith('data:') || false
+        })) || []
+      });
+      
+      // Validate order data
+      if (!order.members || !Array.isArray(order.members)) {
+        throw new Error('Order members data is invalid or missing');
+      }
+      
+      if (order.members.length === 0) {
+        throw new Error('Order has no members');
+      }
+      
+      if (!order.gridTemplate) {
+        throw new Error('Order grid template is missing');
+      }
+      
+      // Check members with photos
+      const membersWithPhotos = order.members.filter(m => m.photo && m.photo.trim() !== '');
+      console.log('Members with photos:', membersWithPhotos.length, 'out of', order.members.length);
+      
+      if (membersWithPhotos.length < 2) {
+        throw new Error(`Not enough members with photos (${membersWithPhotos.length} found, need at least 2)`);
+      }
       
       // Use preloaded variants if available
       let generatedVariants = preloadedVariants;
       
       // Generate variants if none were preloaded
       if (generatedVariants.length === 0) {
+        console.log('Generating variants from order data...');
         generatedVariants = await generateGridVariants(order);
       }
       
       console.log('Generated variants:', generatedVariants.length, generatedVariants.map(v => v.centerMember.name));
       setVariants(generatedVariants);
-      setCurrentRenderIndex(0);
       
       if (generatedVariants.length === 0) {
         setIsGenerating(false);
@@ -107,16 +163,52 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         toast.error('No variants could be generated');
       } else {
         console.log('Starting to render variants...');
+        // Reset state and ensure isGenerating is true to trigger rendering
+        setCurrentRenderIndex(0);
+        setProgress(0);
+        setIsGenerating(true);
+        console.log('Set isGenerating to true, currentRenderIndex to 0');
       }
     } catch (error) {
       console.error('Error generating variants:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate variants');
-      toast.error('Failed to generate variants');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate variants';
+      console.error('Error details:', {
+        orderId: order.id,
+        memberCount: order.members?.length,
+        gridTemplate: order.gridTemplate,
+        error: errorMessage
+      });
+      setError(errorMessage);
+      toast.error(`Failed to generate variants: ${errorMessage}`);
       setIsGenerating(false);
     }
   };
 
   const handleVariantRendered = (variantId: string, dataUrl: string) => {
+    // If dataUrl is empty, rendering failed - handle error but continue
+    if (!dataUrl || dataUrl.trim() === '') {
+      console.warn('Variant rendering failed or returned empty:', variantId);
+      // Still advance to next variant to prevent getting stuck
+      setCurrentRenderIndex(prevIndex => {
+        const newIndex = prevIndex + 1;
+        const progressPercentage = Math.min((newIndex / variants.length) * 100, 100);
+        setProgress(progressPercentage);
+        
+        if (newIndex >= variants.length) {
+          setIsGenerating(false);
+          const renderedCount = Object.keys(renderedImages).length;
+          if (renderedCount > 0) {
+            toast.success(`Generated ${renderedCount} of ${variants.length} center variants`);
+          } else {
+            setError('Failed to render any variants. Please check console for errors.');
+            toast.error('Failed to render variants');
+          }
+        }
+        return newIndex;
+      });
+      return;
+    }
+
     // Cache rendered images in localStorage for future use
     try {
       localStorage.setItem(`variant-image-${variantId}`, dataUrl);
@@ -136,39 +228,84 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       if (newIndex >= variants.length) {
         console.log('All variants rendered successfully!');
         setIsGenerating(false);
-        toast.success(`Generated ${variants.length} center variants successfully`);
+        const renderedCount = Object.keys(renderedImages).length + 1; // +1 for current
+        toast.success(`Generated ${renderedCount} center variants successfully`);
       }
       
       return newIndex;
     });
   };
 
-  // Add timeout to handle stuck rendering
+  // Add timeout to handle stuck rendering - use refs to avoid dependency issues
+  const lastRenderIndexRef = useRef(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const renderedImagesRef = useRef<Record<string, string>>({});
+
+  // Keep refs in sync with state
   useEffect(() => {
-    if (isGenerating && variants.length > 0) {
-      const timeout = setTimeout(() => {
-        if (currentRenderIndex < variants.length) {
-          console.log('Rendering timeout, moving to next variant or finishing');
+    lastRenderIndexRef.current = currentRenderIndex;
+  }, [currentRenderIndex]);
+
+  useEffect(() => {
+    renderedImagesRef.current = renderedImages;
+  }, [renderedImages]);
+
+  // Ensure rendering starts if we have variants but no rendered images
+  useEffect(() => {
+    if (variants.length > 0 && Object.keys(renderedImages).length === 0 && !isGenerating && !error) {
+      console.log('Auto-starting rendering: variants exist but no images rendered');
+      setCurrentRenderIndex(0);
+      setProgress(0);
+      setIsGenerating(true);
+    }
+  }, [variants.length, renderedImages, isGenerating, error]);
+
+  useEffect(() => {
+    if (isGenerating && variants.length > 0 && currentRenderIndex < variants.length) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      const startIndex = currentRenderIndex;
+      const startTime = Date.now();
+
+      // Set new timeout - this will fire if rendering doesn't progress
+      timeoutRef.current = setTimeout(() => {
+        // Check if we're still stuck at the same index
+        if (lastRenderIndexRef.current === startIndex && startIndex < variants.length) {
+          console.warn(`Rendering timeout for variant ${startIndex} (${variants[startIndex]?.centerMember?.name || 'unknown'}), moving to next...`);
           setCurrentRenderIndex(prev => {
             const newIndex = prev + 1;
             if (newIndex >= variants.length) {
               setIsGenerating(false);
-              const renderedCount = Object.keys(renderedImages).length;
+              const renderedCount = Object.keys(renderedImagesRef.current).length;
               if (renderedCount > 0) {
                 toast.success(`Generated ${renderedCount} of ${variants.length} center variants`);
               } else {
-                setError('Failed to render any variants');
+                setError('Failed to render any variants. Please check console for errors.');
                 toast.error('Failed to render variants');
               }
             }
             return newIndex;
           });
         }
-      }, 10000); // 10 second timeout per variant
+      }, 20000); // 20 second timeout per variant
 
-      return () => clearTimeout(timeout);
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+      };
+    } else {
+      // Clear timeout if not generating
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     }
-  }, [isGenerating, currentRenderIndex, variants.length, renderedImages]);
+  }, [isGenerating, currentRenderIndex, variants.length]);
 
   const handleDownloadSelected = async (variantIds: string[]) => {
     if (variantIds.length === 0) {
@@ -276,13 +413,29 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
             )}
           </div>
         ) : variants.length > 0 ? (
-          <CenterVariantsGallery
-            variants={variants}
-            renderedImages={renderedImages}
-            onDownloadSelected={handleDownloadSelected}
-            onDownloadAll={handleDownloadAll}
-            onPreview={handlePreview}
-          />
+          <>
+            <CenterVariantsGallery
+              variants={variants}
+              renderedImages={renderedImages}
+              onDownloadSelected={handleDownloadSelected}
+              onDownloadAll={handleDownloadAll}
+              onPreview={handlePreview}
+            />
+            {/* Show progress if still generating in background */}
+            {isGenerating && (
+              <div className="text-center py-4 space-y-2 border-t mt-4">
+                <Progress value={progress} className="max-w-md mx-auto" />
+                <p className="text-sm text-muted-foreground">
+                  Rendered {Object.keys(renderedImages).length} of {variants.length} variants
+                </p>
+                {variants.length > 0 && currentRenderIndex < variants.length && (
+                  <p className="text-xs text-muted-foreground">
+                    Currently rendering: {variants[currentRenderIndex]?.centerMember?.name || 'Unknown'}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
         ) : null}
 
         {/* Hidden renderers for generating images */}
@@ -423,17 +576,33 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
           ? '96'
           : '45';
 
-          return variants.map((variant, index) => (
-            index === currentRenderIndex && (
+          // Render VariantRenderer components for variants that haven't been rendered yet
+          const renderedCount = Object.keys(renderedImages).length;
+          const needsRendering = renderedCount < variants.length;
+          
+          return variants.map((variant, index) => {
+            // Skip if already rendered
+            if (renderedImages[variant.id]) {
+              return null;
+            }
+            
+            // Render the current index being processed (always render if needsRendering, regardless of isGenerating state)
+            // This ensures rendering continues even if state hasn't fully propagated
+            const shouldRender = index === currentRenderIndex && needsRendering;
+            if (!shouldRender) return null;
+            
+            console.log(`[CenterVariantsModal] Rendering variant ${index + 1}/${variants.length}:`, variant.id, variant.centerMember.name, 'isGenerating:', isGenerating);
+            
+            return (
               <VariantRenderer
-                key={variant.id}
+                key={`${variant.id}-${index}-${currentRenderIndex}`}
                 order={order}
                 variant={variant}
                 onRendered={handleVariantRendered}
                 templateKey={templateKey}
               />
-            )
-          ));
+            );
+          });
         })()}
       </DialogContent>
     </Dialog>
