@@ -1272,11 +1272,28 @@ const Dashboard = () => {
     return () => clearInterval(intervalId);
   }, [groupId, getGroup, navigate, user?.groupId]);
 
-  // Open the share/suggestions modal when user lands on dashboard
+  // Open the share modal only once when user first comes from GridBoard (after creating group)
   useEffect(() => {
-    if (isAuthLoading || !userGroups) return;
-    setIsShareModalOpen(true);
-  }, [isAuthLoading, userGroups]);
+    if (isAuthLoading || !userGroups || !groupId) return;
+    
+    // Check if user is coming from group creation (sessionStorage flag)
+    const showShareModalFlag = sessionStorage.getItem('showShareModal');
+    
+    // Check if user has already seen the modal for this group (localStorage per group)
+    const shareModalSeenKey = `shareModalSeen_${groupId}`;
+    const hasSeenModal = localStorage.getItem(shareModalSeenKey) === 'true';
+    
+    // Only show modal if:
+    // 1. User is coming from group creation (showShareModal flag exists)
+    // 2. User hasn't seen the modal for this group yet
+    if (showShareModalFlag === 'true' && !hasSeenModal) {
+      setIsShareModalOpen(true);
+      // Mark as seen for this group
+      localStorage.setItem(shareModalSeenKey, 'true');
+      // Clear the session flag
+      sessionStorage.removeItem('showShareModal');
+    }
+  }, [isAuthLoading, userGroups, groupId]);
 
   // Refresh data when user returns to the tab
   useEffect(() => {

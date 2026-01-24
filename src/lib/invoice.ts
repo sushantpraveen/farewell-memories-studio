@@ -20,6 +20,7 @@ export interface InvoiceItem {
   unitPrice: number; // Base T-shirt price
   printPrice: number; // Printing price
   taxRate: number; // e.g., 0.05 for 5%
+  taxAmount?: number; // Fixed tax amount (if provided, this will be used instead of calculating from taxRate)
 }
 
 export interface InvoiceMeta {
@@ -33,6 +34,7 @@ export interface InvoiceMeta {
   paymentMethod?: string;
   transactionRef?: string;
   shipping?: number;
+  shippingGst?: number; // GST on shipping (if separate from shipping amount)
 }
 
 async function loadJsPDF(): Promise<JsPDFCtor> {
@@ -197,50 +199,84 @@ export async function generateInvoicePdfBase64(
   doc.setFontSize(9);
   doc.setTextColor(60, 60, 60);
   
-  items.forEach((item) => {
-    const perItemSubtotal = item.unitPrice + item.printPrice;
-    const perItemTax = Math.floor(perItemSubtotal * item.taxRate * 100) / 100;
-    const lineSubtotal = perItemSubtotal * item.quantity;
-    const lineTax = perItemTax * item.quantity;
-    const lineTotal = lineSubtotal + lineTax;
+  // Only show items table if there are items
+  if (items.length > 0) {
+    items.forEach((item) => {
+      // GST is calculated only on print cost, not on t-shirt price
+      const perItemSubtotal = item.unitPrice + item.printPrice;
+      // Use fixed taxAmount if provided, otherwise calculate from taxRate
+      const perItemTax = item.taxAmount !== undefined 
+        ? item.taxAmount 
+        : Math.floor((item.printPrice * item.taxRate) * 100) / 100; // GST only on print cost
+      const lineSubtotal = perItemSubtotal * item.quantity;
+      const lineTax = perItemTax * item.quantity;
+      const lineTotal = lineSubtotal + lineTax;
 
-    totalSubtotal += lineSubtotal;
-    totalTax += lineTax;
-    totalGrand += lineTotal;
+      totalSubtotal += lineSubtotal;
+      totalTax += lineTax;
+      totalGrand += lineTotal;
 
-    y += 25;
-    // Row separation line
-    doc.setDrawColor(230, 230, 230);
-    doc.line(left, y, right, y);
-    
-    const rowY = y - 8;
-    doc.text(item.description, left + 5, rowY);
-    doc.text(item.hsn, left + 140, rowY);
-    doc.text(String(item.quantity), left + 185, rowY, { align: 'right' });
-    doc.text(item.unitPrice.toFixed(2), left + 245, rowY, { align: 'right' });
-    doc.text(item.printPrice.toFixed(2), left + 295, rowY, { align: 'right' });
-    doc.text(`${(item.taxRate * 100).toFixed(0)}%`, left + 345, rowY, { align: 'right' });
-    doc.text(lineTax.toFixed(2), left + 410, rowY, { align: 'right' });
-    doc.text(lineTotal.toFixed(2), right - 10, rowY, { align: 'right' });
-  });
+      y += 25;
+      // Row separation line
+      doc.setDrawColor(230, 230, 230);
+      doc.line(left, y, right, y);
+      
+      const rowY = y - 8;
+      doc.text(item.description, left + 5, rowY);
+      doc.text(item.hsn, left + 140, rowY);
+      doc.text(String(item.quantity), left + 185, rowY, { align: 'right' });
+      doc.text(item.unitPrice.toFixed(2), left + 245, rowY, { align: 'right' });
+      doc.text(item.printPrice.toFixed(2), left + 295, rowY, { align: 'right' });
+      doc.text(`${(item.taxRate * 100).toFixed(0)}%`, left + 345, rowY, { align: 'right' });
+      doc.text(lineTax.toFixed(2), left + 410, rowY, { align: 'right' });
+      doc.text(lineTotal.toFixed(2), right - 10, rowY, { align: 'right' });
+    });
+  } else {
+    // If no items, add a note that items were already paid
+    y += 20;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Note: Items were already paid when members joined the group.', left, y);
+    y += 15;
+  }
 
   y += 20;
 
   // --- Summary Section ---
   const summaryX = right - 180;
   doc.setFont('helvetica', 'normal');
-  doc.text('Subtotal:', summaryX, y);
-  doc.text(totalSubtotal.toFixed(2), right - 10, y, { align: 'right' });
   
-  y += 16;
-  doc.text('Tax (GST):', summaryX, y);
-  doc.text(totalTax.toFixed(2), right - 10, y, { align: 'right' });
+  // Only show subtotal and tax if there are items
+  if (items.length > 0) {
+    doc.text('Subtotal:', summaryX, y);
+    doc.text(totalSubtotal.toFixed(2), right - 10, y, { align: 'right' });
+    
+    y += 16;
+    doc.text('Tax (GST):', summaryX, y);
+    doc.text(totalTax.toFixed(2), right - 10, y, { align: 'right' });
+  }
 
+  // Show shipping charges
   if (meta.shipping && meta.shipping > 0) {
     y += 16;
     doc.text('Shipping:', summaryX, y);
+    // Shipping amount (₹150)
     doc.text(meta.shipping.toFixed(2), right - 10, y, { align: 'right' });
     totalGrand += meta.shipping;
+    
+    // Show shipping GST separately if provided
+    if (meta.shippingGst && meta.shippingGst > 0) {
+      y += 16;
+      doc.text('GST (5% on Shipping):', summaryX, y);
+      doc.text(meta.shippingGst.toFixed(2), right - 10, y, { align: 'right' });
+      totalGrand += meta.shippingGst;
+    }
+  }
+  
+  // If no items and no shipping, set total to 0
+  if (items.length === 0 && (!meta.shipping || meta.shipping === 0)) {
+    totalGrand = 0;
   }
 
   y += 20;

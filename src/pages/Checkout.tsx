@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CreditCard, ShoppingCart, Users, Plus, Minus, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, ShoppingCart, Users, MapPin, Loader2 } from 'lucide-react';
 import { useCollage } from '@/context/CollageContext';
 import type { Group } from '@/context/CollageContext';
 import { ordersApi, paymentsApi } from '@/lib/api';
-import { calculatePricing } from '@/lib/pricing';
 import { generateInvoicePdfBase64 } from '@/lib/invoice';
 import type { Order, AdminMember } from '@/types/admin';
 import { toast } from 'sonner';
@@ -110,12 +109,8 @@ const Checkout = () => {
     }
   };
 
-  const [quantity, setQuantity] = useState(1);
-  useEffect(() => {
-    if (group) {
-      setQuantity(group.members.length || 1);
-    }
-  }, [group]);
+  // Quantity is static - always equals number of members (cannot be changed)
+  const quantity = group ? (group.members.length || 1) : 1;
 
   // Update shipping quote when quantity changes (temporarily disabled)
   // useEffect(() => {
@@ -203,21 +198,25 @@ const Checkout = () => {
   const [shippingCharge, setShippingCharge] = useState<number | null>(null);
   const [codAvailable, setCodAvailable] = useState(false);
 
-  // Pricing & totals (hardcoded shipping)
-  const tshirtPrice = 28; // ₹28 per t-shirt
-  const printPrice = 10.10;  // ₹10.10 per print
-  const pricing = calculatePricing({ quantity, tshirtPrice, printPrice, gstRate: 0.05 });
-  const itemTotal = pricing.subtotal; // before GST
+  // Pricing breakdown based on whether group has ambassador referral
+  // With ambassador (₹149): T-shirt ₹112, Print ₹30, GST ₹7 (5% of ₹30)
+  // Without ambassador (₹189): T-shirt ₹140, Print ₹40, GST ₹9 (5% of ₹40)
+  const hasAmbassador = !!(group?.ambassadorId && group.ambassadorId !== null && group.ambassadorId !== undefined && String(group.ambassadorId).trim() !== '');
+  
+  const tshirtPrice = hasAmbassador ? 112 : 140;
+  const printPrice = hasAmbassador ? 30 : 40;
+  const gstRate = 0.05; // 5% GST on print cost only
+  const perItemGst = hasAmbassador ? 7 : 9; // GST: ₹7 (with ambassador) or ₹9 (without ambassador)
+  const perItemTotal = hasAmbassador ? 149 : 189; // Total per member
+  
+  // Calculate totals
+  const itemSubtotal = (tshirtPrice + printPrice) * quantity; // Subtotal for all items
+  const itemGst = perItemGst * quantity; // Total GST for all items
+  const alreadyPaidAmount = perItemTotal * quantity; // Total already paid when joining (₹149/₹189 × members)
+  
   const shipping = 150; // Hardcoded shipping to ₹150
-  const gstRate = 0.05; // 5% GST
-  const tax = parseFloat((shipping * gstRate).toFixed(2)); // GST (5%) calculated on shipping only
-  const finalTotal = shipping + tax; // Total is Shipping + GST
-
-  // Quantity handlers
-  const handleQuantityChange = (change: number) => {
-    const newQuantity = Math.max(1, quantity + change);
-    setQuantity(newQuantity);
-  };
+  const shippingGst = parseFloat((shipping * gstRate).toFixed(2)); // GST (5%) calculated on shipping = ₹7.50
+  const finalTotal = shipping + shippingGst; // Final payment is ONLY Shipping + Shipping GST = ₹157.50
 
   const handleInputChange = (field: string, value: string) => {
     setShippingForm(prev => ({ ...prev, [field]: value }));
@@ -574,6 +573,8 @@ const Checkout = () => {
             // 4) Verify payment signature on backend and send email confirmation
             // Prepare invoice PDF
             const invoiceFileName = `Invoice-${Date.now()}.pdf`;
+            // Invoice should only show shipping charges since items were already paid during join
+            // Pass empty items array and only shipping + shipping GST
             const invoiceBase64 = await generateInvoicePdfBase64(
               {
                 name: 'CHITLU INNOVATIONS PRIVATE LIMITED',
@@ -590,18 +591,10 @@ const Checkout = () => {
                 customerName: `${shippingForm.firstName} ${shippingForm.lastName}`.trim() || 'Customer',
                 customerEmail: shippingForm.email,
                 billingAddress: `${shippingForm.address}, ${shippingForm.city} ${shippingForm.zipCode}`,
-                shipping: shipping,
+                shipping: shipping, // Shipping amount: ₹150
+                shippingGst: shippingGst, // GST on shipping: ₹7.50
               },
-              [
-                {
-                  description: `${group?.name || 'Group'} T-Shirt + Print (${group?.yearOfPassing || ''})`,
-                  hsn: '6109',
-                  quantity,
-                  unitPrice: tshirtPrice,
-                  printPrice: printPrice,
-                  taxRate: 0.05,
-                },
-              ]
+              [] // Empty items array since items were already paid during join
             );
 
             const verify = await paymentsApi.verify({
@@ -672,10 +665,11 @@ const Checkout = () => {
             console.log('[Checkout] ✅ Order created successfully');
 
             // Trigger backend reward allocation (demo intent+confirm flow, non-blocking)
+            // Reward is calculated on the amount already paid for items (not shipping)
             try {
               if (group?.id) {
                 console.log('[Checkout] Creating backend payment intent for ambassador reward...');
-                const intent = await paymentsApi.createIntent(group.id, itemTotal);
+                const intent = await paymentsApi.createIntent(group.id, alreadyPaidAmount);
                 await paymentsApi.confirm(intent.paymentId, 'success');
                 console.log('[Checkout] ✅ Backend ambassador reward allocation triggered');
               }
@@ -899,68 +893,64 @@ const Checkout = () => {
                   </div>
                 )}
 
-                {/* Item Breakdown */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">T-Shirt (each)</span>
-                    <span className="font-semibold">₹{tshirtPrice}</span>
+                {/* Already Paid Section */}
+                <div className="space-y-3 bg-green-50 rounded-lg p-4 border border-green-200">
+                  <h3 className="font-semibold text-green-800 mb-2">Already Paid (When Joining Group)</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">T-Shirt Price (each)</span>
+                      <span className="font-semibold">₹{tshirtPrice}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Print Cost (each)</span>
+                      <span className="font-semibold">₹{printPrice}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">GST (5% on Print Cost)</span>
+                      <span className="font-semibold">₹{perItemGst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-green-300">
+                      <span className="text-gray-700 font-medium">Total per member</span>
+                      <span className="font-bold">₹{perItemTotal}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-gray-600">Quantity (Members)</span>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 font-semibold">
+                        {quantity} {quantity === 1 ? 'member' : 'members'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t-2 border-green-400">
+                      <span className="text-green-800 font-bold">Paid Amount</span>
+                      <span className="text-green-800 font-bold text-lg">₹{alreadyPaidAmount.toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-green-700 mt-2 italic">This amount was already paid when members joined the group.</p>
                   </div>
+                </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Print Cost (each)</span>
-                    <span className="font-semibold">₹{printPrice}</span>
-                  </div>
+                <Separator />
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Quantity</span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleQuantityChange(-1)}
-                        disabled={quantity <= 1}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-16 text-center h-8"
-                        min="1"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleQuantityChange(1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
+                {/* Final Payment Section */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-800 mb-2">Final Payment (For Shipping)</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="font-semibold">₹{shipping}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">GST (5% on Shipping)</span>
+                      <span className="font-semibold">₹{shippingGst.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
                 <Separator />
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span>₹{shipping}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>GST (5% on Shipping)</span>
-                    <span>₹{tax.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
+                <div className="flex justify-between font-bold text-lg text-purple-600">
+                  <span>Final Payment</span>
                   <span>₹{Number(finalTotal).toFixed(2)}</span>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">This is the amount you will pay at checkout.</p>
 
                 {/* Free shipping message disabled - shipping is hardcoded to ₹150 */}
                 {/* {shipping === 0 && (

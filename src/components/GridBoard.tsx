@@ -242,8 +242,8 @@ const GridBoard = () => {
   const guideSteps: Step[] = [
     {
       targetId: "gb-step-name",
-      title: "Squad Name",
-      description: "Enter your squad name here."
+      title: "Group Name",
+      description: "This name will be used to identify your group."
     },
     {
       targetId: "gb-step-year",
@@ -252,8 +252,8 @@ const GridBoard = () => {
     },
     {
       targetId: "gb-step-size",
-      title: "Squad Size",
-      description: "Enter the number of members in your squad."
+      title: "Group Size",
+      description: "Enter the number of members in your group. You can increase the group size later if needed."
     },
     {
       targetId: "gb-step-launch",
@@ -476,6 +476,8 @@ const GridBoard = () => {
       }
 
       toast.success("Group created successfully!");
+      // Set flag to show share modal once when user lands on dashboard
+      sessionStorage.setItem('showShareModal', 'true');
       navigate(`/dashboard/${groupId}`);
     } catch (error) {
       console.error("Error creating group:", error);
@@ -724,13 +726,13 @@ const GridBoard = () => {
               <div className="space-y-3">
                 <Label htmlFor="groupName" className="flex items-center text-base font-medium text-gray-700">
                   <Users className="mr-2 h-5 w-5 text-purple-500" />
-                  Squad Name
+                  Group Name
                 </Label>
                 <div className="relative">
                   <div id="gb-step-name">
                     <Input
                       id="groupName"
-                      placeholder="e.g., CS Warriors 2024 🎓"
+                      placeholder="e.g.,CSE Graduation Team 2024 🎓"
                       value={formData.name}
                       onChange={(e) => handleFieldChange('name', e.target.value)}
                       className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus:ring-purple-200 transition-all duration-300 ${touched.name && formErrors.name
@@ -772,7 +774,7 @@ const GridBoard = () => {
                     <Input
                       id="yearOfPassing"
                       type="number"
-                      placeholder="When are you graduating? 🎉"
+                      placeholder="Year of Graduation (e.g., 2024)? 🎉"
                       value={formData.yearOfPassing}
                       onChange={(e) => handleFieldChange('yearOfPassing', e.target.value)}
                       className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus:ring-pink-200 transition-all duration-300 ${touched.yearOfPassing && formErrors.yearOfPassing
@@ -807,7 +809,7 @@ const GridBoard = () => {
               <div className="space-y-3">
                 <Label htmlFor="preview-number" className="flex items-center text-base font-medium text-gray-700">
                   <Users className="mr-2 h-5 w-5 text-yellow-500" />
-                  Squad Size
+                  Group Size
                 </Label>
                 <div className="relative">
                   <div id="gb-step-size">
@@ -817,7 +819,7 @@ const GridBoard = () => {
                       inputMode="numeric"
                       value={formData.totalMembers}
                       onChange={handleNumberInputChange}
-                      placeholder="How many members in your squad? 👥"
+                      placeholder="How many people are in your group?? 👥"
                       className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus:ring-yellow-200 transition-all duration-300 ${touched.totalMembers && formErrors.totalMembers
                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                         : ''
