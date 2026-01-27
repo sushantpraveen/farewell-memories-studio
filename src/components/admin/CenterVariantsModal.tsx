@@ -22,6 +22,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   order,
   preloadedVariants = [],
 }) => {
+  const CACHE_KEY_PREFIX = 'variant-image-v2-';
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [variants, setVariants] = useState<GridVariant[]>([]);
@@ -53,7 +54,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         // Try to load cached images
         for (const variant of preloadedVariants) {
           try {
-            const cachedImage = localStorage.getItem(`variant-image-${variant.id}`);
+            const cachedImage = localStorage.getItem(`${CACHE_KEY_PREFIX}${variant.id}`);
             if (cachedImage && cachedImage.trim() !== '') {
               cachedImages[variant.id] = cachedImage;
               hasCache = true;
@@ -211,7 +212,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
 
     // Cache rendered images in localStorage for future use
     try {
-      localStorage.setItem(`variant-image-${variantId}`, dataUrl);
+      localStorage.setItem(`${CACHE_KEY_PREFIX}${variantId}`, dataUrl);
     } catch (e) {
       console.warn('Failed to cache variant image in localStorage:', e);
     }
