@@ -12,6 +12,38 @@ interface VariantRendererProps {
   templateKey?: string; // e.g., '45' (future: support others via registry)
 }
 
+function cloudinarySafeUrl(url?: string): string | undefined {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;
+
+  const marker = url.includes('/image/upload/')
+    ? '/image/upload/'
+    : url.includes('/upload/')
+      ? '/upload/'
+      : null;
+  if (!marker) return url;
+
+  const markerStart = url.indexOf(marker);
+  const afterMarker = markerStart + marker.length;
+  const nextSlash = url.indexOf('/', afterMarker);
+  const firstSegmentAfterMarker = url.slice(afterMarker, nextSlash === -1 ? url.length : nextSlash);
+
+  // Already transformed (any of these in the first segment after /upload/)
+  if (/(^|,)(f_|q_|fl_)/.test(firstSegmentAfterMarker)) return url;
+
+  return url.slice(0, afterMarker) + 'f_auto,q_auto/' + url.slice(afterMarker);
+}
+
+function cloudinarySecondAttempt(url?: string): string | undefined {
+  if (!url) return url;
+  const qIndex = url.indexOf('?');
+  const base = qIndex >= 0 ? url.slice(0, qIndex) : url;
+  const query = qIndex >= 0 ? url.slice(qIndex) : '';
+
+  if (!/\.(heic|heif)$/i.test(base)) return url;
+  return base.replace(/\.(heic|heif)$/i, '.jpg') + query;
+}
+
 // -------- PNG DPI embedding (pHYs chunk @ 300 DPI) --------
 function embedPngDpi300(dataUrl: string): string {
   try {
@@ -142,6 +174,12 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
 
   useEffect(() => {
     const generateVariantImage = async () => {
+      let effectiveKey = templateKey;
+      // These are used only in debug logs inside enumerator blocks.
+      // (Some of those logs reference `c`/`r` without defining them locally.)
+      let c = 0;
+      let r = 0;
+
       try {
         console.log('[VariantRenderer] Rendering variant:', variant.id, 'with center member:', variant.centerMember.name);
         console.log('[VariantRenderer] Center member photo:', {
@@ -159,7 +197,6 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const DPI = 300;
         // Derive effective template key from the order to match layouts.ts
         const count = order.members.length;
-        let effectiveKey = templateKey;
         if (order.gridTemplate === 'square') {
           if (count === 12) effectiveKey = '12';
           else if (count === 13) effectiveKey = '13';
@@ -215,10 +252,21 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const drawCover = async (src: string, c: number, r: number, cspan = 1, rspan = 1) => {
           const { x, y, w, h } = rect(c, r, cspan, rspan);
           return new Promise<void>((resolve) => {
+            const safeSrc = cloudinarySafeUrl(src) ?? src;
+            let didSecondAttempt = false;
+
+            if (src && safeSrc && safeSrc !== src) {
+              console.debug('[VariantRenderer] image RAW/SAFE', {
+                at: { c, r },
+                raw: src.startsWith('data:') ? 'data:...' : src,
+                safe: safeSrc.startsWith('data:') ? 'data:...' : safeSrc,
+              });
+            }
+
             const img = new Image();
             
             // Handle data URLs differently - they don't need CORS
-            if (src.startsWith('data:')) {
+            if (safeSrc.startsWith('data:')) {
               img.crossOrigin = undefined;
             } else {
               img.crossOrigin = 'anonymous';
@@ -275,12 +323,29 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
               cleanup();
               if (resolved) return;
               
+              // If HEIC/HEIF still fails, try swapping extension to .jpg (still through Cloudinary).
+              if (!didSecondAttempt) {
+                const second = cloudinarySafeUrl(cloudinarySecondAttempt(src));
+                if (second && second !== safeSrc && /\.(heic|heif)(\?|$)/i.test(src)) {
+                  didSecondAttempt = true;
+                  console.debug('[VariantRenderer] image onError: second attempt (.jpg)', {
+                    at: { c, r },
+                    raw: src.startsWith('data:') ? 'data:...' : src,
+                    safe: safeSrc.startsWith('data:') ? 'data:...' : safeSrc,
+                    second,
+                    error,
+                  });
+                  img.src = second;
+                  return;
+                }
+              }
+
               // Instead of rejecting, draw a placeholder and continue
-              const srcPreview = src.length > 100 ? src.substring(0, 100) + '...' : src;
+              const srcPreview = safeSrc.length > 100 ? safeSrc.substring(0, 100) + '...' : safeSrc;
               console.warn(`[VariantRenderer] Failed to load image at (${c}, ${r}):`, {
                 srcPreview,
-                isDataUrl: src.startsWith('data:'),
-                srcLength: src.length,
+                isDataUrl: safeSrc.startsWith('data:'),
+                srcLength: safeSrc.length,
                 error
               });
               drawPlaceholder();
@@ -302,24 +367,24 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
             // Validate and start loading the image
             try {
               // Validate the source
-              if (!src || src.trim() === '') {
+              if (!safeSrc || safeSrc.trim() === '') {
                 throw new Error('Empty image source');
               }
               
               // For data URLs, validate the format
-              if (src.startsWith('data:')) {
-                if (!src.includes(',')) {
+              if (safeSrc.startsWith('data:')) {
+                if (!safeSrc.includes(',')) {
                   throw new Error('Invalid data URL format');
                 }
               }
               
-              img.src = src;
+              img.src = safeSrc;
             } catch (srcError) {
               cleanup();
               if (resolved) return;
               console.warn(`[VariantRenderer] Invalid image source at (${c}, ${r}):`, {
                 error: srcError,
-                srcPreview: src.substring(0, 100)
+                srcPreview: safeSrc.substring(0, 100)
               });
               drawPlaceholder();
               resolved = true;

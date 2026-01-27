@@ -8,6 +8,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { GridVariant } from '@/utils/gridVariantGenerator';
 import { toast } from 'sonner';
 
+const PLACEHOLDER_IMAGE_URL =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+
+function isHeicLikeUrl(url?: string) {
+  if (!url) return false;
+  const qIndex = url.indexOf('?');
+  const base = qIndex >= 0 ? url.slice(0, qIndex) : url;
+  return /\.(heic|heif)$/i.test(base);
+}
+
+function cloudinarySafeUrl(url?: string): string | undefined {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;
+
+  const marker = url.includes('/image/upload/')
+    ? '/image/upload/'
+    : url.includes('/upload/')
+      ? '/upload/'
+      : null;
+  if (!marker) return url;
+
+  const markerStart = url.indexOf(marker);
+  const afterMarker = markerStart + marker.length;
+  const nextSlash = url.indexOf('/', afterMarker);
+  const firstSegmentAfterMarker = url.slice(afterMarker, nextSlash === -1 ? url.length : nextSlash);
+
+  // Already transformed (any of these in the first segment after /upload/)
+  if (/(^|,)(f_|q_|fl_)/.test(firstSegmentAfterMarker)) return url;
+
+  return url.slice(0, afterMarker) + 'f_auto,q_auto/' + url.slice(afterMarker);
+}
+
+function cloudinarySecondAttempt(url?: string): string | undefined {
+  if (!url) return url;
+  const qIndex = url.indexOf('?');
+  const base = qIndex >= 0 ? url.slice(0, qIndex) : url;
+  const query = qIndex >= 0 ? url.slice(qIndex) : '';
+
+  if (!/\.(heic|heif)$/i.test(base)) return url;
+  return base.replace(/\.(heic|heif)$/i, '.jpg') + query;
+}
+
 interface CenterVariantsGalleryProps {
   variants: GridVariant[];
   renderedImages: Record<string, string>;
@@ -67,6 +109,49 @@ export const CenterVariantsGallery: React.FC<CenterVariantsGalleryProps> = ({
     onPreview(variant);
   };
 
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const rawUrl = img.dataset.rawSrc;
+    const stage = img.dataset.fallbackStage;
+
+    // Prevent infinite error loops.
+    if (stage === 'final') return;
+
+    // First error: if original was HEIC/HEIF, try swapping extension to .jpg (still through Cloudinary).
+    if (!stage && rawUrl && isHeicLikeUrl(rawUrl)) {
+      const secondAttempt = cloudinarySafeUrl(cloudinarySecondAttempt(rawUrl));
+      img.dataset.fallbackStage = 'second';
+
+      if (secondAttempt && secondAttempt !== img.src) {
+        console.debug('[CenterVariantsGallery] img onError: second attempt', {
+          raw: rawUrl,
+          safe: cloudinarySafeUrl(rawUrl),
+          secondAttempt,
+        });
+        img.src = secondAttempt;
+        return;
+      }
+    }
+
+    // Second error (or non-HEIC): fall back to a placeholder.
+    img.dataset.fallbackStage = 'final';
+    console.debug('[CenterVariantsGallery] img onError: placeholder fallback', {
+      raw: rawUrl,
+      currentSrc: img.src,
+    });
+    img.src = PLACEHOLDER_IMAGE_URL;
+  };
+
+  const previewRawUrl = previewVariant ? renderedImages[previewVariant.id] : undefined;
+  const previewSafeUrl = cloudinarySafeUrl(previewRawUrl);
+  if (previewVariant && previewRawUrl && previewSafeUrl && previewSafeUrl !== previewRawUrl) {
+    console.debug('[CenterVariantsGallery] preview RAW/SAFE', {
+      id: previewVariant.id,
+      raw: previewRawUrl,
+      safe: previewSafeUrl,
+    });
+  }
+
   return (
     <div className="space-y-4">
       {/* Header Actions */}
@@ -110,7 +195,16 @@ export const CenterVariantsGallery: React.FC<CenterVariantsGalleryProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {variants.map((variant) => {
           const imageData = renderedImages[variant.id];
+          
           const isSelected = selectedVariants.includes(variant.id);
+          const safeImageData = cloudinarySafeUrl(imageData);
+          if (imageData && safeImageData && safeImageData !== imageData) {
+            console.debug('[CenterVariantsGallery] gallery RAW/SAFE', {
+              id: variant.id,
+              raw: imageData,
+              safe: safeImageData,
+            });
+          }
           
           return (
             <Card key={variant.id} className={`relative overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : ''}`}>
@@ -118,7 +212,9 @@ export const CenterVariantsGallery: React.FC<CenterVariantsGalleryProps> = ({
                 <div className="aspect-square relative">
                   {imageData ? (
                     <img
-                      src={imageData}
+                      src={safeImageData}
+                      data-raw-src={imageData}
+                      onError={handleImgError}
                       alt={`Variant with ${variant.centerMember.name} in center`}
                       className="w-full h-full object-cover rounded"
                     />
@@ -181,7 +277,9 @@ export const CenterVariantsGallery: React.FC<CenterVariantsGalleryProps> = ({
           {previewVariant && renderedImages[previewVariant.id] && (
             <div className="flex justify-center">
               <img
-                src={renderedImages[previewVariant.id]}
+                src={previewSafeUrl}
+                data-raw-src={previewRawUrl}
+                onError={handleImgError}
                 alt={`Preview of variant with ${previewVariant.centerMember.name} in center`}
                 className="max-w-full max-h-96 object-contain rounded"
               />
