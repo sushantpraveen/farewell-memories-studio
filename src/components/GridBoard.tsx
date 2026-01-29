@@ -735,10 +735,11 @@ const GridBoard = () => {
                       placeholder="e.g.,CSE Graduation Team 2024 🎓"
                       value={formData.name}
                       onChange={(e) => handleFieldChange('name', e.target.value)}
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus:ring-purple-200 transition-all duration-300 ${touched.name && formErrors.name
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                        }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
+                        touched.name && formErrors.name
+                          ? 'border-red-500 focus:border-red-500'
+                          : ''
+                      }`}
                       required
                     />
                   </div>
@@ -777,10 +778,11 @@ const GridBoard = () => {
                       placeholder="Year of Graduation (e.g., 2024)? 🎉"
                       value={formData.yearOfPassing}
                       onChange={(e) => handleFieldChange('yearOfPassing', e.target.value)}
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus:ring-pink-200 transition-all duration-300 ${touched.yearOfPassing && formErrors.yearOfPassing
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                        }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
+                        touched.yearOfPassing && formErrors.yearOfPassing
+                          ? 'border-red-500 focus:border-red-500'
+                          : ''
+                      }`}
                       required
                     />
                   </div>
@@ -820,10 +822,11 @@ const GridBoard = () => {
                       value={formData.totalMembers}
                       onChange={handleNumberInputChange}
                       placeholder="How many people are in your group?? 👥"
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus:ring-yellow-200 transition-all duration-300 ${touched.totalMembers && formErrors.totalMembers
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : ''
-                        }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
+                        touched.totalMembers && formErrors.totalMembers
+                          ? 'border-red-500 focus:border-red-500'
+                          : ''
+                      }`}
                       required
                     />
                   </div>

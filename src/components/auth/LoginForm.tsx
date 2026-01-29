@@ -61,10 +61,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Login</CardTitle>
-        <CardDescription>Sign in to your account</CardDescription>
+    <Card className="w-full max-w-md border-none shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl">
+      <CardHeader className="text-center pb-4">
+        <CardTitle className="text-2xl font-heading bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+          Login
+        </CardTitle>
+        <CardDescription className="text-slate-500">Sign in to your account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,6 +78,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
               required
             />
           </div>
@@ -87,10 +90,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
               placeholder="Enter your password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-semibold"
+            disabled={isLoading}
+          >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>

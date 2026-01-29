@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { createAmbassador, loginAmbassadorByPhone } from '@/lib/ambassadorApi';
 import { toast } from 'sonner';
-import PhoneOtpBlock from '@/components/otp/PhoneOtpBlock';
+import PhoneOtpWidgetIndia from '@/components/otp/PhoneOtpWidgetIndia';
 import {
   Clock, User, School, MapPin, Mail,
   Smartphone, ShieldCheck, ArrowLeft, Shirt, Heart, Star, Camera
@@ -251,7 +251,7 @@ export default function AmbassadorSignup() {
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Full Name"
-                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
                     required
                   />
                 </div>
@@ -264,7 +264,7 @@ export default function AmbassadorSignup() {
                       value={formData.college}
                       onChange={handleChange}
                       placeholder="College"
-                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
                       required
                     />
                   </div>
@@ -275,7 +275,7 @@ export default function AmbassadorSignup() {
                       value={formData.city}
                       onChange={handleChange}
                       placeholder="City"
-                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                      className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
                       required
                     />
                   </div>
@@ -289,7 +289,7 @@ export default function AmbassadorSignup() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="Email Address"
-                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus:ring-purple-400/20 rounded-2xl"
+                    className="pl-12 h-12 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
                     required
                   />
                 </div>
@@ -297,21 +297,20 @@ export default function AmbassadorSignup() {
                 <div className="space-y-3">
                   <div className="relative group">
                     <Smartphone className="absolute left-4 top-3.5 z-10 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
-                    <PhoneOtpBlock
-                      value={formData.whatsapp}
-                      onChange={(val) => {
-                        setFormData(prev => ({ ...prev, whatsapp: val }));
-                        setVerifiedPhone(null);
+                    <PhoneOtpWidgetIndia
+                      purpose="ambassadorSignup"
+                      onVerified={(phone10) => {
+                        const n = '+91' + phone10;
+                        setVerifiedPhone(n);
+                        setFormData(prev => ({ ...prev, whatsapp: n }));
                       }}
-                      onVerified={(normalized) => setVerifiedPhone(normalized)}
-                      source="ambassadorSignup"
                       hideLabel={true}
                     />
                   </div>
                   {!verifiedPhone && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl">
                       <ShieldCheck className="h-4 w-4 text-purple-500" />
-                      <p className="text-[11px] text-purple-600 font-medium">Verify WhatsApp via OTP to unlock registration</p>
+                      <p className="text-[11px] text-purple-600 font-medium">Verify your WhatsApp number with an OTP to complete registration</p>
                     </div>
                   )}
                 </div>
@@ -331,14 +330,9 @@ export default function AmbassadorSignup() {
                 <div className="space-y-3">
                   <div className="relative group">
                     <Smartphone className="absolute left-4 top-3.5 z-10 h-5 w-5 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
-                    <PhoneOtpBlock
-                      value={loginPhone}
-                      onChange={(val) => {
-                        setLoginPhone(val);
-                        setLoginVerifiedPhone(null);
-                      }}
-                      onVerified={(normalized) => setLoginVerifiedPhone(normalized)}
-                      source="ambassadorLogin"
+                    <PhoneOtpWidgetIndia
+                      purpose="ambassadorLogin"
+                      onVerified={(phone10) => setLoginVerifiedPhone('+91' + phone10)}
                       hideLabel={true}
                     />
                   </div>

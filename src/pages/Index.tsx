@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Users, Camera, Shirt, Heart, Sparkles, Star, ArrowRight, Check, Zap, Shield, Package, Truck, Settings, Mail, Clock, Globe, ChevronDown, Phone, X, MessageCircle, Lightbulb, Instagram, Youtube } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import UserWalkthrough, { Step } from "@/components/UserWalkthrough";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from '@/lib/api';
@@ -252,52 +251,8 @@ const Index = () => {
   const buttonText = hasGroup ? 'Go to Dashboard' : 'Create Group';
   const heroButtonText = hasGroup ? 'Go to Dashboard' : 'Start Creating';
 
-  const tourSteps: Step[] = [
-    {
-      targetId: "tour-hero-cta",
-      title: "Start Creating",
-      description: "Click here to start designing your custom farewell T-shirt."
-    },
-    {
-      targetId: "tour-ambassador",
-      title: "Campus Ambassador",
-      description: "Passionate about your class? Apply to be a Campus Ambassador and earn rewards."
-    },
-    {
-      targetId: "tour-create-group",
-      title: "Create Group",
-      description: "Ready to go? Create your group and start inviting friends instantly."
-    },
-    {
-      targetId: "tour-explore-designs",
-      title: "Explore Designs",
-      description: "Browse our collection of 420+ templates and find the perfect style for your batch."
-    }
-  ];
-
-  const [shouldShowTour, setShouldShowTour] = useState(false);
-
-  useEffect(() => {
-    // Check for the flag set during registration
-    const showTour = sessionStorage.getItem('showWelcomeTour');
-    if (showTour === 'true') {
-      setShouldShowTour(true);
-      // Clear immediately so it doesn't show on refresh
-      sessionStorage.removeItem('showWelcomeTour');
-    }
-  }, []);
-
   return (
     <>
-      {shouldShowTour && (
-        <UserWalkthrough
-          steps={tourSteps}
-          storageKey={`home_guide_${user ? user.id : 'anon'}_v1`}
-          forceStart={true}
-          onFinish={() => setShouldShowTour(false)}
-          onCancel={() => setShouldShowTour(false)}
-        />
-      )}
       <SEOHead
         title="Signature Day Tshirt - Create Custom Farewell T-Shirts with Photo Collages"
         description="Design memorable farewell T-shirts with your classmates. Upload photos, vote on layouts, and create the perfect photo collage T-shirt for your graduation or farewell day."
