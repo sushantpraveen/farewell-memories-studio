@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { CollageProvider } from "./context/CollageContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import RouteTracker from "./RouteTracker";
 import StructuredData from "./components/seo/StructuredData";
 import PerformanceOptimizer from "./components/seo/PerformanceOptimizer";
 import Index from "./pages/Index";
@@ -47,6 +48,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <RouteTracker />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
