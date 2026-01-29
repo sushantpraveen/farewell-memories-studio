@@ -134,9 +134,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       const success = await register(formData.name, formData.email, formData.password);
       if (success) {
         toast.success('Registration successful!');
-        // Set flag to show welcome tour on next page load
+        // Keep flag (no longer used on home), but send user directly to create-group/GridBoard.
         sessionStorage.setItem('showWelcomeTour', 'true');
-        navigate('/');
+        navigate('/create-group');
       } else {
         toast.error('Registration failed');
       }
@@ -148,10 +148,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Register</CardTitle>
-        <CardDescription>Create a new account</CardDescription>
+    <Card className="w-full max-w-md border-none shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl">
+      <CardHeader className="text-center pb-4">
+        <CardTitle className="text-2xl font-heading bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">
+          Register
+        </CardTitle>
+        <CardDescription className="text-slate-500">Create a new account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,7 +165,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               placeholder="Enter your name"
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
-              className={nameError ? 'border-red-500' : ''}
+              className={`h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl ${
+                nameError ? 'border-red-500' : ''
+              }`}
               required
             />
             {nameError && (
@@ -178,6 +182,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl"
               required
             />
           </div>
@@ -190,7 +195,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 placeholder="Create a password"
                 value={formData.password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
-                className={passwordError ? 'border-red-500 pr-10' : 'pr-10'}
+                className={`h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl pr-10 ${
+                  passwordError ? 'border-red-500' : ''
+                }`}
                 required
               />
               <button
@@ -219,7 +226,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-                className={confirmPasswordError ? 'border-red-500 pr-10' : 'pr-10'}
+                className={`h-11 bg-slate-50/50 border-slate-200 focus:border-purple-400 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-2xl pr-10 ${
+                  confirmPasswordError ? 'border-red-500' : ''
+                }`}
                 required
               />
               <button
@@ -239,7 +248,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               <p className="text-sm text-red-500">{confirmPasswordError}</p>
             )}
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] active:scale-100 transition-all font-semibold"
+            disabled={isLoading}
+          >
             {isLoading ? 'Creating account...' : 'Create Account'}
           </Button>
         </form>

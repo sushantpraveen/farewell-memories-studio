@@ -7,7 +7,7 @@ import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle } fr
 import { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import PhoneOtpBlock from "@/components/otp/PhoneOtpBlock";
+import PhoneOtpWidgetIndia from "@/components/otp/PhoneOtpWidgetIndia";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 
 // Subtle animated background to match GridBoard/Dashboard look
@@ -42,8 +42,6 @@ const JoinGroup = () => {
     submitPhotoUrl,
     isUploadingPhoto,
     isProcessingPayment,
-    phone,
-    setPhone,
     isPhoneVerified,
     onPhoneVerified,
     joinPricing
@@ -165,10 +163,9 @@ const JoinGroup = () => {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                    <PhoneOtpBlock
-                      value={phone}
-                      onChange={setPhone}
-                      onVerified={onPhoneVerified}
+                    <PhoneOtpWidgetIndia
+                      purpose="joinGroup"
+                      onVerified={(phone10) => onPhoneVerified('+91' + phone10)}
                       className="bg-slate-50/70"
                       disabled={isSubmitting || isProcessingPayment}
                     />
