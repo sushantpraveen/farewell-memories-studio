@@ -11,9 +11,9 @@ const AdminOrdersContent: React.FC = () => {
   const { activeTab } = useAdminOrders();
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b bg-background p-6">
+      <div className="shrink-0 border-b bg-background p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Order Management</h1>
@@ -25,13 +25,11 @@ const AdminOrdersContent: React.FC = () => {
       {/* Tabs */}
       <OrderTabs />
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
+      {/* Main Content - scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {activeTab ? (
-          // Show order detail when tab is active
           <OrderDetailPanel orderId={activeTab} />
         ) : (
-          // Show orders list when no tab is active
           <div className="p-6 space-y-6">
             <OrderFilters />
             <OrdersTable />

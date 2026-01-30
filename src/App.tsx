@@ -31,6 +31,9 @@ import AmbassadorDashboard from "./pages/AmbassadorDashboard";
 import AmbassadorAdmin from "./pages/AmbassadorAdmin";
 import AmbassadorDetails from "./pages/AmbassadorDetails";
 import ReferralRedirect from "./pages/ReferralRedirect";
+import ManageGroupsAmbassadorLed from "./pages/ManageGroupsAmbassadorLed";
+import ManageGroupsDirect from "./pages/ManageGroupsDirect";
+import ManageGroupsGroupMembers from "./pages/ManageGroupsGroupMembers";
 import HowItWorks from "./pages/HowItWorks";
 import TermsOfService from "./pages/TermsOfService";
 import HelpCenter from "./pages/HelpCenter";
@@ -139,6 +142,30 @@ const App = () => (
                 element={
                   <ProtectedRoute requiresAdmin>
                     <AmbassadorDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/manage-groups/ambassador-led"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <ManageGroupsAmbassadorLed />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/manage-groups/direct"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <ManageGroupsDirect />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/manage-groups/group/:groupId"
+                element={
+                  <ProtectedRoute requiresAdmin>
+                    <ManageGroupsGroupMembers />
                   </ProtectedRoute>
                 }
               />
