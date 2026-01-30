@@ -8,6 +8,7 @@ import { RevenueChart } from '@/components/admin/RevenueChart';
 import { CollegeStatsChart } from '@/components/admin/CollegeStatsChart';
 import { adminApi } from '@/services/adminApi';
 import { AdminDashboardData } from '@/types/dashboard';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import {
   ShoppingCart,
   DollarSign,
@@ -63,41 +64,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 shrink-0 border rounded-lg p-4 bg-card space-y-3">
-          <h2 className="text-lg font-semibold">Admin Menu</h2>
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={() => navigate('/admin/order')}
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Manage Orders
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={() => navigate('/admin/ambassadors')}
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Manage Ambassadors
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={() => navigate('/admin/colleges')}
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            College Insights
-          </Button>
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="flex h-screen overflow-hidden bg-white">
+      <AdminSidebar />
+      <main className="flex-1 min-h-0 overflow-y-auto bg-white pt-0 px-6 md:px-8 pb-6 md:pb-8 space-y-6">
+          {/* Header - sticky, flush at top */}
+          <div className="sticky top-0 z-10 -mx-6 md:-mx-8 px-6 md:px-8 pt-6 md:pt-8 pb-4 bg-white border-b border-border/50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
               <p className="text-muted-foreground mt-1">
@@ -235,8 +206,7 @@ export default function AdminDashboard() {
 
           {/* Recent Orders */}
           <RecentOrdersWidget orders={data?.recentOrders || []} loading={loading} />
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

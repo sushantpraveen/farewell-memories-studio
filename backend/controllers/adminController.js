@@ -2,6 +2,7 @@ import Group from '../models/groupModel.js';
 import Order from '../models/orderModel.js';
 import AmbassadorReward from '../models/ambassadorRewardModel.js';
 import Ambassador from '../models/ambassadorModel.js';
+import User from '../models/userModel.js';
 import mongoose from 'mongoose';
 import { sendMail } from '../utils/email.js';
 
@@ -440,5 +441,231 @@ export const markPayoutPaid = async (req, res) => {
     return res.status(500).json({ message: 'Failed to mark payout as paid' });
   } finally {
     session.endSession();
+  }
+};
+
+// --- Manage Groups (admin only) ---
+
+const getOrigin = () => process.env.FRONTEND_ORIGIN || process.env.APP_BASE_URL || 'http://localhost:8080';
+
+/**
+ * List ambassadors who have at least one group (for ambassador-led flow).
+ * @route   GET /api/admin/manage-groups/ambassadors
+ * @access  Admin
+ */
+export const listAmbassadorsWithGroups = async (req, res) => {
+  try {
+    const agg = await Group.aggregate([
+      { $match: { ambassadorId: { $ne: null, $exists: true } } },
+      {
+        $group: {
+          _id: '$ambassadorId',
+          groupsCount: { $sum: 1 },
+          totalMembersJoined: { $sum: { $size: { $ifNull: ['$members', []] } } }
+        }
+      }
+    ]);
+
+    if (agg.length === 0) {
+      return res.json({ items: [], total: 0 });
+    }
+
+    const ambassadorIds = agg.map((a) => a._id);
+    const ambassadors = await Ambassador.find({ _id: { $in: ambassadorIds } })
+      .select('name referralCode')
+      .lean();
+
+    const byId = new Map(ambassadors.map((a) => [a._id.toString(), a]));
+    const items = agg.map((a) => {
+      const amb = byId.get(a._id.toString());
+      return {
+        id: a._id.toString(),
+        ambassadorName: amb?.name ?? '—',
+        referralCode: amb?.referralCode ?? a._id.toString(),
+        groupsCount: a.groupsCount,
+        totalMembersJoined: a.totalMembersJoined ?? 0
+      };
+    });
+
+    res.json({ items, total: items.length });
+  } catch (err) {
+    console.error('listAmbassadorsWithGroups error:', err);
+    res.status(500).json({ message: 'Failed to list ambassadors with groups' });
+  }
+};
+
+/**
+ * List groups for an ambassador (admin; includes creator + shareLink).
+ * @route   GET /api/admin/manage-groups/ambassadors/:ambassadorId/groups
+ * @access  Admin
+ */
+export const listAmbassadorGroupsAdmin = async (req, res) => {
+  try {
+    const { ambassadorId } = req.params;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      Group.find({ ambassadorId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Group.countDocuments({ ambassadorId })
+    ]);
+
+    const userIds = [...new Set(items.map((g) => g.createdByUserId).filter(Boolean))];
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('name email')
+      .lean();
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    const origin = getOrigin();
+    const mapped = items.map((g) => {
+      const creator = g.createdByUserId ? userMap.get(g.createdByUserId.toString()) : null;
+      return {
+        id: g._id.toString(),
+        teamName: g.name,
+        groupCode: g._id.toString(),
+        groupLink: `${origin}/join/${g._id}`,
+        creatorName: creator?.name ?? g.name ?? '—',
+        creatorEmail: creator?.email ?? '—',
+        creatorPhone: g.phone ?? '—',
+        membersJoined: Array.isArray(g.members) ? g.members.length : 0,
+        createdAt: g.createdAt
+      };
+    });
+
+    res.json({
+      items: mapped,
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    console.error('listAmbassadorGroupsAdmin error:', err);
+    res.status(500).json({ message: 'Failed to list ambassador groups' });
+  }
+};
+
+/**
+ * List direct groups (no ambassador).
+ * @route   GET /api/admin/manage-groups/direct
+ * @access  Admin
+ */
+export const listDirectGroups = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      Group.find({ $or: [{ ambassadorId: null }, { ambassadorId: { $exists: false } }] })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Group.countDocuments({ $or: [{ ambassadorId: null }, { ambassadorId: { $exists: false } }] })
+    ]);
+
+    const userIds = [...new Set(items.map((g) => g.createdByUserId).filter(Boolean))];
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('name email')
+      .lean();
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    const origin = getOrigin();
+    const mapped = items.map((g) => {
+      const creator = g.createdByUserId ? userMap.get(g.createdByUserId.toString()) : null;
+      return {
+        id: g._id.toString(),
+        teamName: g.name,
+        groupCode: g._id.toString(),
+        groupLink: `${origin}/join/${g._id}`,
+        creatorName: creator?.name ?? g.name ?? '—',
+        creatorEmail: creator?.email ?? '—',
+        creatorPhone: g.phone ?? '—',
+        membersJoined: Array.isArray(g.members) ? g.members.length : 0,
+        createdAt: g.createdAt
+      };
+    });
+
+    res.json({
+      items: mapped,
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    console.error('listDirectGroups error:', err);
+    res.status(500).json({ message: 'Failed to list direct groups' });
+  }
+};
+
+/**
+ * Get group details + normalized participants (creator + members).
+ * @route   GET /api/admin/manage-groups/group/:groupId
+ * @access  Admin
+ */
+export const getGroupWithParticipants = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    let creatorUser = null;
+    if (group.createdByUserId) {
+      creatorUser = await User.findById(group.createdByUserId).select('name email').lean();
+    }
+
+    const participants = [];
+    // Creator row
+    participants.push({
+      role: 'CREATOR',
+      name: creatorUser?.name ?? group.name ?? '—',
+      email: creatorUser?.email ?? '—',
+      phone: group.phone ?? '—',
+      rollNumber: '—',
+      joinedAt: group.createdAt
+    });
+    // Members
+    const members = group.members || [];
+    for (const m of members) {
+      participants.push({
+        role: 'MEMBER',
+        name: m.name ?? '—',
+        email: m.email ?? '—',
+        phone: m.phone ?? '—',
+        rollNumber: m.memberRollNumber ?? '—',
+        joinedAt: m.joinedAt ?? group.createdAt
+      });
+    }
+
+    const ambassador = group.ambassadorId
+      ? await Ambassador.findById(group.ambassadorId).select('name referralCode').lean()
+      : null;
+    const origin = getOrigin();
+
+    res.json({
+      group: {
+        id: group._id.toString(),
+        teamName: group.name,
+        groupCode: group._id.toString(),
+        groupLink: `${origin}/join/${group._id}`,
+        createdAt: group.createdAt,
+        ambassador: ambassador
+          ? { name: ambassador.name, referralCode: ambassador.referralCode }
+          : null
+      },
+      participants
+    });
+  } catch (err) {
+    console.error('getGroupWithParticipants error:', err);
+    res.status(500).json({ message: 'Failed to load group participants' });
   }
 };
