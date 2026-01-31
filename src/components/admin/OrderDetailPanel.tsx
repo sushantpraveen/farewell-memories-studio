@@ -118,6 +118,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
   // Ref to capture the rendered canvas DOM
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  // Start server-side render as soon as order is viewed, so images are ready when user clicks "Show Variants"
+  const ensureRenderStartedRef = useRef<Set<string>>(new Set());
   // Ref to the inner design wrapper (only the elements area, excluding borders/toolbars)
   const designWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -343,7 +345,14 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
       setOrder(existing);
       setDescription(existing.description || '');
       setLoading(false);
-      
+      // Start render job immediately when order is loaded (so "Show Variants" has images ready)
+      if (!ensureRenderStartedRef.current.has(existing.id)) {
+        const { canGenerate } = canGenerateVariants(existing);
+        if (canGenerate) {
+          ensureRenderStartedRef.current.add(existing.id);
+          ordersApi.ensureRender(existing.id).catch(() => {});
+        }
+      }
       // Preload variants when order is loaded
       preloadVariants(existing);
     } else {
@@ -353,7 +362,14 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
         if (updated) {
           setOrder(updated);
           setDescription(updated.description || '');
-          
+          // Start render job immediately when order is loaded
+          if (!ensureRenderStartedRef.current.has(updated.id)) {
+            const { canGenerate } = canGenerateVariants(updated);
+            if (canGenerate) {
+              ensureRenderStartedRef.current.add(updated.id);
+              ordersApi.ensureRender(updated.id).catch(() => {});
+            }
+          }
           // Preload variants when order is loaded
           preloadVariants(updated);
         }
@@ -361,7 +377,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
       });
     }
   }, [orderId, orders]);
-  
+
   // Preload variants in the background
   const preloadVariants = async (orderData: Order) => {
     if (!orderData || isPreloading) return;
@@ -593,6 +609,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                     <TableHead>Photo</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Roll No</TableHead>
+                    <TableHead>Group</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Mobile</TableHead>
                     <TableHead>Joined</TableHead>
@@ -607,24 +624,29 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                         // Navigate to editor
                         setActiveTab('editor');
                         setActiveSection('text');
-                        // Create name and roll elements
+                        // Create name, roll, and group name elements (order: name, roll, group name; centered on canvas)
+                        const cw = canvasSize.width;
+                        const nameW = 320;
+                        const rollW = 280;
+                        const groupW = 320;
+                        const cen = (w: number) => Math.round((cw - w) / 2);
                         const baseZ = canvasElements.length;
                         const nameEl: CanvasElement = {
                           id: `el-name-${member.id}-${Date.now()}`,
                           type: 'text',
-                          x: 500,
-                          y: 250,
-                          width: 320,
-                          height: 60,
+                          x: cen(nameW),
+                          y: 200,
+                          width: nameW,
+                          height: 68,
                           rotation: 0,
                           opacity: 1,
                           content: member.name || 'Name',
                           style: {
                             fontFamily: 'Arial',
-                            fontSize: 36,
+                            fontSize: 52,
                             fontWeight: 'bold',
                             color: '#111111',
-                            textAlign: 'left',
+                            textAlign: 'center',
                             textTransform: 'capitalize',
                           },
                           zIndex: baseZ,
@@ -632,24 +654,43 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                         const rollEl: CanvasElement = {
                           id: `el-roll-${member.id}-${Date.now()}`,
                           type: 'text',
-                          x: 500,
-                          y: 300,
-                          width: 280,
-                          height: 48,
+                          x: cen(rollW),
+                          y: 250,
+                          width: rollW,
+                          height: 52,
                           rotation: 0,
                           opacity: 1,
                           content: member.memberRollNumber || 'Roll No',
                           style: {
                             fontFamily: 'Arial',
-                            fontSize: 24,
+                            fontSize: 28,
                             fontWeight: '600',
                             color: '#008000',
-                            textAlign: 'left',
+                            textAlign: 'center',
                           },
                           zIndex: baseZ + 1,
                         };
-                        setCanvasElements(p => [...p, nameEl, rollEl]);
-                        setSelectedElements([nameEl.id, rollEl.id]);
+                        const groupEl: CanvasElement = {
+                          id: `el-group-${member.id}-${Date.now()}`,
+                          type: 'text',
+                          x: cen(groupW),
+                          y: 300,
+                          width: groupW,
+                          height: 52,
+                          rotation: 0,
+                          opacity: 1,
+                          content: order.groupName || 'Group Name',
+                          style: {
+                            fontFamily: 'Arial',
+                            fontSize: 26,
+                            fontWeight: '600',
+                            color: '#555555',
+                            textAlign: 'center',
+                          },
+                          zIndex: baseZ + 2,
+                        };
+                        setCanvasElements(p => [...p, nameEl, rollEl, groupEl]);
+                        setSelectedElements([nameEl.id, rollEl.id, groupEl.id]);
                         setTextContent(member.name || '');
                       }}
                     >
@@ -662,6 +703,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       </TableCell>
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.memberRollNumber}</TableCell>
+                      <TableCell className="text-muted-foreground">{order.groupName ?? '—'}</TableCell>
                       <TableCell className="uppercase">{member.size ? member.size : '-'}</TableCell>
                       <TableCell>
                         {member.phone ? (
@@ -698,7 +740,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                             className="flex items-center space-x-2"
                           >
                             <Grid className="h-4 w-4" />
-                            <span>Generate Center Variants</span>
+                            <span>Show Variants</span>
                           </Button>
                         </div>
                       </TooltipTrigger>
@@ -1827,7 +1869,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
       </Tabs>
 
-      {/* Center Variants Modal */}
+      {/* Center Variants Modal: fetches server-side cached renders only; no client generation */}
       <CenterVariantsModal
         open={showVariantsModal}
         onOpenChange={setShowVariantsModal}
