@@ -19,6 +19,7 @@ import ambassadorRoutes from './routes/ambassadorRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import rewardRoutes from './routes/rewardRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import renderRoutes from './routes/renderRoutes.js';
 
 // Passport config
 import { configurePassport } from './config/passport.js';
@@ -44,7 +45,7 @@ app.use(cors({
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-render-token']
 }));
 
 // Allow preflight requests
@@ -133,6 +134,7 @@ app.use('/api/ambassadors', ambassadorRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/render', renderRoutes);
 // Shipping routes mounted at /api (more general, should come last)
 app.use('/api', shippingQuoteRoutes);
 

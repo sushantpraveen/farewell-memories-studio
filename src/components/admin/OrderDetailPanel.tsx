@@ -630,67 +630,76 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                         const rollW = 280;
                         const groupW = 320;
                         const cen = (w: number) => Math.round((cw - w) / 2);
-                        const baseZ = canvasElements.length;
-                        const nameEl: CanvasElement = {
-                          id: `el-name-${member.id}-${Date.now()}`,
-                          type: 'text',
-                          x: cen(nameW),
-                          y: 200,
-                          width: nameW,
-                          height: 68,
-                          rotation: 0,
-                          opacity: 1,
-                          content: member.name || 'Name',
-                          style: {
-                            fontFamily: 'Arial',
-                            fontSize: 52,
-                            fontWeight: 'bold',
-                            color: '#111111',
-                            textAlign: 'center',
-                            textTransform: 'capitalize',
-                          },
-                          zIndex: baseZ,
-                        };
-                        const rollEl: CanvasElement = {
-                          id: `el-roll-${member.id}-${Date.now()}`,
-                          type: 'text',
-                          x: cen(rollW),
-                          y: 250,
-                          width: rollW,
-                          height: 52,
-                          rotation: 0,
-                          opacity: 1,
-                          content: member.memberRollNumber || 'Roll No',
-                          style: {
-                            fontFamily: 'Arial',
-                            fontSize: 28,
-                            fontWeight: '600',
-                            color: '#008000',
-                            textAlign: 'center',
-                          },
-                          zIndex: baseZ + 1,
-                        };
-                        const groupEl: CanvasElement = {
-                          id: `el-group-${member.id}-${Date.now()}`,
-                          type: 'text',
-                          x: cen(groupW),
-                          y: 300,
-                          width: groupW,
-                          height: 52,
-                          rotation: 0,
-                          opacity: 1,
-                          content: order.groupName || 'Group Name',
-                          style: {
-                            fontFamily: 'Arial',
-                            fontSize: 26,
-                            fontWeight: '600',
-                            color: '#555555',
-                            textAlign: 'center',
-                          },
-                          zIndex: baseZ + 2,
-                        };
-                        setCanvasElements(p => [...p, nameEl, rollEl, groupEl]);
-                        setSelectedElements([nameEl.id, rollEl.id, groupEl.id]);
+                        const ts = Date.now();
+                        const nameId = `el-name-${member.id}-${ts}`;
+                        const rollId = `el-roll-${member.id}-${ts}`;
+                        const groupId = `el-group-${member.id}-${ts}`;
+                        const isMemberText = (el: CanvasElement) =>
+                          el.id.startsWith('el-name-') || el.id.startsWith('el-roll-') || el.id.startsWith('el-group-');
+                        setCanvasElements(p => {
+                          const rest = p.filter(el => !isMemberText(el));
+                          const baseZ = rest.length;
+                          const nameEl: CanvasElement = {
+                            id: nameId,
+                            type: 'text',
+                            x: cen(nameW),
+                            y: 180,
+                            width: nameW,
+                            height: 82,
+                            rotation: 0,
+                            opacity: 1,
+                            content: member.name || 'Name',
+                            style: {
+                              fontFamily: 'Arial',
+                              fontSize: 62,
+                              fontWeight: 'bold',
+                              color: '#111111',
+                              textAlign: 'center',
+                              textTransform: 'capitalize',
+                            },
+                            zIndex: baseZ,
+                          };
+                          const rollEl: CanvasElement = {
+                            id: rollId,
+                            type: 'text',
+                            x: cen(rollW),
+                            y: 272,
+                            width: rollW,
+                            height: 62,
+                            rotation: 0,
+                            opacity: 1,
+                            content: member.memberRollNumber || 'Roll No',
+                            style: {
+                              fontFamily: 'Arial',
+                              fontSize: 34,
+                              fontWeight: '600',
+                              color: '#008000',
+                              textAlign: 'center',
+                            },
+                            zIndex: baseZ + 1,
+                          };
+                          const groupEl: CanvasElement = {
+                            id: groupId,
+                            type: 'text',
+                            x: cen(groupW),
+                            y: 344,
+                            width: groupW,
+                            height: 62,
+                            rotation: 0,
+                            opacity: 1,
+                            content: order.groupName || 'Group Name',
+                            style: {
+                              fontFamily: 'Arial',
+                              fontSize: 32,
+                              fontWeight: '600',
+                              color: '#555555',
+                              textAlign: 'center',
+                            },
+                            zIndex: baseZ + 2,
+                          };
+                          return [...rest, nameEl, rollEl, groupEl];
+                        });
+                        setSelectedElements([nameId, rollId, groupId]);
                         setTextContent(member.name || '');
                       }}
                     >

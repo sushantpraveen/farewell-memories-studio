@@ -45,6 +45,7 @@ export interface AdminMember {
     shipping: Shipping;
     settings: OrderSettings;
     groupId?: string; // For ambassador referral tracking
+    groupName?: string; // Populated from Group.name
   }
   
   export interface OrderFilters {

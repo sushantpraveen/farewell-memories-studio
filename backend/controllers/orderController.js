@@ -118,15 +118,22 @@ export const getOrders = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const [data, total] = await Promise.all([
-      Order.find(query).sort(sort).skip(skip).limit(limitNum).lean({ virtuals: true }),
+      Order.find(query).sort(sort).skip(skip).limit(limitNum).populate('groupId', 'name').lean({ virtuals: true }),
       Order.countDocuments(query),
     ]);
 
-    // Map to client Order type
-    const orders = data.map((o) => ({
-      ...o,
-      id: o.clientOrderId || String(o._id),
-    }));
+    // Map to client Order type (include groupName from populated group)
+    const orders = data.map((o) => {
+      const g = o.groupId;
+      const groupName = g?.name ?? undefined;
+      const groupIdStr = g ? (typeof g === 'object' && g._id ? String(g._id) : String(g)) : undefined;
+      return {
+        ...o,
+        id: o.clientOrderId || String(o._id),
+        groupId: groupIdStr,
+        groupName,
+      };
+    });
 
     return res.json({ orders, total });
   } catch (err) {
@@ -151,9 +158,17 @@ export const getOrderById = async (req, res) => {
       query = { clientOrderId: id };
     }
 
-    const order = await Order.findOne(query).lean({ virtuals: true });
+    const order = await Order.findOne(query).populate('groupId', 'name').lean({ virtuals: true });
     if (!order) return res.status(404).json({ message: 'Order not found' });
-    return res.json({ ...order, id: order.clientOrderId || String(order._id) });
+    const g = order.groupId;
+    const groupName = g?.name ?? undefined;
+    const groupIdStr = g ? (typeof g === 'object' && g._id ? String(g._id) : String(g)) : undefined;
+    return res.json({
+      ...order,
+      id: order.clientOrderId || String(order._id),
+      groupId: groupIdStr,
+      groupName,
+    });
   } catch (err) {
     console.error('getOrderById error:', err);
     return res.status(500).json({ message: 'Failed to fetch order' });

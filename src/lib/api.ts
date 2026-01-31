@@ -293,6 +293,27 @@ export const ordersApi = {
     if (!resp.ok) throw new ApiError('Failed to export orders', resp.status);
     return await resp.blob();
   },
+
+  // Ensure render job is enqueued for this order (admin; server pre-generates variants)
+  ensureRender: (orderId: string) => {
+    const renderToken = import.meta.env.VITE_RENDER_TOKEN as string | undefined;
+    const qs = renderToken ? `?token=${encodeURIComponent(renderToken)}` : '';
+    const url = `${API_BASE_URL}/render/ensure/${encodeURIComponent(orderId)}${qs}`;
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    const authToken = LocalStorageService.loadAuthToken();
+    if (authToken && authToken.split('.').length === 3) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    if (renderToken) {
+      (headers as Record<string, string>)['x-render-token'] = renderToken;
+    }
+    return fetch(url, { method: 'POST', headers, credentials: 'include' }).then(async (res) => {
+      const raw = await res.text();
+      const data = raw ? JSON.parse(raw) : null;
+      if (!res.ok) throw new ApiError((data?.message) || 'Failed to ensure render', res.status, data);
+      return data as { message?: string };
+    });
+  },
 };
 
 /**
