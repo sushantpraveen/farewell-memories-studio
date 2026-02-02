@@ -329,8 +329,21 @@ const GridBoard = () => {
   ), [tourStorageKey, showTour]);
 
   // Map of all TSX components in this folder
-  // We look for files in both square and hexagon directories
   const componentModules = import.meta.glob(['./square/*.tsx', './hexagon/*.tsx']);
+  // Hexagon SVG templates (14.svg, 15.svg, 16.svg, etc.)
+  const hexagonSvgModules = import.meta.glob('./hexagon/*.svg', { as: 'raw' });
+
+  // Resolve hexagon SVG path - Vite glob keys may vary (./hexagon/15.svg or /src/components/hexagon/15.svg)
+  const getHexagonSvgPath = (n: number): string | null => {
+    const expected = `${n}.svg`;
+    const key = Object.keys(hexagonSvgModules).find((k) => k.endsWith(expected) || k.includes(`hexagon/${expected}`));
+    return key ?? null;
+  };
+
+  // Vector collage template for 100+ members
+  const VectorTemplateLazy = lazy(() =>
+    import('./VectorTemplateUploader').then((m) => ({ default: m.VectorTemplateUploader }))
+  );
 
   // Validation functions
   const validateGroupName = (name: string): string | undefined => {
@@ -381,8 +394,8 @@ const GridBoard = () => {
     if (membersNum < 8) {
       return "Add 10 more people to make your team complete";
     }
-    if (membersNum > 97) {
-      return "Oops, your team is too big to fit in a single tshirt. Reduce 3 more people. To make collage";
+    if (membersNum > 97 && membersNum <= 100) {
+      return "Oops, your team is too big to fit in a single tshirt. Use 101+ for collage template";
     }
     if (membersNum > 1000) {
       return "Total members cannot exceed 1000";
@@ -543,16 +556,23 @@ const GridBoard = () => {
   const switchTemplate = (index: number) => {
     setCurrentTemplateIndex(index);
     const template = availableTemplates[index];
+    if (!template) return;
 
-    // Check if the module exists before trying to load it
-    if (componentModules[template.path]) {
+    if (template.path.endsWith('.svg') && hexagonSvgModules[template.path as keyof typeof hexagonSvgModules]) {
+      const pathToUse = template.path;
+      const HexagonSvgLazy = lazy(() =>
+        import('./HexagonSvgViewer').then((m) => ({
+          default: () => React.createElement(m.HexagonSvgViewer, { path: pathToUse }),
+        }))
+      );
+      setPreviewComp(() => HexagonSvgLazy);
+    } else if (componentModules[template.path]) {
       const loader = componentModules[template.path] as () => Promise<{ default: React.ComponentType<any> }>;
       const LazyComp = lazy(loader);
       setPreviewComp(() => LazyComp);
-
-      // Update form data
-      setFormData(prev => ({ ...prev, gridTemplate: template.type }));
     }
+
+    setFormData(prev => ({ ...prev, gridTemplate: template.type }));
   };
 
   const handleNextTemplate = (e: React.MouseEvent) => {
@@ -582,31 +602,54 @@ const GridBoard = () => {
       return;
     }
 
+    // Vector collage template for 100+ members
+    if (n > 100) {
+      setAvailableTemplates([{ type: 'square', path: 'vector' }]);
+      setCurrentTemplateIndex(0);
+      setPreviewComp(() => VectorTemplateLazy);
+      setFormData(prev => ({ ...prev, gridTemplate: 'square' }));
+      return;
+    }
+
     const templates: Array<{ type: GridTemplate, path: string }> = [];
 
-    // Check for square template
+    // Check for square template (.tsx)
     const squarePath = `./square/${n}.tsx`;
     if (componentModules[squarePath]) {
       templates.push({ type: 'square', path: squarePath });
     }
 
-    // Check for hexagon template
-    const hexagonPath = `./hexagon/${n}.tsx`;
-    if (componentModules[hexagonPath]) {
-      templates.push({ type: 'hexagonal', path: hexagonPath });
+    // Check for hexagon template (.tsx)
+    const hexagonTsxPath = `./hexagon/${n}.tsx`;
+    if (componentModules[hexagonTsxPath]) {
+      templates.push({ type: 'hexagonal', path: hexagonTsxPath });
+    }
+
+    // Check for hexagon template (.svg)
+    const hexagonSvgPath = getHexagonSvgPath(n);
+    if (hexagonSvgPath) {
+      templates.push({ type: 'hexagonal', path: hexagonSvgPath });
     }
 
     if (templates.length > 0) {
       setAvailableTemplates(templates);
-      setCurrentTemplateIndex(0); // Reset to first available
+      setCurrentTemplateIndex(0);
 
-      // Load the first one immediately
+      // Set initial PreviewComp - for SVG we use HexagonSvgViewer, for TSX we use lazy loader
       const firstTemplate = templates[0];
-      const loader = componentModules[firstTemplate.path] as () => Promise<{ default: React.ComponentType<any> }>;
-      const LazyComp = lazy(loader);
-      setPreviewComp(() => LazyComp);
+      if (firstTemplate.path.endsWith('.svg')) {
+        const HexagonSvgLazy = lazy(() =>
+          import('./HexagonSvgViewer').then((m) => ({
+            default: () => React.createElement(m.HexagonSvgViewer, { path: firstTemplate.path }),
+          }))
+        );
+        setPreviewComp(() => HexagonSvgLazy);
+      } else {
+        const loader = componentModules[firstTemplate.path] as () => Promise<{ default: React.ComponentType<any> }>;
+        const LazyComp = lazy(loader);
+        setPreviewComp(() => LazyComp);
+      }
 
-      // Update form data default
       setFormData(prev => ({ ...prev, gridTemplate: firstTemplate.type }));
     } else {
       console.log(`Template ${n} not found in square or hexagon.`);
@@ -942,10 +985,10 @@ const GridBoard = () => {
           {PreviewComp ? (
             <Card className="w-full h-full backdrop-blur-lg bg-white/80 border-none shadow-xl overflow-hidden relative group">
               <CardContent className="p-2 sm:p-3 md:p-4 h-full flex flex-col">
-                {/* Template Navigation Overlay */}
+                {/* Template Navigation Overlay - pointer-events-auto so clicks work despite parent's pointer-events-none */}
                 {availableTemplates.length > 1 && (
-                  <>
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                  <div className="absolute inset-0 z-10 pointer-events-none">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -968,17 +1011,21 @@ const GridBoard = () => {
                     {/* Template Type Indicator */}
                     <div className="absolute top-4 right-4 z-10">
                       <span className="px-3 py-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
-                        {availableTemplates[currentTemplateIndex].type}
+                        {availableTemplates[currentTemplateIndex].path === 'vector'
+                          ? 'Collage'
+                          : availableTemplates[currentTemplateIndex].path?.endsWith('.svg')
+                            ? 'Hexagon (SVG)'
+                            : availableTemplates[currentTemplateIndex].type}
                       </span>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5 }}
-                  className="w-full h-full pointer-events-none select-none"
+                  className={`w-full h-full ${availableTemplates[currentTemplateIndex]?.path === 'vector' ? 'pointer-events-auto' : 'pointer-events-none select-none'}`}
                 >
                   <Suspense
                     fallback={
@@ -993,8 +1040,15 @@ const GridBoard = () => {
                       </div>
                     }
                   >
-                    <div className="w-full aspect-square">
-                      {availableTemplates[currentTemplateIndex]?.type === 'square' ? (
+                    <div className={`w-full ${
+                      availableTemplates[currentTemplateIndex]?.path === 'vector' ||
+                      availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+                        ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
+                        : 'aspect-square'
+                    }`}>
+                      {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
+                        <PreviewComp />
+                      ) : availableTemplates[currentTemplateIndex]?.type === 'square' ? (
                         <SquareGridProvider>
                           <PreviewComp />
                         </SquareGridProvider>

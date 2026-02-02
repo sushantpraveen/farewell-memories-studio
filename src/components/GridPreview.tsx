@@ -4,7 +4,7 @@ import { HexagonalGrid } from "./grids/HexagonalGrid";
 import { SquareGrid } from "./grids/SquareGrid";
 import { CircleGrid } from "./grids/CircleGrid";
 import { GridProvider } from "./square/context/GridContext";
-import { useGrid } from "./square/context/GridContext";
+import { HexagonSvgGrid } from "./HexagonSvgGrid";
 
 interface GridPreviewProps {
   template: GridTemplate;
@@ -14,6 +14,16 @@ interface GridPreviewProps {
   activeMember?: Member;
   centerEmptyDefault?: boolean;
 }
+
+// Hexagon SVG modules and path resolver
+const hexagonSvgModules = import.meta.glob('./hexagon/*.svg', { as: 'raw' });
+const getHexagonSvgPath = (n: number): string | null => {
+  const expected = `${n}.svg`;
+  const key = Object.keys(hexagonSvgModules).find(
+    (k) => k.endsWith(expected) || k.includes(`hexagon/${expected}`)
+  );
+  return key ?? null;
+};
 
 const AnimatedPreloader = () => {
   return (
@@ -173,18 +183,25 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
     processMembers();
   }, [members, getCloudTransform]);
 
-  // Load the specific grid template component based on member count
+  // Load the specific grid template component based on member count and template type
   useEffect(() => {
     const loadComponentByNumber = async (n: number) => {
       setLoadError(null);
       setPreviewComp(null);
 
-      const path = `./square/${n}.tsx` as const;
-      if (!/^[0-9]+\.tsx$/.test(`${n}.tsx`)) {
+      if (!/^[0-9]+$/.test(`${n}`)) {
         setLoadError('Please enter a valid number.');
         return;
       }
 
+      // For hexagonal template: use HexagonSvgGrid if n.svg exists
+      if (template === 'hexagonal' && getHexagonSvgPath(n)) {
+        setPreviewComp(null); // HexagonSvgGrid rendered directly, not via PreviewComp
+        return;
+      }
+
+      // For square template: load square/n.tsx
+      const path = `./square/${n}.tsx` as const;
       if (componentModules[path]) {
         try {
           const loader = componentModules[path] as () => Promise<{ default: React.ComponentType<any> }>;
@@ -199,11 +216,10 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       }
     };
 
-    // Load the component based on member count
     if (memberCount > 0) {
       loadComponentByNumber(memberCount);
     }
-  }, [memberCount]);
+  }, [memberCount, template]);
 
   // Combine all members for the grid display
   const allMembers = [...processedMembers];
@@ -250,6 +266,24 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
       <div className="p-6 text-sm text-red-600 text-center">
         {loadError}
       </div>
+    );
+  }
+
+  // Hexagonal with SVG template: use HexagonSvgGrid (center clip + Cloudinary face crop via processed photos)
+  const hexagonSvgPath = getHexagonSvgPath(memberCount);
+  if (template === 'hexagonal' && hexagonSvgPath) {
+    if (members.length > 0 && processedMembers.length === 0) {
+      return <AnimatedPreloader />;
+    }
+    return (
+      <HexagonSvgGrid
+        memberCount={memberCount}
+        svgPath={hexagonSvgPath}
+        previewMember={processedActiveMember}
+        existingMembers={processedMembers}
+        centerEmptyDefault={centerEmptyDefault}
+        size={size}
+      />
     );
   }
 

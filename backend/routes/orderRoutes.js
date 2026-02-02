@@ -8,6 +8,7 @@ import {
   updateOrder,
   exportOrdersCsv,
   deleteOrder,
+  // ensureRender,
 } from '../controllers/orderController.js';
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.post('/create-direct', protect, isLeader, createOrderDirect);
 // Admin endpoints
 router.get('/', protect, isAdmin, getOrders);
 router.get('/export', protect, isAdmin, exportOrdersCsv);
+// router.post('/:id/ensure-render', protect, isAdmin, ensureRender);
 router.get('/:id', protect, isAdmin, getOrderById);
 router.put('/:id', protect, isAdmin, updateOrder);
 router.delete('/:id', protect, isAdmin, deleteOrder);

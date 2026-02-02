@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Users, Eye, Share, CreditCard } from "lucide-react";
+import { ArrowLeft, Download, Users, Eye, Share, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 import { GridPreview } from "@/components/GridPreview";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import UserWalkthrough, { Step } from '@/components/UserWalkthrough';
+import { getAvailableTemplates, getInitialTemplateIndex } from '@/lib/templateUtils';
 
 // Background doodle component
 const BackgroundDoodle = () => (
@@ -116,6 +117,38 @@ const Editor = () => {
     }
     tourInitialized.current = true;
   }, [isAuthLoading, user?.id, user?.guidesSeen?.editor, group]);
+
+  // Template switching hooks MUST run before any early returns (Rules of Hooks)
+  const displayMemberCountForTemplates = group
+    ? (showCurrentMembers ? group.members.length : group.totalMembers)
+    : 0;
+  const winningTemplateForTemplates = group
+    ? (Object.entries(group.votes).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0] as 'hexagonal' | 'square' | 'circle')
+    : 'square';
+  const availableTemplates = useMemo(
+    () => getAvailableTemplates(displayMemberCountForTemplates),
+    [displayMemberCountForTemplates]
+  );
+  const [currentTemplateIndex, setCurrentTemplateIndex] = useState(0);
+  useEffect(() => {
+    setCurrentTemplateIndex((prev) => {
+      if (prev >= availableTemplates.length) {
+        return getInitialTemplateIndex(availableTemplates, winningTemplateForTemplates);
+      }
+      return prev;
+    });
+  }, [availableTemplates, winningTemplateForTemplates]);
+  const displayTemplate = availableTemplates[Math.min(currentTemplateIndex, Math.max(0, availableTemplates.length - 1))]?.type ?? winningTemplateForTemplates;
+  const handlePrevTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+    setCurrentTemplateIndex((i) => (i - 1 + availableTemplates.length) % availableTemplates.length);
+  };
+  const handleNextTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+    setCurrentTemplateIndex((i) => (i + 1) % availableTemplates.length);
+  };
 
   const guideSteps: Step[] = useMemo(() => {
     const memberCount = group?.members?.length || 0;
@@ -422,8 +455,6 @@ const Editor = () => {
   const currentMembersCount = group.members.length;
   const expectedMembersCount = group.totalMembers;
 
-
-
   return (
     <>
       {walkthroughElement}
@@ -466,7 +497,7 @@ const Editor = () => {
                       <div>
                         <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Live Collage Preview</CardTitle>
                         <CardDescription className="text-xs sm:text-sm lg:text-base">
-                          Grid template: {displayMemberCount} members • {group.gridTemplate} layout
+                          Grid template: {displayMemberCount} members • {displayTemplate} layout
                           {showCurrentMembers && group.members.length !== group.totalMembers && (
                             <span className="text-amber-600 ml-1">(Current view)</span>
                           )}
@@ -492,9 +523,38 @@ const Editor = () => {
                   <CardContent className="p-4 sm:p-6 lg:p-8">
                     <div id="guide-grid-preview" className="flex justify-center items-start min-h-full">
                       <div className="relative w-full">
+                        {availableTemplates.length > 1 && (
+                          <>
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                                onClick={handlePrevTemplate}
+                              >
+                                <ChevronLeft className="h-6 w-6 text-gray-700" />
+                              </Button>
+                            </div>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                                onClick={handleNextTemplate}
+                              >
+                                <ChevronRight className="h-6 w-6 text-gray-700" />
+                              </Button>
+                            </div>
+                            <div className="absolute top-4 right-4 z-10">
+                              <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
+                                {displayTemplate === 'hexagonal' ? 'Hexagon' : displayTemplate}
+                              </span>
+                            </div>
+                          </>
+                        )}
                         <GridPreview
-                          key={`${group.id} - ${displayMemberCount} - ${showCurrentMembers}`}
-                          template={group.gridTemplate}
+                          key={`${group.id} - ${displayMemberCount} - ${showCurrentMembers} - ${displayTemplate}`}
+                          template={displayTemplate}
                           memberCount={displayMemberCount}
                           members={displayMembers}
                           size="large"

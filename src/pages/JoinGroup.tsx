@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { ArrowLeft, Upload, Users, Calendar, Vote, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import PhoneOtpWidgetIndia from "@/components/otp/PhoneOtpWidgetIndia";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
+import { getAvailableTemplates, getInitialTemplateIndex } from "@/lib/templateUtils";
 
 // Subtle animated background to match GridBoard/Dashboard look
 const AnimatedBackground = () => (
@@ -47,9 +48,33 @@ const JoinGroup = () => {
     joinPricing
   } = useJoinGroup(groupId);
 
-
-
-
+  // Template switching hooks MUST run before any early returns (Rules of Hooks)
+  const totalMembersForTemplates = group?.totalMembers ?? 0;
+  const gridTemplateForTemplates = group?.gridTemplate ?? 'square';
+  const availableTemplates = React.useMemo(
+    () => getAvailableTemplates(totalMembersForTemplates),
+    [totalMembersForTemplates]
+  );
+  const [currentTemplateIndex, setCurrentTemplateIndex] = React.useState(0);
+  React.useEffect(() => {
+    setCurrentTemplateIndex((prev) => {
+      if (prev >= availableTemplates.length) {
+        return getInitialTemplateIndex(availableTemplates, gridTemplateForTemplates);
+      }
+      return prev;
+    });
+  }, [availableTemplates, gridTemplateForTemplates]);
+  const displayTemplate = availableTemplates[Math.min(currentTemplateIndex, Math.max(0, availableTemplates.length - 1))]?.type ?? gridTemplateForTemplates;
+  const handlePrevTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+    setCurrentTemplateIndex((i) => (i - 1 + availableTemplates.length) % availableTemplates.length);
+  };
+  const handleNextTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (availableTemplates.length <= 1) return;
+    setCurrentTemplateIndex((i) => (i + 1) % availableTemplates.length);
+  };
 
   // Show loading state while context is initializing or group is loading
   if (isLoading || loadingGroup) {
@@ -337,25 +362,55 @@ const JoinGroup = () => {
             </div>
 
             {/* Grid Preview - 2/3 width */}
-            <div className="lg:col-span-2 order-2">
-              <Card className="shadow-xl border-0 relative h-full min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] backdrop-blur-lg bg-white/80">
-                <CardHeader className="pb-2 sm:pb-4">
+            <div className="lg:col-span-2 order-2 flex flex-col min-h-0">
+              <Card className="shadow-xl border-0 relative flex flex-col flex-1 min-h-[420px] sm:min-h-[520px] lg:min-h-[640px] backdrop-blur-lg bg-white/80">
+                <CardHeader className="pb-2 sm:pb-4 shrink-0">
                   <CardTitle className="text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Grid Preview</CardTitle>
-                  <CardDescription className="text-sm sm:text-base">{group.gridTemplate}</CardDescription>
+                  <CardDescription className="text-sm sm:text-base">{displayTemplate}</CardDescription>
                 </CardHeader>
-                <CardContent className="flex justify-center p-4 sm:p-6 lg:p-8">
+                <CardContent className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 lg:p-8">
+                  <div className="flex-1 min-h-[320px] sm:min-h-[400px] flex items-center justify-center w-full">
                   <Suspense fallback={
                     <div className="p-4 sm:p-8 text-center">
                       <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
                       <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
                     </div>
                   }>
-                    <div className="relative">
+                    <div className="relative w-full h-full min-h-[280px] flex items-center justify-center">
+                      {availableTemplates.length > 1 && (
+                        <>
+                          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                              onClick={handlePrevTemplate}
+                            >
+                              <ChevronLeft className="h-6 w-6 text-gray-700" />
+                            </Button>
+                          </div>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                              onClick={handleNextTemplate}
+                            >
+                              <ChevronRight className="h-6 w-6 text-gray-700" />
+                            </Button>
+                          </div>
+                          <div className="absolute top-4 right-4 z-10">
+                            <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
+                              {displayTemplate === 'hexagonal' ? 'Hexagon' : displayTemplate}
+                            </span>
+                          </div>
+                        </>
+                      )}
                       {isCloudinaryPhoto ? (
                         <GridPreview
-                          template={group.gridTemplate}
+                          template={displayTemplate}
                           memberCount={group.totalMembers}
-                          members={[]} // Don't pass any members since we don't need them for preview
+                          members={[]}
                           centerEmptyDefault
                           activeMember={{
                             id: 'preview',
@@ -366,15 +421,23 @@ const JoinGroup = () => {
                             joinedAt: new Date(),
                             zoomLevel: memberData.zoomLevel
                           }}
-                          size="large"
+                          size="xlarge"
                         />
                       ) : (
-                        <div className="p-4 sm:p-8 text-center">
-                          <p className="text-sm sm:text-base text-gray-600">Upload your photo to see preview. Preview appears after Cloudinary finishes face-cropping.</p>
+                        <div className="space-y-2">
+                          <GridPreview
+                            template={displayTemplate}
+                            memberCount={group.totalMembers}
+                            members={[]}
+                          centerEmptyDefault
+                          size="xlarge"
+                        />
+                          <p className="text-center text-sm text-gray-500">Upload your photo to see yourself in the center</p>
                         </div>
                       )}
                     </div>
                   </Suspense>
+                  </div>
                 </CardContent>
               </Card>
             </div>

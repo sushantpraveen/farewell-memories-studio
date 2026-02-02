@@ -221,7 +221,7 @@ export const VariantRenderer: React.FC<VariantRendererProps> = ({
         const is57to74 = effectiveKey === '57' || effectiveKey === '58' || effectiveKey === '59' || effectiveKey === '60' || effectiveKey === '61' || effectiveKey === '62' || effectiveKey === '63' || effectiveKey === '64' || effectiveKey === '65' || effectiveKey === '66' || effectiveKey === '67' || effectiveKey === '68' || effectiveKey === '69' || effectiveKey === '70' || effectiveKey === '71' || effectiveKey === '72' || effectiveKey === '73' || effectiveKey === '74';
         const is75to92 = effectiveKey === '75' || effectiveKey === '76' || effectiveKey === '77' || effectiveKey === '78' || effectiveKey === '79' || effectiveKey === '80' || effectiveKey === '81' || effectiveKey === '82' || effectiveKey === '83' || effectiveKey === '84' || effectiveKey === '85' || effectiveKey === '86' || effectiveKey === '87' || effectiveKey === '88' || effectiveKey === '89' || effectiveKey === '90' || effectiveKey === '91' || effectiveKey === '92';
         const TARGET_W_IN = is37to50 || is8to19 ? 8 : 8.5;
-        const TARGET_H_IN = is8to19 ? 11.69 : 12.0;
+        const TARGET_H_IN = is8to19 ? 13.0 : 13.5;
         const COLS = is51to56 || is57to74 ? 9 : is75to92 ? 11 : is8to19 ? 6 : is20to23 ? 7 : 8;
         const ROWS = is57to74 ? 9 : is75to92 ? 11 : is8to19 || is20to23 ? 7 : 10
         const gap = 4; // align with desiredGapPx used in downloads
