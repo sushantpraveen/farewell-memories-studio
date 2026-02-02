@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TablePagination } from '@/components/admin/TablePagination';
 import { manageGroupsApi, type AmbassadorWithGroupsItem, type GroupRowItem } from '@/services/manageGroupsApi';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,6 +24,9 @@ export default function ManageGroupsAmbassadorLed() {
   const [loadingAmbassadors, setLoadingAmbassadors] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [selectedAmbassadorName, setSelectedAmbassadorName] = useState<string | null>(null);
+  const [groupsPage, setGroupsPage] = useState(1);
+  const [groupsPageSize, setGroupsPageSize] = useState(20);
+  const [groupsTotal, setGroupsTotal] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -49,13 +53,24 @@ export default function ManageGroupsAmbassadorLed() {
     if (!ambassadorId) {
       setGroups([]);
       setSelectedAmbassadorName(null);
+      setGroupsTotal(0);
       return;
     }
+    setGroupsPage(1);
+  }, [ambassadorId]);
+
+  useEffect(() => {
+    if (!ambassadorId) return;
     const load = async () => {
       try {
         setLoadingGroups(true);
-        const res = await manageGroupsApi.listAmbassadorGroups(ambassadorId, 1, 100);
+        const res = await manageGroupsApi.listAmbassadorGroups(
+          ambassadorId,
+          groupsPage,
+          groupsPageSize
+        );
         setGroups(res.items || []);
+        setGroupsTotal(res.total ?? res.items?.length ?? 0);
       } catch (e: unknown) {
         const err = e as { status?: number; message?: string };
         if (err?.status === 401 || err?.status === 403) {
@@ -69,7 +84,7 @@ export default function ManageGroupsAmbassadorLed() {
       }
     };
     load();
-  }, [ambassadorId, navigate]);
+  }, [ambassadorId, navigate, groupsPage, groupsPageSize]);
 
   useEffect(() => {
     if (!ambassadorId || ambassadors.length === 0) return;
@@ -229,6 +244,19 @@ export default function ManageGroupsAmbassadorLed() {
                     )}
                   </TableBody>
                 </Table>
+                {groupsTotal > 0 && (
+                  <TablePagination
+                    currentPage={groupsPage}
+                    pageSize={groupsPageSize}
+                    total={groupsTotal}
+                    onPageChange={(p, newSize) => {
+                      setGroupsPage(p);
+                      if (newSize != null) setGroupsPageSize(newSize);
+                    }}
+                    pageSizeOptions={[10, 20, 50]}
+                    itemLabel="groups"
+                  />
+                )}
               </div>
             </>
         )}

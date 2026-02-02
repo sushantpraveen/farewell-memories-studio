@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TablePagination } from '@/components/admin/TablePagination';
 import { manageGroupsApi, type GroupRowItem } from '@/services/manageGroupsApi';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,13 +18,17 @@ export default function ManageGroupsDirect() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<GroupRowItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await manageGroupsApi.listDirectGroups(1, 100);
+        const res = await manageGroupsApi.listDirectGroups(page, pageSize);
         setGroups(res.items || []);
+        setTotal(res.total ?? res.items?.length ?? 0);
       } catch (e: unknown) {
         const err = e as { status?: number; message?: string };
         if (err?.status === 401 || err?.status === 403) {
@@ -37,7 +42,7 @@ export default function ManageGroupsDirect() {
       }
     };
     load();
-  }, [navigate]);
+  }, [navigate, page, pageSize]);
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-8">
@@ -124,6 +129,19 @@ export default function ManageGroupsDirect() {
                 )}
               </TableBody>
             </Table>
+            {total > 0 && (
+              <TablePagination
+                currentPage={page}
+                pageSize={pageSize}
+                total={total}
+                onPageChange={(p, newSize) => {
+                  setPage(p);
+                  if (newSize != null) setPageSize(newSize);
+                }}
+                pageSizeOptions={[10, 20, 50]}
+                itemLabel="groups"
+              />
+            )}
           </div>
       </div>
     </div>

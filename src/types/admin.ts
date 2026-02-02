@@ -70,6 +70,8 @@ export interface AdminMember {
     // Actions
     setFilters: (filters: OrderFilters) => void;
     setSelectedOrders: (orderIds: string[]) => void;
+    setCurrentPage: (page: number) => void;
+    setPageSize: (size: number) => void;
     updateOrderStatus: (orderId: string, status: Order['status']) => void;
     updateOrderSettings: (orderId: string, settings: Partial<OrderSettings>) => void;
     openOrderTab: (orderId: string) => void;

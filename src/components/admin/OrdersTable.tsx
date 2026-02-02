@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { TablePagination } from '@/components/admin/TablePagination';
 
 const getStatusColor = (status: Order['status']) => {
   switch (status) {
@@ -47,8 +48,13 @@ const getStatusColor = (status: Order['status']) => {
 export const OrdersTable: React.FC = () => {
   const {
     orders,
+    orderCount,
     selectedOrders,
     setSelectedOrders,
+    currentPage,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
     updateOrderStatus,
     openOrderTab,
     loading,
@@ -84,7 +90,8 @@ export const OrdersTable: React.FC = () => {
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="space-y-4">
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -192,6 +199,18 @@ export const OrdersTable: React.FC = () => {
           ))}
         </TableBody>
       </Table>
+      </div>
+      <TablePagination
+        currentPage={currentPage}
+        pageSize={pageSize}
+        total={orderCount}
+        onPageChange={(page, newPageSize) => {
+          setCurrentPage(page);
+          if (newPageSize != null) setPageSize(newPageSize);
+        }}
+        pageSizeOptions={[10, 20, 50]}
+        itemLabel="orders"
+      />
     </div>
   );
 };

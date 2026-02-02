@@ -18,7 +18,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [filters, setFilters] = useState<OrderFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -37,8 +37,8 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
         page: currentPage,
         limit: pageSize,
       });
-      // Cast server shape to Order[] as needed
       setOrders(result.orders as unknown as Order[]);
+      if (typeof result.total === 'number') setOrderCount(result.total);
     } catch (error) {
       console.error('Failed to load orders:', error);
     } finally {
@@ -107,7 +107,7 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   useEffect(() => {
     refreshOrders();
-  }, [filters, currentPage]);
+  }, [filters, currentPage, pageSize]);
 
   const value: AdminOrdersContextType = {
     orders,
@@ -121,6 +121,8 @@ export const AdminOrdersProvider: React.FC<{ children: ReactNode }> = ({ childre
     loading,
     setFilters,
     setSelectedOrders,
+    setCurrentPage,
+    setPageSize,
     updateOrderStatus,
     updateOrderSettings,
     fetchOrderCount,

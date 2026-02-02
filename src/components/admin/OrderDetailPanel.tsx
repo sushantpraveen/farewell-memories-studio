@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings, Grid, Edit, Upload, Layers, Type, Palette, ZoomIn, ZoomOut, Download as DownloadIcon } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,7 +44,13 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
   const [selectedElements, setSelectedElements] = useState<string[]>([]);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [canvasSize, setCanvasSize] = useState({ width: 850, height: 1350 });
+  // Print at 300 DPI: 8.5" × 12" = 2550 × 3600 px (canvas); display scaled to 816×1152 for editing
+  const CANVAS_DPI = 300;
+  const [canvasSize, setCanvasSize] = useState({
+    width: Math.round(8.5 * CANVAS_DPI),
+    height: Math.round(12 * CANVAS_DPI),
+  });
+  const DISPLAY_SCALE = 96 / CANVAS_DPI; // scale 300-DPI canvas down for on-screen editing
   const [canvasHistory, setCanvasHistory] = useState<CanvasElement[][]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
@@ -123,108 +128,134 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   // Ref to the inner design wrapper (only the elements area, excluding borders/toolbars)
   const designWrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // Download handler: export canvas as 13.5x8.5 inches @ 300 DPI with white background
-  const handleDownload300DPI = async () => {
-    const node = designWrapperRef.current || canvasContainerRef.current;
-    if (!node) return;
-    const desiredWidth = Math.round(8.5 * 300);  // 2550 px
-    const desiredHeight = Math.round(13.5 * 300);  // 4050 px
-
-    // Temporarily remove zoom transform to capture at 1:1 scale
-    const originalTransform = node.style.transform;
-    node.style.transform = 'scale(1)';
-    
-    // Force layout recalculation
-    node.offsetHeight;
-
-    const canvas = await html2canvas(node, {
-      backgroundColor: null,
-      scale: 1,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      width: canvasSize.width,
-      height: canvasSize.height,
-      windowWidth: Math.max(document.documentElement.clientWidth, window.innerWidth || 0),
-      windowHeight: Math.max(document.documentElement.clientHeight, window.innerHeight || 0),
-    });
-
-    // Restore original transform
-    node.style.transform = originalTransform;
-
-    // Composite to exact 2550x3750 with white background and centered content
-    const out = document.createElement('canvas');
-    out.width = desiredWidth;
-    out.height = desiredHeight;
-    const ctx = out.getContext('2d');
-    if (!ctx) return;
+  // Draw roll-card elements with Canvas 2D so export matches editor exactly (no html2canvas).
+  const drawRollCardToCanvas = (
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    elements: CanvasElement[],
+  ) => {
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, w, h);
 
-    const drawScale = Math.min(desiredWidth / canvas.width, desiredHeight / canvas.height);
-    const drawW = Math.round(canvas.width * drawScale);
-    const drawH = Math.round(canvas.height * drawScale);
-    const dx = Math.floor((desiredWidth - drawW) / 2);
-    const dy = Math.floor((desiredHeight - drawH) / 2);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(canvas, dx, dy, drawW, drawH);
+    const isRollCard = (id: string) =>
+      id.startsWith('el-name-') || id.startsWith('el-group-') || id.startsWith('el-roll-');
+    const sorted = [...elements].filter((el) => isRollCard(el.id)).sort((a, b) => a.zIndex - b.zIndex);
 
-    // Helper: inject pHYs chunk to set PNG DPI = 300 so viewers report correct inches
-    const addDpiToPng = async (pngBlob: Blob, dpi = 300): Promise<Blob> => {
-      const ab = await pngBlob.arrayBuffer();
-      const data = new Uint8Array(ab);
-      const PNG_SIGNATURE = [137,80,78,71,13,10,26,10];
-      for (let i = 0; i < 8; i++) if (data[i] !== PNG_SIGNATURE[i]) return pngBlob;
-      const ppu = Math.round(dpi * 39.3701); // pixels per meter
-      const chunkType = new TextEncoder().encode('pHYs');
-      const chunkData = new Uint8Array(9);
-      const dv = new DataView(chunkData.buffer);
-      dv.setUint32(0, ppu);
-      dv.setUint32(4, ppu);
-      chunkData[8] = 1; // unit: meters
-      const lengthBytes = new Uint8Array(4); new DataView(lengthBytes.buffer).setUint32(0, 9);
-      const crcInput = new Uint8Array(4 + chunkData.length);
-      crcInput.set(chunkType, 0); crcInput.set(chunkData, 4);
-      const crc = crc32(crcInput);
-      const crcBytes = new Uint8Array(4); new DataView(crcBytes.buffer).setUint32(0, crc);
-      // Insert pHYs after IHDR chunk
-      let offset = 8; // skip signature
-      const length = new DataView(data.buffer, offset, 4).getUint32(0);
-      const ihdrTotal = 4 + 4 + length + 4; // len + type + data + crc
-      const insertPos = 8 + ihdrTotal;
-      const before = data.slice(0, insertPos);
-      const after = data.slice(insertPos);
-      const assembled = new Uint8Array(before.length + 4 + 4 + 9 + 4 + after.length);
-      let p = 0;
-      assembled.set(before, p); p += before.length;
-      assembled.set(lengthBytes, p); p += 4;
-      assembled.set(chunkType, p); p += 4;
-      assembled.set(chunkData, p); p += 9;
-      assembled.set(crcBytes, p); p += 4;
-      assembled.set(after, p);
-      return new Blob([assembled], { type: 'image/png' });
-    };
+    for (const el of sorted) {
+      if (el.type !== 'text') continue;
+      const content = (el.content || '').trim() || '';
+      const text = el.style?.textTransform === 'uppercase' ? content.toUpperCase() : content;
+      const lines = text.split('\n');
+      const fontFamily = el.style?.fontFamily || 'Arial';
+      const fontSize = (el.style?.fontSize ?? 16) as number;
+      const fontWeight = el.style?.fontWeight || 'bold';
+      const lineHeightVal = (el.style?.lineHeight ?? 1) as number;
+      const align = (el.style?.textAlign || 'center') as CanvasTextAlign;
+      const cx = el.x + el.width / 2;
 
-    // CRC32 helper for PNG chunks
-    const crc32 = (buf: Uint8Array): number => {
-      let c = 0xffffffff;
-      for (let i = 0; i < buf.length; i++) {
-        c ^= buf[i];
-        for (let k = 0; k < 8; k++) {
-          c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+      ctx.fillStyle = el.style?.color || '#000000';
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.textAlign = align;
+      ctx.globalAlpha = el.opacity ?? 1;
+
+      const isRoll = el.id.startsWith('el-roll-');
+      if (isRoll) {
+        const lineCount = Math.max(lines.length, 1);
+        const baseTextHeight = fontSize * lineCount * lineHeightVal;
+        const sy = baseTextHeight > 0 ? (el.height / baseTextHeight) * 0.88 : 1;
+        const sx = 1.25;
+        ctx.save();
+        ctx.translate(cx, el.y);
+        ctx.scale(sx, sy);
+        ctx.textBaseline = 'top';
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], 0, i * fontSize * lineHeightVal);
+        }
+        ctx.restore();
+      } else {
+        ctx.textBaseline = 'middle';
+        const totalBlockHeight = fontSize * lineHeightVal * lines.length;
+        const startY = el.y + (el.height - totalBlockHeight) / 2 + (fontSize * lineHeightVal) / 2;
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], cx, startY + i * fontSize * lineHeightVal);
         }
       }
-      return (c ^ 0xffffffff) >>> 0;
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  // Download: canvas is already 300 DPI; draw at canvas size and set PNG to 300 DPI.
+  const handleDownload300DPI = () => {
+    const w = canvasSize.width;
+    const h = canvasSize.height;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    drawRollCardToCanvas(ctx, w, h, canvasElements);
+
+    const addDpiToPng = (pngBlob: Blob, dpiVal: number): Promise<Blob> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as ArrayBuffer;
+          const data = new Uint8Array(result);
+          const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+          for (let i = 0; i < 8; i++) if (data[i] !== PNG_SIGNATURE[i]) { resolve(pngBlob); return; }
+          const ppu = Math.round(dpiVal * 39.3701);
+          const chunkType = new TextEncoder().encode('pHYs');
+          const chunkData = new Uint8Array(9);
+          const dv = new DataView(chunkData.buffer);
+          dv.setUint32(0, ppu);
+          dv.setUint32(4, ppu);
+          chunkData[8] = 1;
+          const lengthBytes = new Uint8Array(4);
+          new DataView(lengthBytes.buffer).setUint32(0, 9);
+          const crc32 = (buf: Uint8Array): number => {
+            let c = 0xffffffff;
+            for (let i = 0; i < buf.length; i++) {
+              c ^= buf[i];
+              for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+            }
+            return (c ^ 0xffffffff) >>> 0;
+          };
+          const crcInput = new Uint8Array(4 + chunkData.length);
+          crcInput.set(chunkType, 0);
+          crcInput.set(chunkData, 4);
+          const crcBytes = new Uint8Array(4);
+          new DataView(crcBytes.buffer).setUint32(0, crc32(crcInput));
+          const offset = 8;
+          const length = new DataView(result, offset, 4).getUint32(0);
+          const ihdrTotal = 4 + 4 + length + 4;
+          const insertPos = 8 + ihdrTotal;
+          const before = data.slice(0, insertPos);
+          const after = data.slice(insertPos);
+          const assembled = new Uint8Array(before.length + 4 + 4 + 9 + 4 + after.length);
+          let p = 0;
+          assembled.set(before, p); p += before.length;
+          assembled.set(lengthBytes, p); p += 4;
+          assembled.set(chunkType, p); p += 4;
+          assembled.set(chunkData, p); p += 9;
+          assembled.set(crcBytes, p); p += 4;
+          assembled.set(after, p);
+          resolve(new Blob([assembled], { type: 'image/png' }));
+        };
+        reader.readAsArrayBuffer(pngBlob);
+      });
     };
 
-    out.toBlob(async (blob) => {
+    canvas.toBlob(async (blob) => {
       if (!blob) return;
-      const withDpi = await addDpiToPng(blob, 300);
+      const withDpi = await addDpiToPng(blob, CANVAS_DPI);
       const url = URL.createObjectURL(withDpi);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'canvas-13.5x8.5in-300dpi.png';
+      a.download = 'roll-card-300dpi.png';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -266,8 +297,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   useEffect(() => {
     if (!dragging) return;
     const handleMove = (ev: MouseEvent) => {
-      const dx = (ev.clientX - dragging.startMouse.x) / zoomRef.current;
-      const dy = (ev.clientY - dragging.startMouse.y) / zoomRef.current;
+      const viewScale = zoomRef.current * DISPLAY_SCALE;
+      const dx = (ev.clientX - dragging.startMouse.x) / viewScale;
+      const dy = (ev.clientY - dragging.startMouse.y) / viewScale;
       const nx = dragging.startPos.x + dx;
       const ny = dragging.startPos.y + dy;
       if (!dragMovedRef.current && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
@@ -292,8 +324,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   useEffect(() => {
     if (!resizing) return;
     const handleMove = (ev: MouseEvent) => {
-      const dx = (ev.clientX - resizing.startMouse.x) / zoomRef.current;
-      const dy = (ev.clientY - resizing.startMouse.y) / zoomRef.current;
+      const viewScale = zoomRef.current * DISPLAY_SCALE;
+      const dx = (ev.clientX - resizing.startMouse.x) / viewScale;
+      const dy = (ev.clientY - resizing.startMouse.y) / viewScale;
       const sx = (resizing.startSize.w + dx) / Math.max(1, resizing.startSize.w);
       const sy = (resizing.startSize.h + dy) / Math.max(1, resizing.startSize.h);
       const scale = resizing.handle === 'e' ? sx : resizing.handle === 's' ? sy : Math.max(sx, sy);
@@ -624,12 +657,12 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                         // Navigate to editor
                         setActiveTab('editor');
                         setActiveSection('text');
-                        // Create name, roll, and group name elements (order: name, roll, group name; centered on canvas)
+                        // Layout at 300 DPI: name full width at top; group below; roll number fills rest of page (consistent heights for print)
                         const cw = canvasSize.width;
-                        const nameW = 320;
-                        const rollW = 280;
-                        const groupW = 320;
-                        const cen = (w: number) => Math.round((cw - w) / 2);
+                        const ch = canvasSize.height;
+                        const s = CANVAS_DPI / 96; // 300 DPI scale from 96-DPI design values
+                        const marginH = Math.round(48 * s);
+                        const fullW = cw - 2 * marginH;
                         const ts = Date.now();
                         const nameId = `el-name-${member.id}-${ts}`;
                         const rollId = `el-roll-${member.id}-${ts}`;
@@ -639,67 +672,108 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                         setCanvasElements(p => {
                           const rest = p.filter(el => !isMemberText(el));
                           const baseZ = rest.length;
+                          // Name: full width, large font (300 DPI)
+                          const nameY = Math.round(72 * s);
+                          let nameH = Math.round(100 * s);
+                          const rawName = (member.name || 'Name').trim() || 'Name';
+                          const compactLen = rawName.replace(/\s+/g, '').length;
+                          let nameContent = rawName;
+                          let nameFontSize: number;
+
+                          if (compactLen > 18) {
+                            const parts = rawName.split(/\s+/);
+                            if (parts.length > 1) {
+                              const splitAt = Math.ceil(parts.length / 2);
+                              const firstLine = parts.slice(0, splitAt).join(' ');
+                              const secondLine = parts.slice(splitAt).join(' ');
+                              nameContent = `${firstLine}\n${secondLine}`;
+                            }
+                            nameFontSize = Math.round(56 * s);
+                            nameH = Math.round(140 * s);
+                          } else if (compactLen > 13) {
+                            const nameBaseSize = Math.round(88 * s);
+                            nameFontSize = Math.max(Math.round(56 * s), Math.floor(nameBaseSize * 13 / compactLen));
+                          } else {
+                            nameFontSize = Math.round(88 * s);
+                          }
+                          const gapAfterName = Math.round(36 * s);
+                          const groupY = nameY + nameH + gapAfterName;
+                          const groupH = Math.round(40 * s);
+                          const gapAfterGroup = Math.round(1 * s);
+                          const rollY = groupY + groupH + gapAfterGroup;
+                          const rollH = ch - rollY - Math.round(8 * s); // rest of page for roll number (no cut-off)
                           const nameEl: CanvasElement = {
                             id: nameId,
                             type: 'text',
-                            x: cen(nameW),
-                            y: 180,
-                            width: nameW,
-                            height: 82,
+                            x: 0,
+                            y: nameY,
+                            width: cw,
+                            height: nameH,
                             rotation: 0,
                             opacity: 1,
-                            content: member.name || 'Name',
+                            content: nameContent,
                             style: {
                               fontFamily: 'Arial',
-                              fontSize: 62,
+                              fontSize: nameFontSize,
                               fontWeight: 'bold',
-                              color: '#111111',
+                              color: '#000000',
                               textAlign: 'center',
-                              textTransform: 'capitalize',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0,
                             },
                             zIndex: baseZ,
-                          };
-                          const rollEl: CanvasElement = {
-                            id: rollId,
-                            type: 'text',
-                            x: cen(rollW),
-                            y: 272,
-                            width: rollW,
-                            height: 62,
-                            rotation: 0,
-                            opacity: 1,
-                            content: member.memberRollNumber || 'Roll No',
-                            style: {
-                              fontFamily: 'Arial',
-                              fontSize: 34,
-                              fontWeight: '600',
-                              color: '#008000',
-                              textAlign: 'center',
-                            },
-                            zIndex: baseZ + 1,
                           };
                           const groupEl: CanvasElement = {
                             id: groupId,
                             type: 'text',
-                            x: cen(groupW),
-                            y: 344,
-                            width: groupW,
-                            height: 62,
+                            x: marginH,
+                            y: groupY,
+                            width: fullW,
+                            height: groupH,
                             rotation: 0,
                             opacity: 1,
                             content: order.groupName || 'Group Name',
                             style: {
                               fontFamily: 'Arial',
-                              fontSize: 32,
-                              fontWeight: '600',
-                              color: '#555555',
+                              fontSize: Math.round(56 * s),
+                              fontWeight: 'bold',
+                              color: '#000000',
                               textAlign: 'center',
+                              textTransform: 'uppercase',
+                              lineHeight: 1,
+                            },
+                            zIndex: baseZ + 1,
+                          };
+                          const rollRaw = (member.memberRollNumber || 'Roll No').trim() || 'Roll No';
+                          let rollContent = rollRaw;
+                          if (rollRaw.length > 4) {
+                            const mid = Math.ceil(rollRaw.length / 2);
+                            rollContent = `${rollRaw.slice(0, mid)}\n${rollRaw.slice(mid)}`;
+                          }
+                          const rollEl: CanvasElement = {
+                            id: rollId,
+                            type: 'text',
+                            x: marginH,
+                            y: rollY,
+                            width: fullW,
+                            height: rollH,
+                            rotation: 0,
+                            opacity: 1,
+                            content: rollContent,
+                            style: {
+                              fontFamily: 'Arial',
+                              fontSize: Math.round(160 * s),
+                              fontWeight: 'bold',
+                              color: '#000000',
+                              textAlign: 'center',
+                              textTransform: 'uppercase',
+                              lineHeight: 1,
                             },
                             zIndex: baseZ + 2,
                           };
-                          return [...rest, nameEl, rollEl, groupEl];
+                          return [...rest, nameEl, groupEl, rollEl];
                         });
-                        setSelectedElements([nameId, rollId, groupId]);
+                        setSelectedElements([nameId, groupId, rollId]);
                         setTextContent(member.name || '');
                       }}
                     >
@@ -1435,8 +1509,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             </div>
             
             {/* Main Canvas Area */}
-            <div className="lg:col-span-3 flex-1 bg-white border rounded-lg p-6">
-              <div className="h-full flex flex-col">
+            <div className="lg:col-span-3 flex-1 bg-white border rounded-lg p-6 min-h-0 overflow-auto">
+              <div className="min-h-full flex flex-col">
                 {/* Canvas Toolbar */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="flex items-center space-x-2">
@@ -1488,35 +1562,58 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                   </div>
                 </div>
 
-                {/* Canvas Container */}
+                {/* Canvas Container: full height visible; scroll when viewport is smaller than canvas */}
                 <div
-                  className="flex-1 relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden"
-                  style={{ width: canvasSize.width, height: canvasSize.height, margin: 'auto' }}
+                  className="relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg"
+                  style={{
+                    width: canvasSize.width * DISPLAY_SCALE,
+                    height: canvasSize.height * DISPLAY_SCALE,
+                    minHeight: canvasSize.height * DISPLAY_SCALE,
+                    flexShrink: 0,
+                    margin: 'auto',
+                    overflow: 'auto',
+                  }}
                   ref={canvasContainerRef}
                   onClick={(e) => {
-                    // Clear selection when clicking on empty canvas area
                     if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'CANVAS') {
                       setSelectedElements([]);
                     }
                   }}
                 >
-                  <canvas
-                    width={canvasSize.width}
-                    height={canvasSize.height}
-                    style={{ width: canvasSize.width, height: canvasSize.height, backgroundColor: '#ffffff' }}
-                  />
-                  {/* Scaled wrapper to apply zoom to positioned elements */}
                   <div
-                    className="absolute inset-0"
                     style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
                       width: canvasSize.width,
                       height: canvasSize.height,
-                      transform: `scale(${zoomLevel})`,
+                      transform: `scale(${DISPLAY_SCALE})`,
                       transformOrigin: 'top left',
-                      pointerEvents: 'none',
+                      overflow: 'hidden',
                     }}
-                    ref={designWrapperRef}
                   >
+                    <canvas
+                      width={canvasSize.width}
+                      height={canvasSize.height}
+                      style={{
+                        width: canvasSize.width,
+                        height: canvasSize.height,
+                        backgroundColor: '#ffffff',
+                      }}
+                    />
+                    {/* Zoom + positioned elements; thin black border; clip to canvas */}
+                    <div
+                      className="absolute inset-0 border border-black box-border"
+                      style={{
+                        width: canvasSize.width,
+                        height: canvasSize.height,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
+                        overflow: 'hidden',
+                      }}
+                      ref={designWrapperRef}
+                    >
                     {/* Render Canvas Elements */}
                     {canvasElements.map((element) => {
                       const txt = element.type === 'text';
@@ -1645,27 +1742,67 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                               }}
                             />
                           ) : txt && (!element.style?.curve ? (
-                            <div
-                              className="w-full h-full flex items-center justify-center text-black"
-                              style={{
-                                fontFamily: element.style?.fontFamily || 'Arial',
-                                fontSize: element.style?.fontSize || 16,
-                                fontWeight: element.style?.fontWeight || 'normal',
-                                fontStyle: element.style?.fontStyle || 'normal',
-                                textDecoration: element.style?.textDecoration || 'none',
-                                textAlign: element.style?.textAlign || 'left',
-                                textTransform: element.style?.textTransform || 'none',
-                                whiteSpace: 'pre',
-                                letterSpacing: element.style?.letterSpacing,
-                                lineHeight: element.style?.lineHeight,
-                                textShadow: shadow,
-                                WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
-                                WebkitTextStrokeColor: outline?.color,
-                                ...colorStyle,
-                              }}
-                            >
-                              {element.content}
-                            </div>
+                            (() => {
+                              const isRoll = element.id.startsWith('el-roll-');
+                              const lineHeight = element.style?.lineHeight ?? 1;
+                              const flexClass = isRoll
+                                ? 'w-full h-full flex items-start justify-center text-black'
+                                : 'w-full h-full flex items-center justify-center text-black';
+
+                              // For roll numbers, compute vertical stretch so the two lines
+                              // roughly fill the available height (jersey / ID-card look),
+                              // and widen slightly so digits feel bolder.
+                              let sx = 1;
+                              let sy = 1;
+                              if (isRoll) {
+                                const fontSize = (element.style?.fontSize || 16) as number;
+                                const lines = (element.content || '').split('\n').length || 1;
+                                const baseTextHeight = fontSize * lines;
+                                if (baseTextHeight > 0) {
+                                  // Keep scaled text inside element box so download doesn't clip (match editor)
+                                  sy = (element.height / baseTextHeight) * 0.88;
+                                }
+                                // Slight extra horizontal stretch for jersey / ID-card feel
+                                sx = 1.25;
+                              }
+                              const hasScale = sx !== 1 || sy !== 1;
+                              return (
+                                <div
+                                  className={flexClass}
+                                  style={{
+                                    fontFamily: element.style?.fontFamily || 'Arial',
+                                    fontSize: element.style?.fontSize || 16,
+                                    fontWeight: element.style?.fontWeight || 'normal',
+                                    fontStyle: element.style?.fontStyle || 'normal',
+                                    textDecoration: element.style?.textDecoration || 'none',
+                                    textAlign: element.style?.textAlign || 'left',
+                                    textTransform: element.style?.textTransform || 'none',
+                                    whiteSpace: 'pre',
+                                    letterSpacing: element.style?.letterSpacing,
+                                    lineHeight,
+                                    textShadow: shadow,
+                                    WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
+                                    WebkitTextStrokeColor: outline?.color,
+                                    ...colorStyle,
+                                  }}
+                                >
+                                  {hasScale ? (
+                                    <span
+                                      style={{
+                                        display: 'inline-block',
+                                        transform: `scale(${sx}, ${sy})`,
+                                        transformOrigin: 'center top',
+                                        lineHeight,
+                                      }}
+                                    >
+                                      {element.content}
+                                    </span>
+                                  ) : (
+                                    element.content
+                                  )}
+                                </div>
+                              );
+                            })()
                           ) : (
                             <div
                               className="relative w-full h-full"
@@ -1840,6 +1977,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
 
                 {/* Canvas Status Bar */}

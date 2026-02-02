@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TablePagination } from '@/components/admin/TablePagination';
 import { ambassadorAdminApi, WaitlistItem } from '@/services/ambassadorAdminApi';
 import { getAmbassadorRewards as getAmbassadorRewardsApi, Paginated, AmbassadorRewardItem } from '@/lib/ambassadorApi';
 import { Search, CheckCircle, Clock, UserPlus, XCircle, ChevronRight } from 'lucide-react';
@@ -24,7 +25,7 @@ export default function AmbassadorAdmin() {
       id: string;
       name: string;
       email: string;
-      city: string;
+      city?: string;
       phone: string;
       college?: string;
       referralCode: string;
@@ -44,10 +45,19 @@ export default function AmbassadorAdmin() {
   const [approvingWaitlistId, setApprovingWaitlistId] = useState<string | null>(null);
   const [rejectingWaitlistId, setRejectingWaitlistId] = useState<string | null>(null);
   const [showWaitlist, setShowWaitlist] = useState(true);
+  const [ambassadorPage, setAmbassadorPage] = useState(1);
+  const [ambassadorPageSize, setAmbassadorPageSize] = useState(20);
+  const [waitlistPage, setWaitlistPage] = useState(1);
+  const [waitlistTotal, setWaitlistTotal] = useState(0);
+  const [waitlistPageSize, setWaitlistPageSize] = useState(10);
 
   const loadAmbassadors = async () => {
     try {
-      const res = await ambassadorAdminApi.listAmbassadors(1, 20, searchTerm.trim());
+      const res = await ambassadorAdminApi.listAmbassadors(
+        ambassadorPage,
+        ambassadorPageSize,
+        searchTerm.trim()
+      );
       setAmbassadors(res.items || []);
       setAmbassadorsTotal(res.total || res.items?.length || 0);
     } catch (e: any) {
@@ -66,20 +76,33 @@ export default function AmbassadorAdmin() {
   };
 
   useEffect(() => {
-    loadAmbassadors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setAmbassadorPage(1);
   }, [searchTerm]);
 
   useEffect(() => {
+    loadAmbassadors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, ambassadorPage, ambassadorPageSize]);
+
+  useEffect(() => {
     loadAdminRewards();
-    loadWaitlist();
   }, []);
+
+  useEffect(() => {
+    loadWaitlist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitlistPage, waitlistPageSize]);
 
   const loadWaitlist = async () => {
     try {
       setWaitlistLoading(true);
-      const res = await ambassadorAdminApi.listWaitlist(1, 50, 'pending');
+      const res = await ambassadorAdminApi.listWaitlist(
+        waitlistPage,
+        waitlistPageSize,
+        'pending'
+      );
       setWaitlistEntries(res.items || []);
+      setWaitlistTotal(res.total ?? res.items?.length ?? 0);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load waitlist');
     } finally {
@@ -292,6 +315,19 @@ export default function AmbassadorAdmin() {
                   </TableBody>
                 </Table>
               )}
+              {waitlistEntries.length > 0 && (
+                <TablePagination
+                  currentPage={waitlistPage}
+                  pageSize={waitlistPageSize}
+                  total={waitlistTotal}
+                  onPageChange={(page, pageSize) => {
+                    setWaitlistPage(page);
+                    if (pageSize != null) setWaitlistPageSize(pageSize);
+                  }}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="applications"
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -359,6 +395,17 @@ export default function AmbassadorAdmin() {
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={ambassadorPage}
+              pageSize={ambassadorPageSize}
+              total={ambassadorsTotal}
+              onPageChange={(page, pageSize) => {
+                setAmbassadorPage(page);
+                if (pageSize != null) setAmbassadorPageSize(pageSize);
+              }}
+              pageSizeOptions={[10, 20, 50]}
+              itemLabel="ambassadors"
+            />
           </CardContent>
         </Card>
       </div>
