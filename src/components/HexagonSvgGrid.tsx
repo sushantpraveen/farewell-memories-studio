@@ -46,10 +46,10 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
   emptyCenter,
 }) => {
   const sizeStyles = {
-    small: { maxH: 'min(65vh,450px)', minH: 220 },
-    medium: { maxH: 'min(75vh,550px)', minH: 280 },
-    large: { maxH: 'min(95vh,1100px)', minH: 480 },
-    xlarge: { maxH: 'min(95vh,1100px)', minH: 480 },
+    small: { maxH: 'min(65vh,450px)', minH: 180 },
+    medium: { maxH: 'min(75vh,550px)', minH: 220 },
+    large: { maxH: '100%', minH: 240 },
+    xlarge: { maxH: '100%', minH: 280 },
   }[size];
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -190,16 +190,14 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
     return slotIndex % 2 === 1 ? PLACEHOLDER_MALE : PLACEHOLDER_FEMALE;
   };
 
-  // Match square grid layout from Editor (16.tsx): same outer + inner card.
-  // Square: outer "flex flex-col items-center justify-center min-h-screen bg-gradient... p-2 md:p-6",
-  // inner "grid ... bg-white rounded-xl shadow-2xl p-1 md:p-3" with --cell = min(width-fit, height-fit) so grid never overflows.
-  // Hex fix: card gets explicit max height + overflow-hidden; SVG container has that height; SVG uses w-full h-full + preserveAspectRatio meet so it scales DOWN to fit (never overflows).
-  const wrapperClass = 'flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6';
-  const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-3 w-full max-w-xl overflow-hidden';
+  // Fit container (GridBoard/Editor/JoinGroup): no min-h-screen so hex scales at any zoom and on mobile.
+  // Square grid uses vw/vh in --cell so it scales; hex uses h-full so it fits the parent; max-h caps when parent is unconstrained.
+  const wrapperClass = 'w-full h-full min-h-0 max-h-[min(95vh,1100px)] flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-1 sm:p-2 md:p-3';
+  const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-2 w-full max-w-full flex-1 min-h-0 overflow-hidden';
   const cardStyle: React.CSSProperties = {
     minHeight: sizeStyles.minH,
     maxHeight: sizeStyles.maxH,
-    height: sizeStyles.maxH,
+    height: '100%',
   };
 
   if (loading) {
