@@ -13,6 +13,8 @@ interface GridPreviewProps {
   size?: 'small' | 'medium' | 'large' | 'xlarge';
   activeMember?: Member;
   centerEmptyDefault?: boolean;
+  /** Rendered in the center of the grid when provided (e.g. "Waiting for members" + Invite button for hex). */
+  emptyCenter?: React.ReactNode;
 }
 
 // Hexagon SVG modules and path resolver
@@ -73,6 +75,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
   size = 'medium',
   activeMember,
   centerEmptyDefault = false,
+  emptyCenter,
 }) => {
   const [PreviewComp, setPreviewComp] = useState<React.LazyExoticComponent<React.ComponentType> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -283,6 +286,7 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
         existingMembers={processedMembers}
         centerEmptyDefault={centerEmptyDefault}
         size={size}
+        emptyCenter={emptyCenter}
       />
     );
   }

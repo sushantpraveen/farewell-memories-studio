@@ -7,6 +7,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { GridProvider as SquareGridProvider } from './square/context/GridContext';
+import { GridPreview } from './GridPreview';
 import { Link, useNavigate } from "react-router-dom";
 import { useCollage, GridTemplate } from '../context/CollageContext';
 import { useAuth } from '../context/AuthContext';
@@ -987,8 +988,8 @@ const GridBoard = () => {
               <CardContent className="p-2 sm:p-3 md:p-4 h-full flex flex-col">
                 {/* Template Navigation Overlay - pointer-events-auto so clicks work despite parent's pointer-events-none */}
                 {availableTemplates.length > 1 && (
-                  <div className="absolute inset-0 z-10 pointer-events-none">
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto">
+                  <div className="absolute inset-0 z-20 pointer-events-none">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -998,7 +999,7 @@ const GridBoard = () => {
                         <ChevronLeft className="h-6 w-6 text-gray-700" />
                       </Button>
                     </div>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1009,12 +1010,12 @@ const GridBoard = () => {
                       </Button>
                     </div>
                     {/* Template Type Indicator */}
-                    <div className="absolute top-4 right-4 z-10">
+                    <div className="absolute top-4 right-4 pointer-events-none z-20">
                       <span className="px-3 py-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
                         {availableTemplates[currentTemplateIndex].path === 'vector'
                           ? 'Collage'
                           : availableTemplates[currentTemplateIndex].path?.endsWith('.svg')
-                            ? 'Hexagon (SVG)'
+                            ? 'Hexagon'
                             : availableTemplates[currentTemplateIndex].type}
                       </span>
                     </div>
@@ -1041,10 +1042,11 @@ const GridBoard = () => {
                     }
                   >
                     <div className={`w-full ${
-                      availableTemplates[currentTemplateIndex]?.path === 'vector' ||
-                      availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+                      availableTemplates[currentTemplateIndex]?.path === 'vector'
                         ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
-                        : 'aspect-square'
+                        : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+                          ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
+                          : 'aspect-square'
                     }`}>
                       {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
                         <PreviewComp />
@@ -1052,6 +1054,14 @@ const GridBoard = () => {
                         <SquareGridProvider>
                           <PreviewComp />
                         </SquareGridProvider>
+                      ) : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg') ? (
+                        <GridPreview
+                          template="hexagonal"
+                          memberCount={Math.max(1, parseInt(String(formData.totalMembers), 10) || 16)}
+                          members={[]}
+                          centerEmptyDefault
+                          size="large"
+                        />
                       ) : (
                         <PreviewComp />
                       )}

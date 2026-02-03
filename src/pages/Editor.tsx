@@ -558,12 +558,23 @@ const Editor = () => {
                           memberCount={displayMemberCount}
                           members={displayMembers}
                           size="large"
+                          emptyCenter={
+                            group.members.length === 0 ? (
+                              <>
+                                <p className="text-sm sm:text-base text-gray-500 mb-2">Waiting for members to join...</p>
+                                <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 py-2 w-fit">
+                                  <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  Invite Members
+                                </Button>
+                              </>
+                            ) : undefined
+                          }
                         />
-                        {group.members.length === 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center p-4">
+                        {group.members.length === 0 && displayTemplate !== 'hexagonal' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="text-center p-4 pointer-events-auto flex flex-col items-center justify-center">
                               <p className="text-sm sm:text-base text-gray-500 mb-2">Waiting for members to join...</p>
-                              <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 py-2">
+                              <Button variant="outline" onClick={handleShare} className="text-xs sm:text-sm px-3 py-2 w-fit">
                                 <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                                 Invite Members
                               </Button>

@@ -77,7 +77,11 @@ export const GridProvider: React.FC<{ children: React.ReactNode } & Partial<Pick
         backgroundRepeat: 'no-repeat',
       } as React.CSSProperties;
     }
-    const placeholder = PLACEHOLDER_IMAGES[hashKey(key) % PLACEHOLDER_IMAGES.length];
+    // Center cell (e.g. "grid-16:center:0-0") always uses female placeholder; others alternate male/female.
+    const isCenter = /:center:/i.test(key);
+    const placeholder = isCenter
+      ? PLACEHOLDER_IMAGES[1]
+      : PLACEHOLDER_IMAGES[hashKey(key) % PLACEHOLDER_IMAGES.length];
     return {
       backgroundImage: `url(${placeholder})`,
       backgroundSize: 'cover',

@@ -12,6 +12,10 @@ type Slot = {
 
 const hexagonSvgModules = import.meta.glob<string>('./hexagon/*.svg', { as: 'raw' });
 
+// Same placeholders as square grid: center = female, others alternate male/female (clipped inside hex).
+const PLACEHOLDER_FEMALE = '/placeholders/placeholder-female.jpg';
+const PLACEHOLDER_MALE = '/placeholders/placeholder-male.jpg';
+
 // Resolve path for glob lookup
 function resolveSvgPath(path: string): string | null {
   if (path in hexagonSvgModules) return path;
@@ -28,6 +32,8 @@ interface HexagonSvgGridProps {
   existingMembers?: Member[];
   centerEmptyDefault?: boolean;
   size?: 'small' | 'medium' | 'large' | 'xlarge';
+  /** Rendered exactly in the center of the card (over the center hex). */
+  emptyCenter?: React.ReactNode;
 }
 
 export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
@@ -37,6 +43,7 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
   existingMembers = [],
   centerEmptyDefault = false,
   size = 'large',
+  emptyCenter,
 }) => {
   const sizeStyles = {
     small: { maxH: 'min(65vh,450px)', minH: 220 },
@@ -167,80 +174,136 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
 
   const { width, height } = viewBox;
 
-  // Strict one-to-one mapping: Cell 0 (center) = member 0, Cell 1 = member 1, Cell 2 = member 2, etc.
-  // With previewMember (JoinGroup): center = preview, border slots = existingMembers[0], [1], ...
-  // Without previewMember (Editor): all slots = existingMembers[0], [1], ...
-  const getPhotoForSlot = (slotIndex: number): string | undefined => {
+  // Match square grid logic: 1st member is in center AND in first border slot.
+  // Square: center = member 0, border slots = members 0..15 (so member 0 in center + first small box).
+  // Hex: slot 0 (center) = member 0 (or preview), slots 1..16 (border) = members 0..15.
+  const getPhotoForSlot = (slotIndex: number): string => {
     if (slotIndex === 0) {
       if (previewMember?.photo) return previewMember.photo;
       if (!centerEmptyDefault && existingMembers[0]?.photo) return existingMembers[0].photo;
-      return undefined;
+      return PLACEHOLDER_FEMALE;
     }
-    const memberIndex = previewMember ? slotIndex - 1 : slotIndex;
-    return existingMembers[memberIndex]?.photo;
+    // Border slots 1..16 = members 0..15 (same as square: first member in center and in first border slot)
+    const memberIndex = slotIndex - 1;
+    const memberPhoto = existingMembers[memberIndex]?.photo;
+    if (memberPhoto) return memberPhoto;
+    return slotIndex % 2 === 1 ? PLACEHOLDER_MALE : PLACEHOLDER_FEMALE;
+  };
+
+  // Match square grid layout from Editor (16.tsx): same outer + inner card.
+  // Square: outer "flex flex-col items-center justify-center min-h-screen bg-gradient... p-2 md:p-6",
+  // inner "grid ... bg-white rounded-xl shadow-2xl p-1 md:p-3" with --cell = min(width-fit, height-fit) so grid never overflows.
+  // Hex fix: card gets explicit max height + overflow-hidden; SVG container has that height; SVG uses w-full h-full + preserveAspectRatio meet so it scales DOWN to fit (never overflows).
+  const wrapperClass = 'flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6';
+  const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-3 w-full max-w-xl overflow-hidden';
+  const cardStyle: React.CSSProperties = {
+    minHeight: sizeStyles.minH,
+    maxHeight: sizeStyles.maxH,
+    height: sizeStyles.maxH,
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center w-full aspect-[595/936] bg-muted/30 rounded-xl" style={{ maxHeight: sizeStyles.maxH, minHeight: sizeStyles.minH }}>
-        <p className="text-sm text-muted-foreground">Loading hexagon template...</p>
+      <div className={wrapperClass}>
+        <div className={cardClass} style={cardStyle}>
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">Loading hexagon template...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error || slots.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full aspect-[595/936] bg-muted/30 rounded-xl" style={{ maxHeight: sizeStyles.maxH, minHeight: sizeStyles.minH }}>
-        <p className="text-sm text-destructive">{error || 'No slots found'}</p>
+      <div className={wrapperClass}>
+        <div className={cardClass} style={cardStyle}>
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            <p className="text-sm text-destructive">{error || 'No slots found'}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full min-h-full rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center" style={{ minHeight: sizeStyles.minH, maxHeight: sizeStyles.maxH }}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full max-w-full" preserveAspectRatio="xMidYMid meet" style={{ minHeight: sizeStyles.minH }}>
-        <defs>
-          {slots.map((s, i) => (
-            <clipPath key={s.id} id={`hex-clip-${s.id}`} clipPathUnits="userSpaceOnUse">
-              <path d={s.d} transform={s.transform} />
-            </clipPath>
-          ))}
-        </defs>
-        <rect width="100%" height="100%" fill="#fafafa" />
-        {slots.map((s, slotIndex) => {
-          const photo = getPhotoForSlot(slotIndex);
-          // Use bounding box to position image within this specific hex cell
-          const { x: bx, y: by, width: bw, height: bh } = s.bbox;
-          // Make image square based on the larger dimension for proper face cropping
-          const imgSize = Math.max(bw, bh);
-          const imgX = bx + (bw - imgSize) / 2;
-          const imgY = by + (bh - imgSize) / 2;
-          return (
-            <g key={s.id}>
-              <path
-                d={s.d}
-                transform={s.transform}
-                fill="#00c1f3"
-                fillRule="evenodd"
-                stroke="#231f20"
-                strokeMiterlimit={10}
-              />
-              {photo && (
-                <image
-                  href={photo}
-                  x={imgX}
-                  y={imgY}
-                  width={imgSize}
-                  height={imgSize}
-                  preserveAspectRatio="xMidYMid slice"
-                  clipPath={`url(#hex-clip-${s.id})`}
-                  style={{ pointerEvents: 'none' }}
-                />
-              )}
-            </g>
-          );
-        })}
-      </svg>
+    <div className={wrapperClass}>
+      <div className={`${cardClass} relative`} style={cardStyle}>
+        {/* Bounded box: takes card height; SVG fills it and scales to fit (meet) so no overflow. */}
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center relative">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full h-full max-w-full max-h-full shrink-0"
+            preserveAspectRatio="xMidYMid meet"
+            style={{ display: 'block' }}
+          >
+            <defs>
+              {slots.map((s) => (
+                <clipPath key={s.id} id={`hex-clip-${s.id}`} clipPathUnits="userSpaceOnUse">
+                  <path d={s.d} transform={s.transform} />
+                </clipPath>
+              ))}
+            </defs>
+            <rect width="100%" height="100%" fill="#fafafa" />
+            {slots.map((s, slotIndex) => {
+              const photo = getPhotoForSlot(slotIndex);
+              const { x: bx, y: by, width: bw, height: bh } = s.bbox;
+              const imgSize = Math.max(bw, bh);
+              const imgX = bx + (bw - imgSize) / 2;
+              const imgY = by + (bh - imgSize) / 2;
+              return (
+                <g key={s.id}>
+                  <path
+                    d={s.d}
+                    transform={s.transform}
+                    fill="#00c1f3"
+                    fillRule="evenodd"
+                    stroke="#231f20"
+                    strokeMiterlimit={10}
+                  />
+                  <image
+                    href={photo}
+                    x={imgX}
+                    y={imgY}
+                    width={imgSize}
+                    height={imgSize}
+                    preserveAspectRatio="xMidYMid slice"
+                    clipPath={`url(#hex-clip-${s.id})`}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+        {/* Empty state inside the center hex: position/size to match center slot bbox (viewBox %). */}
+        {emptyCenter != null && slots[0] && (
+          (() => {
+            const center = slots[0];
+            const { x: cx, y: cy, width: cw, height: ch } = center.bbox;
+            const inset = 0.02;
+            const leftPct = (cx / width) * 100 + inset * 100;
+            const topPct = (cy / height) * 100 + inset * 100;
+            const wPct = (cw / width) * 100 - inset * 200;
+            const hPct = (ch / height) * 100 - inset * 200;
+            return (
+              <div
+                className="absolute flex items-center justify-center pointer-events-none"
+                style={{
+                  left: `${leftPct}%`,
+                  top: `${topPct}%`,
+                  width: `${wPct}%`,
+                  height: `${hPct}%`,
+                }}
+              >
+                <div className="pointer-events-auto flex flex-col items-center justify-center text-center p-2 w-full h-full overflow-hidden box-border text-xs [&_button]:text-xs [&_button]:py-1.5 [&_button]:px-2 [&_p]:text-xs [&_p]:mb-1">
+                  {emptyCenter}
+                </div>
+              </div>
+            );
+          })()
+        )}
+      </div>
     </div>
   );
 };
