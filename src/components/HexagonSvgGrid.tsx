@@ -190,11 +190,9 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
     return slotIndex % 2 === 1 ? PLACEHOLDER_MALE : PLACEHOLDER_FEMALE;
   };
 
-  // Match square grid layout from Editor (16.tsx): same outer + inner card.
-  // Square: outer "flex flex-col items-center justify-center min-h-screen bg-gradient... p-2 md:p-6",
-  // inner "grid ... bg-white rounded-xl shadow-2xl p-1 md:p-3" with --cell = min(width-fit, height-fit) so grid never overflows.
-  // Hex fix: card gets explicit max height + overflow-hidden; SVG container has that height; SVG uses w-full h-full + preserveAspectRatio meet so it scales DOWN to fit (never overflows).
-  const wrapperClass = 'flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6';
+  // Layout wrapper: fills whatever container it's placed in instead of using viewport height.
+  // This keeps the hex grid stable across all browser zoom levels when embedded in cards.
+  const wrapperClass = 'flex flex-col items-center justify-center w-full h-full p-2 md:p-6';
   const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-3 w-full max-w-xl overflow-hidden';
   const cardStyle: React.CSSProperties = {
     minHeight: sizeStyles.minH,
