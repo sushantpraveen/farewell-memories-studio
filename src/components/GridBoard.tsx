@@ -1045,7 +1045,7 @@ const GridBoard = () => {
                       availableTemplates[currentTemplateIndex]?.path === 'vector'
                         ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
                         : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
-                          ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
+                          ? 'aspect-[595/936] h-auto max-h-[640px] min-h-[320px]'
                           : 'aspect-square'
                     }`}>
                       {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
