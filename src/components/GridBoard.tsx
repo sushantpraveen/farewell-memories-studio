@@ -1043,9 +1043,12 @@ const GridBoard = () => {
                   >
                     <div className={`w-full ${
                       availableTemplates[currentTemplateIndex]?.path === 'vector'
-                        ? 'aspect-[595/936] max-h-[560px] min-h-[320px]'
+                        ? 'aspect-[595/936] max-h-[560px] min-h-[280px] flex flex-col min-h-0'
                         : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+
                           ? 'aspect-[595/936] h-auto max-h-[640px] min-h-[320px]'
+
+                          ? 'aspect-[595/936] max-h-[min(85vh,560px)] min-h-[240px] flex flex-col min-h-0'
                           : 'aspect-square'
                     }`}>
                       {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
