@@ -21,9 +21,11 @@ interface GridPreviewProps {
 const hexagonSvgModules = import.meta.glob('./hexagon/*.svg', { as: 'raw' });
 const getHexagonSvgPath = (n: number): string | null => {
   const expected = `${n}.svg`;
-  const key = Object.keys(hexagonSvgModules).find(
-    (k) => k.endsWith(expected) || k.includes(`hexagon/${expected}`)
-  );
+  const key = Object.keys(hexagonSvgModules).find((k) => {
+    const parts = k.split('/');
+    const basename = parts[parts.length - 1];
+    return basename === expected;
+  });
   return key ?? null;
 };
 
