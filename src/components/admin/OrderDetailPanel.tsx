@@ -39,6 +39,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   const [showVariantsModal, setShowVariantsModal] = useState(false);
   const [preloadedVariants, setPreloadedVariants] = useState<any[]>([]);
   const [isPreloading, setIsPreloading] = useState(false);
+  const [fetchedVariants, setFetchedVariants] = useState<any[] | null>(null);
+  const [fetchedRenderedImages, setFetchedRenderedImages] = useState<Record<string, string> | null>(null);
   const { updateOrderSettings, orders, refreshOrders } = useAdminOrders();
   const [activeSection, setActiveSection] = useState('text');
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
@@ -83,7 +85,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
   const persistPresets = (items: typeof textPresets) => {
     setTextPresets(items);
-    try { localStorage.setItem('text-presets', JSON.stringify(items)); } catch {}
+    try { localStorage.setItem('text-presets', JSON.stringify(items)); } catch { }
   };
 
   const updateSelectedElements = (mutator: (el: CanvasElement) => CanvasElement) => {
@@ -383,11 +385,11 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
         const { canGenerate } = canGenerateVariants(existing);
         if (canGenerate) {
           ensureRenderStartedRef.current.add(existing.id);
-          ordersApi.ensureRender(existing.id).catch(() => {});
+          ordersApi.ensureRender(existing.id).catch(() => { });
         }
       }
-      // Preload variants when order is loaded
-      preloadVariants(existing);
+      // Preload variants only when order is paid
+      if (existing.paid) preloadVariants(existing);
     } else {
       // Ensure orders are fetched; OrderDetailPanel relies on the shared context list
       Promise.resolve(refreshOrders()).finally(() => {
@@ -400,30 +402,28 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             const { canGenerate } = canGenerateVariants(updated);
             if (canGenerate) {
               ensureRenderStartedRef.current.add(updated.id);
-              ordersApi.ensureRender(updated.id).catch(() => {});
+              ordersApi.ensureRender(updated.id).catch(() => { });
             }
           }
-          // Preload variants when order is loaded
-          preloadVariants(updated);
+          // Preload variants only when order is paid
+          if (updated.paid) preloadVariants(updated);
         }
         setLoading(false);
       });
     }
   }, [orderId, orders]);
 
-  // Preload variants in the background
+  // Preload variants in the background (only for paid orders)
   const preloadVariants = async (orderData: Order) => {
-    if (!orderData || isPreloading) return;
-    
+    if (!orderData || !orderData.paid || isPreloading) return;
+
     const { canGenerate } = canGenerateVariants(orderData);
     if (!canGenerate) return;
-    
+
     try {
       setIsPreloading(true);
-      console.log('Preloading variants for order:', orderData.id);
       const variants = await generateGridVariants(orderData);
       setPreloadedVariants(variants);
-      console.log('Successfully preloaded', variants.length, 'variants');
     } catch (error) {
       console.error('Failed to preload variants:', error);
     } finally {
@@ -449,16 +449,42 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
     window.dispatchEvent(new CustomEvent('grid-template-download'));
   };
 
-  const handleGenerateVariants = () => {
+  const handleGenerateVariants = async () => {
     if (!order) return;
-    
+
     const { canGenerate, reason } = canGenerateVariants(order);
     if (!canGenerate) {
       toast.error(reason || 'Cannot generate variants');
       return;
     }
-    
+
+    try {
+      const res = await ordersApi.getCenterVariants(order.id);
+      if (res.variants?.length > 0 && res.renderedImages && Object.keys(res.renderedImages).length > 0) {
+        setFetchedVariants(res.variants);
+        setFetchedRenderedImages(res.renderedImages);
+        setShowVariantsModal(true);
+        return;
+      }
+    } catch (_) {
+      // API may return empty or fail
+    }
+
+    if (order.paid) {
+      toast.info('Variants are being generated. Check the Variants column for progress, or try again in a moment.');
+      return;
+    }
+
+    setFetchedVariants(null);
+    setFetchedRenderedImages(null);
     setShowVariantsModal(true);
+  };
+
+  const handleVariantsSavedToBackend = () => {
+    refreshOrders();
+    if (order) {
+      ordersApi.getOrder(order.id).then((o) => setOrder(o)).catch(() => {});
+    }
   };
 
   if (loading) {
@@ -523,7 +549,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             <Settings className="h-4 w-4" />
             <span>Settings</span>
           </TabsTrigger>
-          
+
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -614,9 +640,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       <Save className="h-4 w-4 mr-1" />
                       Save
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setEditingDescription(false)}
                     >
                       Cancel
@@ -812,6 +838,53 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
               <CardTitle className="flex items-center justify-between">
                 <span>Grid Preview ({order.gridTemplate})</span>
                 <div className="flex items-center space-x-2">
+                  {/* Show render status indicator */}
+                  {order.centerVariantsStatus === 'processing' && (
+                    <span className="text-sm text-amber-600 flex items-center">
+                      <span className="animate-pulse mr-1">●</span>
+                      Rendering {order.centerVariantsDone ?? 0}/{order.centerVariantsTotal ?? '...'}
+                    </span>
+                  )}
+                  {order.centerVariantsStatus === 'queued' && (
+                    <span className="text-sm text-blue-600">Queued</span>
+                  )}
+                  {order.centerVariantsStatus === 'failed' && (
+                    <span className="text-sm text-destructive flex items-center space-x-2">
+                      <span>Failed</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await ordersApi.ensureRender(order.id, true);
+                            toast.success('Render job re-queued');
+                            refreshOrders();
+                          } catch (e: any) {
+                            toast.error(e.message || 'Failed to retry');
+                          }
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    </span>
+                  )}
+                  {order.centerVariantsStatus === 'completed' && (order.centerVariantsDone ?? 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await ordersApi.ensureRender(order.id, true);
+                          toast.success('Re-render job queued');
+                          refreshOrders();
+                        } catch (e: any) {
+                          toast.error(e.message || 'Failed to re-render');
+                        }
+                      }}
+                    >
+                      Re-render
+                    </Button>
+                  )}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -863,13 +936,12 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                   ].map(({ id, label, icon: Icon }) => {
                     const isActive = activeSection === id;
                     return (
-                      <Button 
+                      <Button
                         key={id}
-                        variant={isActive ? 'default' : 'ghost'} 
-                        onClick={() => setActiveSection(id)} 
-                        className={`w-full mt-5 h-25 flex flex-col items-center gap-1 p-2 relative ${
-                          isActive ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white' : ''
-                        }`}
+                        variant={isActive ? 'default' : 'ghost'}
+                        onClick={() => setActiveSection(id)}
+                        className={`w-full mt-5 h-25 flex flex-col items-center gap-1 p-2 relative ${isActive ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white' : ''
+                          }`}
                       >
                         <Icon className="w-16 h-16" />
                         <span className="text-sm">{label}</span>
@@ -878,7 +950,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                   })}
                 </div>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 p-4">
                 <div className="mb-4">
@@ -1108,7 +1180,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Alignment</div>
                             <div className="grid grid-cols-4 gap-2">
-                              {(['left','center','right','justify'] as const).map(al => (
+                              {(['left', 'center', 'right', 'justify'] as const).map(al => (
                                 <Button
                                   key={al}
                                   variant="outline"
@@ -1124,7 +1196,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Color</div>
                             <div className="flex flex-wrap gap-2">
-                              {['#000000','#ffffff','#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#e11d48','#10b981','#f97316','#111827']
+                              {['#000000', '#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#e11d48', '#10b981', '#f97316', '#111827']
                                 .map(c => (
                                   <button
                                     key={c}
@@ -1179,10 +1251,10 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                               >
                                 AA
                               </Button>
-                              <Button 
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={()=>updateSelectedStyle({textTransform: "capitalize"})}
+                                onClick={() => updateSelectedStyle({ textTransform: "capitalize" })}
                               >
                                 Aa
                               </Button>
@@ -1268,7 +1340,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                                   <div className="space-y-1">
                                     <div className="text-xs text-muted-foreground">Direction</div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      {(['up','down'] as const).map(dir => (
+                                      {(['up', 'down'] as const).map(dir => (
                                         <Button
                                           key={dir}
                                           variant={selectedFirst.style.curve?.direction === dir ? 'default' : 'outline'}
@@ -1439,35 +1511,35 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                           <div className="space-y-2">
                             <h4 className="text-sm font-medium">Quick Actions</h4>
                             <div className="grid grid-cols-2 gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   if (historyIndex > 0) {
                                     setHistoryIndex(prev => prev - 1);
                                     setCanvasElements(canvasHistory[historyIndex - 1]);
                                   }
-                                }} 
+                                }}
                                 disabled={!canUndo}
                               >
                                 Undo
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   if (historyIndex < canvasHistory.length - 1) {
                                     setHistoryIndex(prev => prev + 1);
                                     setCanvasElements(canvasHistory[historyIndex + 1]);
                                   }
-                                }} 
+                                }}
                                 disabled={!canRedo}
                               >
                                 Redo
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   setZoomLevel(1);
                                   setSelectedElements([]);
@@ -1475,9 +1547,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                               >
                                 Reset
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   const canvasData = {
                                     elements: canvasElements,
@@ -1507,29 +1579,29 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                 })()}
               </div>
             </div>
-            
+
             {/* Main Canvas Area */}
             <div className="lg:col-span-3 flex-1 bg-white border rounded-lg p-6 min-h-0 overflow-auto">
               <div className="min-h-full flex flex-col">
                 {/* Canvas Toolbar */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setZoomLevel(prev => Math.max(0.1, Math.min(3, prev * 1.2)))}
                     >
                       <ZoomIn className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setZoomLevel(prev => Math.max(0.1, Math.min(3, prev * 0.8)))}
                     >
                       <ZoomOut className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       disabled={!canUndo}
                       onClick={() => {
@@ -1542,8 +1614,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                     >
                       Undo
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       size="sm"
                       disabled={selectedElements.length === 0}
                       onClick={() => {
@@ -1614,16 +1686,16 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                       }}
                       ref={designWrapperRef}
                     >
-                    {/* Render Canvas Elements */}
-                    {canvasElements.map((element) => {
-                      const txt = element.type === 'text';
-                      const shadow = element.style?.shadow
-                        ? `${element.style.shadow.x}px ${element.style.shadow.y}px ${element.style.shadow.blur}px ${element.style.shadow.color}`
-                        : undefined;
-                      const outline = element.style?.outline;
-                      const gradient = element.style?.gradient;
-                      const colorStyle = gradient
-                        ? {
+                      {/* Render Canvas Elements */}
+                      {canvasElements.map((element) => {
+                        const txt = element.type === 'text';
+                        const shadow = element.style?.shadow
+                          ? `${element.style.shadow.x}px ${element.style.shadow.y}px ${element.style.shadow.blur}px ${element.style.shadow.color}`
+                          : undefined;
+                        const outline = element.style?.outline;
+                        const gradient = element.style?.gradient;
+                        const colorStyle = gradient
+                          ? {
                             backgroundImage:
                               gradient.type === 'linear'
                                 ? `linear-gradient(${gradient.direction ?? 0}deg, ${gradient.colors.join(',')})`
@@ -1632,351 +1704,350 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                             backgroundClip: 'text',
                             color: 'transparent',
                           }
-                        : { color: element.style?.color || '#000000' };
-                      return (
-                        <div
-                          key={element.id}
-                          className={`absolute border-2 ${
-                            selectedElements.includes(element.id)
-                              ? 'border-blue-500 bg-blue-100 bg-opacity-20'
-                              : 'border-transparent'
-                          }`}
-                          style={{
-                            left: element.x,
-                            top: element.y,
-                            width: element.width,
-                            height: element.height,
-                            transform: `rotate(${element.rotation}deg)` as any,
-                            opacity: element.opacity,
-                            zIndex: element.zIndex,
-                            cursor: 'move',
-                            pointerEvents: 'auto',
-                          }}
-                          onClick={(e) => {
-                            // Prevent container onClick from clearing selection on simple clicks
-                            e.stopPropagation();
-                          }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            // If currently editing this element, do not start dragging
-                            if (editingElementId && editingElementId === element.id) return;
-                            // reset drag flag at the start of interaction
-                            dragMovedRef.current = false;
-                            // select
-                            if (e.ctrlKey || e.metaKey) {
-                              setSelectedElements((prev) =>
-                                prev.includes(element.id)
-                                  ? prev.filter((id) => id !== element.id)
-                                  : [...prev, element.id]
-                              );
-                            } else {
-                              setSelectedElements([element.id]);
-                            }
-                            // start dragging
-                            setDragging({
-                              id: element.id,
-                              startMouse: { x: e.clientX, y: e.clientY },
-                              startPos: { x: element.x, y: element.y },
-                            });
-                          }}
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            // Enter inline editing for this text element
-                            if (txt) {
-                              setSelectedElements([element.id]);
-                              setEditingElementId(element.id);
-                              setIsTyping(true);
-                              setTextContent(element.content || '');
-                            }
-                          }}
-                        >
-                          {txt && editingElementId === element.id ? (
-                            // Inline editor overlay
-                            <textarea
-                              value={textContent}
-                              autoFocus
-                              onChange={(e) => setTextContent(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  // Commit to in-memory canvas
+                          : { color: element.style?.color || '#000000' };
+                        return (
+                          <div
+                            key={element.id}
+                            className={`absolute border-2 ${selectedElements.includes(element.id)
+                                ? 'border-blue-500 bg-blue-100 bg-opacity-20'
+                                : 'border-transparent'
+                              }`}
+                            style={{
+                              left: element.x,
+                              top: element.y,
+                              width: element.width,
+                              height: element.height,
+                              transform: `rotate(${element.rotation}deg)` as any,
+                              opacity: element.opacity,
+                              zIndex: element.zIndex,
+                              cursor: 'move',
+                              pointerEvents: 'auto',
+                            }}
+                            onClick={(e) => {
+                              // Prevent container onClick from clearing selection on simple clicks
+                              e.stopPropagation();
+                            }}
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              // If currently editing this element, do not start dragging
+                              if (editingElementId && editingElementId === element.id) return;
+                              // reset drag flag at the start of interaction
+                              dragMovedRef.current = false;
+                              // select
+                              if (e.ctrlKey || e.metaKey) {
+                                setSelectedElements((prev) =>
+                                  prev.includes(element.id)
+                                    ? prev.filter((id) => id !== element.id)
+                                    : [...prev, element.id]
+                                );
+                              } else {
+                                setSelectedElements([element.id]);
+                              }
+                              // start dragging
+                              setDragging({
+                                id: element.id,
+                                startMouse: { x: e.clientX, y: e.clientY },
+                                startPos: { x: element.x, y: element.y },
+                              });
+                            }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              // Enter inline editing for this text element
+                              if (txt) {
+                                setSelectedElements([element.id]);
+                                setEditingElementId(element.id);
+                                setIsTyping(true);
+                                setTextContent(element.content || '');
+                              }
+                            }}
+                          >
+                            {txt && editingElementId === element.id ? (
+                              // Inline editor overlay
+                              <textarea
+                                value={textContent}
+                                autoFocus
+                                onChange={(e) => setTextContent(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    // Commit to in-memory canvas
+                                    setCanvasElements(prev => prev.map(el => (
+                                      el.id === element.id ? { ...el, content: textContent } : el
+                                    )));
+                                    setEditingElementId(null);
+                                    setIsTyping(false);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setEditingElementId(null);
+                                    setIsTyping(false);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  // Commit on blur as well
                                   setCanvasElements(prev => prev.map(el => (
                                     el.id === element.id ? { ...el, content: textContent } : el
                                   )));
                                   setEditingElementId(null);
                                   setIsTyping(false);
-                                } else if (e.key === 'Escape') {
-                                  e.preventDefault();
-                                  setEditingElementId(null);
-                                  setIsTyping(false);
-                                }
-                              }}
-                              onBlur={() => {
-                                // Commit on blur as well
-                                setCanvasElements(prev => prev.map(el => (
-                                  el.id === element.id ? { ...el, content: textContent } : el
-                                )));
-                                setEditingElementId(null);
-                                setIsTyping(false);
-                              }}
-                              style={{
-                                position: 'absolute',
-                                inset: 0,
-                                width: '100%',
-                                height: '100%',
-                                resize: 'none',
-                                border: '1px solid #60a5fa',
-                                outline: 'none',
-                                background: 'white',
-                                color: element.style?.color || '#000',
-                                fontFamily: element.style?.fontFamily || 'Arial',
-                                fontSize: (element.style?.fontSize || 16) as number,
-                                fontWeight: element.style?.fontWeight || 'normal',
-                                fontStyle: element.style?.fontStyle || 'normal',
-                                textDecoration: element.style?.textDecoration || 'none',
-                                textAlign: element.style?.textAlign || 'left',
-                                lineHeight: element.style?.lineHeight as number | undefined,
-                                letterSpacing: element.style?.letterSpacing as number | undefined,
-                                padding: 4,
-                                backgroundClip: 'padding-box',
-                              }}
-                            />
-                          ) : txt && (!element.style?.curve ? (
-                            (() => {
-                              const isRoll = element.id.startsWith('el-roll-');
-                              const lineHeight = element.style?.lineHeight ?? 1;
-                              const flexClass = isRoll
-                                ? 'w-full h-full flex items-start justify-center text-black'
-                                : 'w-full h-full flex items-center justify-center text-black';
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  resize: 'none',
+                                  border: '1px solid #60a5fa',
+                                  outline: 'none',
+                                  background: 'white',
+                                  color: element.style?.color || '#000',
+                                  fontFamily: element.style?.fontFamily || 'Arial',
+                                  fontSize: (element.style?.fontSize || 16) as number,
+                                  fontWeight: element.style?.fontWeight || 'normal',
+                                  fontStyle: element.style?.fontStyle || 'normal',
+                                  textDecoration: element.style?.textDecoration || 'none',
+                                  textAlign: element.style?.textAlign || 'left',
+                                  lineHeight: element.style?.lineHeight as number | undefined,
+                                  letterSpacing: element.style?.letterSpacing as number | undefined,
+                                  padding: 4,
+                                  backgroundClip: 'padding-box',
+                                }}
+                              />
+                            ) : txt && (!element.style?.curve ? (
+                              (() => {
+                                const isRoll = element.id.startsWith('el-roll-');
+                                const lineHeight = element.style?.lineHeight ?? 1;
+                                const flexClass = isRoll
+                                  ? 'w-full h-full flex items-start justify-center text-black'
+                                  : 'w-full h-full flex items-center justify-center text-black';
 
-                              // For roll numbers, compute vertical stretch so the two lines
-                              // roughly fill the available height (jersey / ID-card look),
-                              // and widen slightly so digits feel bolder.
-                              let sx = 1;
-                              let sy = 1;
-                              if (isRoll) {
-                                const fontSize = (element.style?.fontSize || 16) as number;
-                                const lines = (element.content || '').split('\n').length || 1;
-                                const baseTextHeight = fontSize * lines;
-                                if (baseTextHeight > 0) {
-                                  // Keep scaled text inside element box so download doesn't clip (match editor)
-                                  sy = (element.height / baseTextHeight) * 0.88;
+                                // For roll numbers, compute vertical stretch so the two lines
+                                // roughly fill the available height (jersey / ID-card look),
+                                // and widen slightly so digits feel bolder.
+                                let sx = 1;
+                                let sy = 1;
+                                if (isRoll) {
+                                  const fontSize = (element.style?.fontSize || 16) as number;
+                                  const lines = (element.content || '').split('\n').length || 1;
+                                  const baseTextHeight = fontSize * lines;
+                                  if (baseTextHeight > 0) {
+                                    // Keep scaled text inside element box so download doesn't clip (match editor)
+                                    sy = (element.height / baseTextHeight) * 0.88;
+                                  }
+                                  // Slight extra horizontal stretch for jersey / ID-card feel
+                                  sx = 1.25;
                                 }
-                                // Slight extra horizontal stretch for jersey / ID-card feel
-                                sx = 1.25;
-                              }
-                              const hasScale = sx !== 1 || sy !== 1;
-                              return (
+                                const hasScale = sx !== 1 || sy !== 1;
+                                return (
+                                  <div
+                                    className={flexClass}
+                                    style={{
+                                      fontFamily: element.style?.fontFamily || 'Arial',
+                                      fontSize: element.style?.fontSize || 16,
+                                      fontWeight: element.style?.fontWeight || 'normal',
+                                      fontStyle: element.style?.fontStyle || 'normal',
+                                      textDecoration: element.style?.textDecoration || 'none',
+                                      textAlign: element.style?.textAlign || 'left',
+                                      textTransform: element.style?.textTransform || 'none',
+                                      whiteSpace: 'pre',
+                                      letterSpacing: element.style?.letterSpacing,
+                                      lineHeight,
+                                      textShadow: shadow,
+                                      WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
+                                      WebkitTextStrokeColor: outline?.color,
+                                      ...colorStyle,
+                                    }}
+                                  >
+                                    {hasScale ? (
+                                      <span
+                                        style={{
+                                          display: 'inline-block',
+                                          transform: `scale(${sx}, ${sy})`,
+                                          transformOrigin: 'center top',
+                                          lineHeight,
+                                        }}
+                                      >
+                                        {element.content}
+                                      </span>
+                                    ) : (
+                                      element.content
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <div
+                                className="relative w-full h-full"
+                                style={{
+                                  fontFamily: element.style?.fontFamily || 'Arial',
+                                  fontSize: element.style?.fontSize || 16,
+                                  fontWeight: element.style?.fontWeight || 'normal',
+                                  fontStyle: element.style?.fontStyle || 'normal',
+                                  textDecoration: element.style?.textDecoration || 'none',
+                                  textTransform: element.style?.textTransform || 'none',
+                                  textShadow: shadow,
+                                }}
+                              >
+                                {(() => {
+                                  const fontSize = element.style?.fontSize || 16;
+                                  const letters = (element.content || '').split('');
+                                  const curve = element.style?.curve!;
+                                  const direction = curve?.direction || 'up';
+                                  const reverse = !!curve?.reverse;
+                                  const approxCharWidth = fontSize * 0.6 + (element.style?.letterSpacing ?? 0);
+                                  const textLen = approxCharWidth * Math.max(letters.length - 1, 1);
+                                  const sweepDeg = Math.min(360, Math.max(10, curve?.sweepAngleDeg ?? 180));
+                                  const sweepRad = (sweepDeg * Math.PI) / 180;
+                                  const radius = curve?.fitToWidth
+                                    ? Math.max(10, textLen / (sweepRad || (Math.PI / 180 * 10)))
+                                    : Math.max(10, curve?.radius ?? 150);
+                                  const startAngleDeg = curve?.startAngleDeg ?? 0;
+                                  const startRad = (startAngleDeg * Math.PI) / 180;
+
+                                  // center of arc in element box
+                                  const cx = element.width / 2;
+                                  const baseCy = element.height / 2 + (direction === 'up' ? radius / 2 : -radius / 2);
+                                  const cy = baseCy + (curve?.baselineOffset ?? 0) * (direction === 'up' ? 1 : -1);
+
+                                  // angle per glyph
+                                  const step = letters.length > 1 ? sweepRad / (letters.length - 1) : 0;
+                                  const start = -sweepRad / 2 + startRad;
+                                  const ordered = reverse ? [...letters].reverse() : letters;
+
+                                  return ordered.map((ch, n) => {
+                                    const i = reverse ? letters.length - 1 - n : n;
+                                    const ang = (start + i * step) * (direction === 'down' ? -1 : 1);
+                                    const x = cx + radius * Math.sin(ang);
+                                    const y = cy - radius * Math.cos(ang);
+                                    const rot = (ang * 180) / Math.PI + (reverse ? 180 : 0);
+                                    const style: React.CSSProperties = {
+                                      position: 'absolute',
+                                      left: x,
+                                      top: y,
+                                      transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                                      whiteSpace: 'pre',
+                                      WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
+                                      WebkitTextStrokeColor: outline?.color,
+                                      textTransform: element.style?.textTransform || 'none',
+                                      letterSpacing: element.style?.letterSpacing,
+                                      lineHeight: element.style?.lineHeight,
+                                      ...(colorStyle as any),
+                                    };
+                                    return (
+                                      <span key={n} style={style}>
+                                        {ch}
+                                      </span>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            ))}
+
+                            {/* Resize handles when selected and not editing */}
+                            {selectedElements.includes(element.id) && editingElementId !== element.id && (
+                              <>
+                                {/* East handle */}
                                 <div
-                                  className={flexClass}
                                   style={{
-                                    fontFamily: element.style?.fontFamily || 'Arial',
-                                    fontSize: element.style?.fontSize || 16,
-                                    fontWeight: element.style?.fontWeight || 'normal',
-                                    fontStyle: element.style?.fontStyle || 'normal',
-                                    textDecoration: element.style?.textDecoration || 'none',
-                                    textAlign: element.style?.textAlign || 'left',
-                                    textTransform: element.style?.textTransform || 'none',
-                                    whiteSpace: 'pre',
-                                    letterSpacing: element.style?.letterSpacing,
-                                    lineHeight,
-                                    textShadow: shadow,
-                                    WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
-                                    WebkitTextStrokeColor: outline?.color,
-                                    ...colorStyle,
-                                  }}
-                                >
-                                  {hasScale ? (
-                                    <span
-                                      style={{
-                                        display: 'inline-block',
-                                        transform: `scale(${sx}, ${sy})`,
-                                        transformOrigin: 'center top',
-                                        lineHeight,
-                                      }}
-                                    >
-                                      {element.content}
-                                    </span>
-                                  ) : (
-                                    element.content
-                                  )}
-                                </div>
-                              );
-                            })()
-                          ) : (
-                            <div
-                              className="relative w-full h-full"
-                              style={{
-                                fontFamily: element.style?.fontFamily || 'Arial',
-                                fontSize: element.style?.fontSize || 16,
-                                fontWeight: element.style?.fontWeight || 'normal',
-                                fontStyle: element.style?.fontStyle || 'normal',
-                                textDecoration: element.style?.textDecoration || 'none',
-                                textTransform: element.style?.textTransform || 'none',
-                                textShadow: shadow,
-                              }}
-                            >
-                              {(() => {
-                                const fontSize = element.style?.fontSize || 16;
-                                const letters = (element.content || '').split('');
-                                const curve = element.style?.curve!;
-                                const direction = curve?.direction || 'up';
-                                const reverse = !!curve?.reverse;
-                                const approxCharWidth = fontSize * 0.6 + (element.style?.letterSpacing ?? 0);
-                                const textLen = approxCharWidth * Math.max(letters.length - 1, 1);
-                                const sweepDeg = Math.min(360, Math.max(10, curve?.sweepAngleDeg ?? 180));
-                                const sweepRad = (sweepDeg * Math.PI) / 180;
-                                const radius = curve?.fitToWidth
-                                  ? Math.max(10, textLen / (sweepRad || (Math.PI / 180 * 10)))
-                                  : Math.max(10, curve?.radius ?? 150);
-                                const startAngleDeg = curve?.startAngleDeg ?? 0;
-                                const startRad = (startAngleDeg * Math.PI) / 180;
-
-                                // center of arc in element box
-                                const cx = element.width / 2;
-                                const baseCy = element.height / 2 + (direction === 'up' ? radius / 2 : -radius / 2);
-                                const cy = baseCy + (curve?.baselineOffset ?? 0) * (direction === 'up' ? 1 : -1);
-
-                                // angle per glyph
-                                const step = letters.length > 1 ? sweepRad / (letters.length - 1) : 0;
-                                const start = -sweepRad / 2 + startRad;
-                                const ordered = reverse ? [...letters].reverse() : letters;
-
-                                return ordered.map((ch, n) => {
-                                  const i = reverse ? letters.length - 1 - n : n;
-                                  const ang = (start + i * step) * (direction === 'down' ? -1 : 1);
-                                  const x = cx + radius * Math.sin(ang);
-                                  const y = cy - radius * Math.cos(ang);
-                                  const rot = (ang * 180) / Math.PI + (reverse ? 180 : 0);
-                                  const style: React.CSSProperties = {
                                     position: 'absolute',
-                                    left: x,
-                                    top: y,
-                                    transform: `translate(-50%, -50%) rotate(${rot}deg)`,
-                                    whiteSpace: 'pre',
-                                    WebkitTextStrokeWidth: outline?.width ? `${outline.width}px` : undefined,
-                                    WebkitTextStrokeColor: outline?.color,
-                                    textTransform: element.style?.textTransform || 'none',
-                                    letterSpacing: element.style?.letterSpacing,
-                                    lineHeight: element.style?.lineHeight,
-                                    ...(colorStyle as any),
-                                  };
-                                  return (
-                                    <span key={n} style={style}>
-                                      {ch}
-                                    </span>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          ))}
-
-                          {/* Resize handles when selected and not editing */}
-                          {selectedElements.includes(element.id) && editingElementId !== element.id && (
-                            <>
-                              {/* East handle */}
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  right: -6,
-                                  top: '50%',
-                                  marginTop: -6,
-                                  width: 12,
-                                  height: 12,
-                                  background: '#fff',
-                                  border: '2px solid #3b82f6',
-                                  borderRadius: 2,
-                                  cursor: 'ew-resize',
-                                }}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  setResizing({
-                                    id: element.id,
-                                    startMouse: { x: e.clientX, y: e.clientY },
-                                    startSize: { w: element.width, h: element.height },
-                                    startStyle: {
-                                      fontSize: element.style?.fontSize as number | undefined,
-                                      letterSpacing: element.style?.letterSpacing as number | undefined,
-                                      lineHeight: element.style?.lineHeight as number | undefined,
-                                    },
-                                    handle: 'e',
-                                  });
-                                }}
-                              />
-                              {/* South handle */}
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  bottom: -6,
-                                  left: '50%',
-                                  marginLeft: -6,
-                                  width: 12,
-                                  height: 12,
-                                  background: '#fff',
-                                  border: '2px solid #3b82f6',
-                                  borderRadius: 2,
-                                  cursor: 'ns-resize',
-                                }}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  setResizing({
-                                    id: element.id,
-                                    startMouse: { x: e.clientX, y: e.clientY },
-                                    startSize: { w: element.width, h: element.height },
-                                    startStyle: {
-                                      fontSize: element.style?.fontSize as number | undefined,
-                                      letterSpacing: element.style?.letterSpacing as number | undefined,
-                                      lineHeight: element.style?.lineHeight as number | undefined,
-                                    },
-                                    handle: 's',
-                                  });
-                                }}
-                              />
-                              {/* South-East handle */}
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  right: -6,
-                                  bottom: -6,
-                                  width: 12,
-                                  height: 12,
-                                  background: '#fff',
-                                  border: '2px solid #3b82f6',
-                                  borderRadius: 2,
-                                  cursor: 'nwse-resize',
-                                }}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  setResizing({
-                                    id: element.id,
-                                    startMouse: { x: e.clientX, y: e.clientY },
-                                    startSize: { w: element.width, h: element.height },
-                                    startStyle: {
-                                      fontSize: element.style?.fontSize as number | undefined,
-                                      letterSpacing: element.style?.letterSpacing as number | undefined,
-                                      lineHeight: element.style?.lineHeight as number | undefined,
-                                    },
-                                    handle: 'se',
-                                  });
-                                }}
-                              />
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Canvas Overlay for Drop Zone */}
-                  {!canvasElements.length && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="text-center">
-                        <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-lg font-medium text-gray-500 mb-2">Drop elements here to start editing</p>
-                        <p className="text-sm text-gray-400">Use the sidebar to add text, uploads, or other elements</p>
-                      </div>
+                                    right: -6,
+                                    top: '50%',
+                                    marginTop: -6,
+                                    width: 12,
+                                    height: 12,
+                                    background: '#fff',
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: 2,
+                                    cursor: 'ew-resize',
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    setResizing({
+                                      id: element.id,
+                                      startMouse: { x: e.clientX, y: e.clientY },
+                                      startSize: { w: element.width, h: element.height },
+                                      startStyle: {
+                                        fontSize: element.style?.fontSize as number | undefined,
+                                        letterSpacing: element.style?.letterSpacing as number | undefined,
+                                        lineHeight: element.style?.lineHeight as number | undefined,
+                                      },
+                                      handle: 'e',
+                                    });
+                                  }}
+                                />
+                                {/* South handle */}
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: -6,
+                                    left: '50%',
+                                    marginLeft: -6,
+                                    width: 12,
+                                    height: 12,
+                                    background: '#fff',
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: 2,
+                                    cursor: 'ns-resize',
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    setResizing({
+                                      id: element.id,
+                                      startMouse: { x: e.clientX, y: e.clientY },
+                                      startSize: { w: element.width, h: element.height },
+                                      startStyle: {
+                                        fontSize: element.style?.fontSize as number | undefined,
+                                        letterSpacing: element.style?.letterSpacing as number | undefined,
+                                        lineHeight: element.style?.lineHeight as number | undefined,
+                                      },
+                                      handle: 's',
+                                    });
+                                  }}
+                                />
+                                {/* South-East handle */}
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    right: -6,
+                                    bottom: -6,
+                                    width: 12,
+                                    height: 12,
+                                    background: '#fff',
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: 2,
+                                    cursor: 'nwse-resize',
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    setResizing({
+                                      id: element.id,
+                                      startMouse: { x: e.clientX, y: e.clientY },
+                                      startSize: { w: element.width, h: element.height },
+                                      startStyle: {
+                                        fontSize: element.style?.fontSize as number | undefined,
+                                        letterSpacing: element.style?.letterSpacing as number | undefined,
+                                        lineHeight: element.style?.lineHeight as number | undefined,
+                                      },
+                                      handle: 'se',
+                                    });
+                                  }}
+                                />
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
+
+                    {/* Canvas Overlay for Drop Zone */}
+                    {!canvasElements.length && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                          <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                          <p className="text-lg font-medium text-gray-500 mb-2">Drop elements here to start editing</p>
+                          <p className="text-sm text-gray-400">Use the sidebar to add text, uploads, or other elements</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1986,9 +2057,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                     <span>Canvas Size: {canvasSize.width} × {canvasSize.height}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         const canvasData = {
                           elements: canvasElements,
@@ -2009,19 +2080,27 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
             </div>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="settings">
-          
+
         </TabsContent>
 
       </Tabs>
 
-      {/* Center Variants Modal: fetches server-side cached renders only; no client generation */}
       <CenterVariantsModal
         open={showVariantsModal}
-        onOpenChange={setShowVariantsModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFetchedVariants(null);
+            setFetchedRenderedImages(null);
+          }
+          setShowVariantsModal(open);
+        }}
         order={order}
         preloadedVariants={preloadedVariants}
+        fetchedVariants={fetchedVariants ?? undefined}
+        fetchedRenderedImages={fetchedRenderedImages ?? undefined}
+        onSavedToBackend={handleVariantsSavedToBackend}
       />
     </div>
   );

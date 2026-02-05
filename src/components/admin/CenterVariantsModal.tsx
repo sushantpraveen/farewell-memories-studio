@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,17 @@ import { generateGridVariants, GridVariant, getTemplateLayout } from '@/utils/gr
 import { VariantRenderer } from './VariantRenderer';
 import { CenterVariantsGallery } from './CenterVariantsGallery';
 import { toast } from 'sonner';
+import { dataURLToFile, uploadToCloudinary } from '@/lib/cloudinary';
+import { ordersApi } from '@/lib/api';
 
 interface CenterVariantsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   order: Order;
   preloadedVariants?: GridVariant[];
+  fetchedVariants?: GridVariant[];
+  fetchedRenderedImages?: Record<string, string>;
+  onSavedToBackend?: () => void;
 }
 
 export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
@@ -21,7 +25,13 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   onOpenChange,
   order,
   preloadedVariants = [],
+  fetchedVariants,
+  fetchedRenderedImages,
+  onSavedToBackend,
 }) => {
+  const isFetchedMode = Boolean(
+    fetchedVariants?.length && fetchedRenderedImages && Object.keys(fetchedRenderedImages).length > 0
+  );
   const CACHE_KEY_PREFIX = 'variant-image-v2-';
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -30,9 +40,20 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Load cached images on mount
+  const uploadedImagesRef = useRef<Record<string, string>>({});
+
   useEffect(() => {
     if (open) {
+      if (isFetchedMode && fetchedVariants && fetchedRenderedImages) {
+        setVariants(fetchedVariants);
+        setRenderedImages(fetchedRenderedImages);
+        setIsGenerating(false);
+        setProgress(100);
+        setError(null);
+        setCurrentRenderIndex(fetchedVariants.length);
+        toast.success(`Loaded ${fetchedVariants.length} center variants from server`);
+        return;
+      }
       // Diagnostic logging for specific order
       if (order.id === 'ORD-1769261339167' || order.id?.includes('1769261339167')) {
         console.log('=== DIAGNOSTIC: Order ORD-1769261339167 ===');
@@ -47,19 +68,21 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       const cachedImages: Record<string, string> = {};
       let hasCache = false;
       
-      // If we have preloaded variants, check for cached images
       if (preloadedVariants.length > 0) {
         console.log('Using preloaded variants:', preloadedVariants.length);
         
         // Try to load cached images
-        for (const variant of preloadedVariants) {
-          try {
-            const cachedImage = localStorage.getItem(`${CACHE_KEY_PREFIX}${variant.id}`);
-            if (cachedImage && cachedImage.trim() !== '') {
-              cachedImages[variant.id] = cachedImage;
-              hasCache = true;
-            }
-          } catch (e) {}
+        const useLocalCache = !order.paid;
+        if (useLocalCache) {
+          for (const variant of preloadedVariants) {
+            try {
+              const cachedImage = localStorage.getItem(`${CACHE_KEY_PREFIX}${variant.id}`);
+              if (cachedImage && cachedImage.trim() !== '') {
+                cachedImages[variant.id] = cachedImage;
+                hasCache = true;
+              }
+            } catch (e) {}
+          }
         }
         
         // Set variants from preloaded data
@@ -100,7 +123,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       setIsGenerating(false);
       setError(null);
     }
-  }, [open, preloadedVariants]);
+  }, [open, preloadedVariants, isFetchedMode, fetchedVariants, fetchedRenderedImages]);
 
   const generateVariants = async () => {
     setIsGenerating(true);
@@ -185,54 +208,64 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     }
   };
 
-  const handleVariantRendered = (variantId: string, dataUrl: string) => {
-    // If dataUrl is empty, rendering failed - handle error but continue
+  const handleVariantRendered = async (variantId: string, dataUrl: string) => {
     if (!dataUrl || dataUrl.trim() === '') {
-      console.warn('Variant rendering failed or returned empty:', variantId);
-      // Still advance to next variant to prevent getting stuck
       setCurrentRenderIndex(prevIndex => {
         const newIndex = prevIndex + 1;
-        const progressPercentage = Math.min((newIndex / variants.length) * 100, 100);
-        setProgress(progressPercentage);
-        
+        setProgress(Math.min((newIndex / variants.length) * 100, 100));
         if (newIndex >= variants.length) {
           setIsGenerating(false);
-          const renderedCount = Object.keys(renderedImages).length;
-          if (renderedCount > 0) {
-            toast.success(`Generated ${renderedCount} of ${variants.length} center variants`);
-          } else {
-            setError('Failed to render any variants. Please check console for errors.');
-            toast.error('Failed to render variants');
-          }
+          const cnt = Object.keys(renderedImages).length;
+          if (cnt > 0) toast.success(`Generated ${cnt} of ${variants.length} center variants`);
+          else { setError('Failed to render any variants.'); toast.error('Failed to render variants'); }
         }
         return newIndex;
       });
       return;
     }
 
-    // Cache rendered images in localStorage for future use
-    try {
-      localStorage.setItem(`${CACHE_KEY_PREFIX}${variantId}`, dataUrl);
-    } catch (e) {
-      console.warn('Failed to cache variant image in localStorage:', e);
+    if (!order.paid) {
+      try {
+        localStorage.setItem(`${CACHE_KEY_PREFIX}${variantId}`, dataUrl);
+      } catch (e) { /* ignore */ }
     }
-    console.log('Variant rendered successfully:', variantId);
-    setRenderedImages(prev => ({ ...prev, [variantId]: dataUrl }));
-    
+
+    let imageUrl = dataUrl;
+    if (order.paid) {
+      try {
+        const variant = variants.find(v => v.id === variantId);
+        const filename = `variant-${(variant?.centerMember?.name || variantId).replace(/\s+/g, '-')}.png`;
+        const file = dataURLToFile(dataUrl, filename);
+        const result = await uploadToCloudinary(file, `center-variants/${order.id}`);
+        imageUrl = result.secure_url;
+        uploadedImagesRef.current[variantId] = imageUrl;
+      } catch (err) {
+        console.error('Cloudinary upload failed for', variantId, err);
+        toast.error(`Failed to upload variant ${variantId}`);
+      }
+    }
+
+    setRenderedImages(prev => ({ ...prev, [variantId]: imageUrl }));
+
     setCurrentRenderIndex(prevIndex => {
       const newIndex = prevIndex + 1;
-      const progressPercentage = Math.min((newIndex / variants.length) * 100, 100);
-      setProgress(progressPercentage);
-      
-      console.log(`Progress: ${newIndex}/${variants.length} (${progressPercentage.toFixed(1)}%)`);
-      
+      setProgress(Math.min((newIndex / variants.length) * 100, 100));
+
       if (newIndex >= variants.length) {
-        console.log('All variants rendered successfully!');
         setIsGenerating(false);
-        const renderedCount = Object.keys(renderedImages).length + 1; // +1 for current
-        toast.success(`Generated ${renderedCount} center variants successfully`);
+        const count = Object.keys({ ...renderedImages, [variantId]: imageUrl }).length;
+        toast.success(`Generated ${count} center variants successfully`);
+
+        if (order.paid && Object.keys(uploadedImagesRef.current).length > 0) {
+          ordersApi.patchCenterVariants(order.id, {
+            variants: variants.map(v => ({ id: v.id, centerMember: v.centerMember })),
+            renderedImages: { ...uploadedImagesRef.current }
+          }).then(() => onSavedToBackend?.()).catch(err => {
+            console.error('Failed to save center variants:', err);
+            toast.error('Variants generated but failed to save to server');
+          });
+        }
       }
-      
       return newIndex;
     });
   };

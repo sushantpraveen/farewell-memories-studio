@@ -58,6 +58,14 @@ const OrderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
       index: true
+    },
+    centerVariantImages: {
+      type: [{
+        variantId: { type: String, required: true },
+        imageUrl: { type: String, required: true },
+        centerMemberName: { type: String }
+      }],
+      default: []
     }
   },
   { timestamps: true }

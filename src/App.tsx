@@ -38,6 +38,8 @@ import HowItWorks from "./pages/HowItWorks";
 import TermsOfService from "./pages/TermsOfService";
 import HelpCenter from "./pages/HelpCenter";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RenderBootstrap from "./pages/RenderBootstrap";
+import RenderCanvas from "./pages/RenderCanvas";
 
 const queryClient = new QueryClient();
 
@@ -170,6 +172,9 @@ const App = () => (
                 }
               />
               <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
+              {/* Render pages for server-side Puppeteer (no auth - token in URL) */}
+              <Route path="/render/bootstrap/:orderId" element={<RenderBootstrap />} />
+              <Route path="/render/canvas/:orderId/:variantId" element={<RenderCanvas />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

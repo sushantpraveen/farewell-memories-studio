@@ -3,7 +3,7 @@ import { Order } from '@/types/admin';
 import { generateGridVariants, GridVariant, getTemplateLayout } from '@/utils/gridVariantGenerator';
 import { VariantRenderer } from './VariantRenderer';
 import { canGenerateVariants } from '@/utils/gridCenterUtils';
-import { compressDataURLForUpload, uploadToCloudinary } from '@/lib/cloudinary';
+import { dataURLToFile, uploadToCloudinary } from '@/lib/cloudinary';
 import { ordersApi } from '@/lib/api';
 
 interface CenterVariantsBackgroundGeneratorProps {
@@ -67,8 +67,8 @@ export const CenterVariantsBackgroundGenerator: React.FC<CenterVariantsBackgroun
 
     try {
       const variant = variants.find(v => v.id === variantId);
-      const filename = `variant-${(variant?.centerMember?.name || variantId).replace(/\s+/g, '-')}`;
-      const file = await compressDataURLForUpload(dataUrl, filename);
+      const filename = `variant-${(variant?.centerMember?.name || variantId).replace(/\s+/g, '-')}.png`;
+      const file = dataURLToFile(dataUrl, filename);
       const result = await uploadToCloudinary(file, `center-variants/${order.id}`);
       uploadedRef.current[variantId] = result.secure_url;
     } catch (err) {

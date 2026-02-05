@@ -276,6 +276,17 @@ export const ordersApi = {
     return apiRequest<any>(`/orders/${id}`, 'PUT', updates);
   },
 
+  getCenterVariants: (orderId: string) => {
+    return apiRequest<{ variants: any[]; renderedImages: Record<string, string> }>(
+      `/orders/${orderId}/center-variants`,
+      'GET'
+    );
+  },
+
+  patchCenterVariants: (orderId: string, data: { centerVariantImages?: { variantId: string; imageUrl: string; centerMemberName?: string }[] } | { variants: any[]; renderedImages: Record<string, string> }) => {
+    return apiRequest<any>(`/orders/${orderId}/center-variants`, 'PATCH', data);
+  },
+
   // Delete order (admin)
   deleteOrder: (id: string) => {
     return apiRequest<any>(`/orders/${id}`, 'DELETE');
@@ -295,9 +306,13 @@ export const ordersApi = {
   },
 
   // Ensure render job is enqueued for this order (admin; server pre-generates variants)
-  ensureRender: (orderId: string) => {
+  // Pass force=true to re-render even if already completed
+  ensureRender: (orderId: string, force: boolean = false) => {
     const renderToken = import.meta.env.VITE_RENDER_TOKEN as string | undefined;
-    const qs = renderToken ? `?token=${encodeURIComponent(renderToken)}` : '';
+    const params = new URLSearchParams();
+    if (renderToken) params.append('token', renderToken);
+    if (force) params.append('force', 'true');
+    const qs = params.toString() ? `?${params.toString()}` : '';
     const url = `${API_BASE_URL}/render/ensure/${encodeURIComponent(orderId)}${qs}`;
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     const authToken = LocalStorageService.loadAuthToken();

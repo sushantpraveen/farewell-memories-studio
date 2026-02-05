@@ -1,5 +1,8 @@
 import Order from '../models/orderModel.js';
+import OrderRenderStatus from '../models/OrderRenderStatus.js';
+import VariationTemplate from '../models/VariationTemplate.js';
 import { upsertReward } from '../services/rewardService.js';
+import { queueOrderRender } from '../services/sharpRenderService.js';
 import Group from '../models/groupModel.js';
 import { sendMail } from '../utils/email.js';
 import path from 'path';
@@ -12,7 +15,7 @@ export const createOrder = async (req, res) => {
 
     // Extract groupId from payload (may be in notes or directly in payload)
     let groupId = payload.groupId || payload.notes?.groupId || null;
-    
+
     // If not found, try to extract from description or find by members
     if (!groupId && payload.description) {
       const descMatch = payload.description.match(/group[_-]?id[:\s]+([a-f0-9]{24})/i);
@@ -28,7 +31,7 @@ export const createOrder = async (req, res) => {
         const group = await Group.findOne({
           'members.memberRollNumber': firstMemberRoll
         }).select('_id ambassadorId').lean();
-        
+
         if (group) {
           groupId = group._id.toString();
         }
@@ -63,11 +66,11 @@ export const createOrder = async (req, res) => {
       try {
         // Verify group exists and has ambassador
         const group = await Group.findById(groupId).select('ambassadorId members').lean();
-        
+
         if (group && group.ambassadorId) {
           // Calculate order value (total amount in rupees)
           const orderValue = payload.settings?.total ? payload.settings.total / 100 : null;
-          
+
           await upsertReward({ groupId, orderValue });
           console.log(`[Order] Created reward for group ${groupId}`);
         }
@@ -122,16 +125,33 @@ export const getOrders = async (req, res) => {
       Order.countDocuments(query),
     ]);
 
-    // Map to client Order type (include groupName from populated group)
+    // Get render status for all orders
+    const orderIds = data.map((o) => o.clientOrderId || String(o._id));
+    const renderStatuses = await OrderRenderStatus.find({ orderId: { $in: orderIds } }).lean();
+    const renderMap = Object.fromEntries(renderStatuses.map((r) => [r.orderId, r]));
+
     const orders = data.map((o) => {
       const g = o.groupId;
       const groupName = g?.name ?? undefined;
       const groupIdStr = g ? (typeof g === 'object' && g._id ? String(g._id) : String(g)) : undefined;
+      const oid = o.clientOrderId || String(o._id);
+      const rs = renderMap[oid];
+      const cvCount = o.centerVariantImages?.length ?? 0;
+      const membersWithPhotos = (o.members || []).filter(m => m?.photo && m.photo.trim() !== '').length;
+      
+      // Use render status if available, otherwise fall back to stored images
+      const done = rs ? rs.completedVariants : cvCount;
+      const total = rs ? rs.totalVariants : (membersWithPhotos >= 2 ? membersWithPhotos : 0);
+      const status = rs ? rs.status : (cvCount > 0 ? 'completed' : null);
+      
       return {
         ...o,
-        id: o.clientOrderId || String(o._id),
+        id: oid,
         groupId: groupIdStr,
         groupName,
+        centerVariantsDone: done,
+        centerVariantsTotal: total,
+        centerVariantsStatus: status,
       };
     });
 
@@ -264,6 +284,124 @@ export const exportOrdersCsv = async (req, res) => {
   }
 };
 
+function buildVariantsFromStored(centerVariantImages, orderMembers) {
+  if (!Array.isArray(centerVariantImages) || centerVariantImages.length === 0) return [];
+  return centerVariantImages.map((item) => {
+    const memberId = (item.variantId || '').replace(/^variant-/, '') || item.variantId;
+    const member = (orderMembers || []).find((m) => m.id === memberId || m.memberRollNumber === memberId) || null;
+    const centerMember = member
+      ? { ...member, id: member.id || memberId, name: member.name || item.centerMemberName || 'Unknown' }
+      : { id: memberId, name: item.centerMemberName || 'Unknown', memberRollNumber: memberId, photo: '', joinedAt: new Date().toISOString() };
+    return {
+      id: item.variantId,
+      centerMember,
+      members: orderMembers || [],
+      centerIndex: 0,
+    };
+  });
+}
+
+export const getCenterVariants = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    const query = isValidObjectId ? { $or: [{ clientOrderId: id }, { _id: id }] } : { clientOrderId: id };
+
+    const order = await Order.findOne(query).lean();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const orderId = order.clientOrderId || String(order._id);
+
+    // First try to get from VariationTemplates collection
+    const templates = await VariationTemplate.find({ 
+      orderId, 
+      status: 'completed' 
+    }).lean();
+
+    if (templates.length > 0) {
+      // Build response from VariationTemplates
+      const variants = templates.map((t) => {
+        const member = (order.members || []).find((m) => 
+          m.id === t.centerMemberId || m.memberRollNumber === t.centerMemberId
+        );
+        const centerMember = member
+          ? { ...member, id: member.id || t.centerMemberId, name: member.name || t.centerMemberName || 'Unknown' }
+          : { id: t.centerMemberId, name: t.centerMemberName || 'Unknown', memberRollNumber: t.centerMemberId, photo: '', joinedAt: new Date().toISOString() };
+        return {
+          id: t.variantId,
+          centerMember,
+          members: order.members || [],
+          centerIndex: 0,
+        };
+      });
+
+      const renderedImages = {};
+      for (const t of templates) {
+        if (t.variantId && t.imageUrl) renderedImages[t.variantId] = t.imageUrl;
+      }
+
+      return res.json({ variants, renderedImages });
+    }
+
+    // Fallback to order.centerVariantImages for backward compatibility
+    const stored = order.centerVariantImages || [];
+    if (stored.length === 0) {
+      return res.json({ variants: [], renderedImages: {} });
+    }
+
+    const variants = buildVariantsFromStored(stored, order.members);
+    const renderedImages = {};
+    for (const item of stored) {
+      if (item.variantId && item.imageUrl) renderedImages[item.variantId] = item.imageUrl;
+    }
+
+    return res.json({ variants, renderedImages });
+  } catch (err) {
+    console.error('getCenterVariants error:', err);
+    return res.status(500).json({ message: err.message || 'Failed to fetch center variants' });
+  }
+};
+
+export const patchCenterVariants = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    const query = isValidObjectId ? { $or: [{ clientOrderId: id }, { _id: id }] } : { clientOrderId: id };
+
+    const order = await Order.findOne(query).lean();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    let centerVariantImages = body.centerVariantImages;
+    if (!centerVariantImages && body.variants && body.renderedImages) {
+      const renderedImages = body.renderedImages;
+      centerVariantImages = (body.variants || []).map((v) => ({
+        variantId: v.id,
+        imageUrl: renderedImages[v.id] || '',
+        centerMemberName: v.centerMember?.name,
+      })).filter((item) => item.imageUrl);
+    }
+    if (!Array.isArray(centerVariantImages)) {
+      return res.status(400).json({ message: 'Invalid payload: centerVariantImages or variants+renderedImages required' });
+    }
+
+    const updated = await Order.findOneAndUpdate(
+      query,
+      { $set: { centerVariantImages } },
+      { new: true, lean: true }
+    );
+    return res.json({
+      ...updated,
+      id: updated.clientOrderId || String(updated._id),
+      variants: buildVariantsFromStored(updated.centerVariantImages || [], updated.members),
+      renderedImages: Object.fromEntries((updated.centerVariantImages || []).map((i) => [i.variantId, i.imageUrl]).filter(([, url]) => url)),
+    });
+  } catch (err) {
+    console.error('patchCenterVariants error:', err);
+    return res.status(400).json({ message: err.message || 'Failed to update center variants' });
+  }
+};
+
 export const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
@@ -298,14 +436,14 @@ export const createOrderDirect = async (req, res) => {
   try {
     const payload = req.body || {};
     const { invoicePdfBase64, invoiceFileName } = payload;
-    
+
     // Get user info for shipping if not provided
     const user = req.user;
     const clientOrderId = payload.id || payload.clientOrderId || `ORD-${Date.now()}`;
-    
+
     // Extract groupId from payload
     let groupId = payload.groupId || payload.notes?.groupId || null;
-    
+
     // If not found, try to extract from description or find by members
     if (!groupId && payload.description) {
       const descMatch = payload.description.match(/group[_-]?id[:\s]+([a-f0-9]{24})/i);
@@ -321,7 +459,7 @@ export const createOrderDirect = async (req, res) => {
         const group = await Group.findOne({
           'members.memberRollNumber': firstMemberRoll
         }).select('_id ambassadorId').lean();
-        
+
         if (group) {
           groupId = group._id.toString();
         }
@@ -340,7 +478,7 @@ export const createOrderDirect = async (req, res) => {
       postalCode: '000000',
       country: 'India',
     };
-    
+
     // Ensure required fields are not empty (use defaults if empty)
     if (!shipping.line1 || shipping.line1.trim() === '') {
       shipping.line1 = 'Address to be updated';
@@ -392,14 +530,14 @@ export const createOrderDirect = async (req, res) => {
     if (groupId) {
       try {
         const group = await Group.findById(groupId).select('ambassadorId members').lean();
-        
+
         if (group && group.ambassadorId) {
           // Calculate order value from already paid amounts
           const memberCount = group.members.length;
           const hasAmbassador = !!group.ambassadorId;
           const perItemTotal = hasAmbassador ? 149 : 189;
           const orderValue = perItemTotal * memberCount;
-          
+
           await upsertReward({ groupId, orderValue });
           console.log(`[Order] Created reward for group ${groupId}`);
         }
@@ -407,6 +545,13 @@ export const createOrderDirect = async (req, res) => {
         console.error('[Order] Failed to create ambassador reward:', rewardError.message);
       }
     }
+
+    // Queue center variant generation (triggered on Place Order)
+    setImmediate(() => {
+      queueOrderRender(order.clientOrderId || order._id.toString()).catch((err) => {
+        console.error('[Order] Failed to queue center variants render:', err.message);
+      });
+    });
 
     // Send confirmation email with invoice
     if (invoicePdfBase64 && invoiceFileName && shipping.email) {
