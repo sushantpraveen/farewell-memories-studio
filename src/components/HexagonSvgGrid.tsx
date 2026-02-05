@@ -190,21 +190,29 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
     return slotIndex % 2 === 1 ? PLACEHOLDER_MALE : PLACEHOLDER_FEMALE;
   };
 
-  // Fit container (GridBoard/Editor/JoinGroup): no min-h-screen so hex scales at any zoom and on mobile.
-  // Square grid uses vw/vh in --cell so it scales; hex uses h-full so it fits the parent; max-h caps when parent is unconstrained.
-  const wrapperClass = 'w-full h-full min-h-0 max-h-[min(95vh,1100px)] flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-1 sm:p-2 md:p-3';
-  const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-2 w-full max-w-full flex-1 min-h-0 overflow-hidden';
+  // Fit container (GridBoard/Editor/JoinGroup): match square grid containment approach.
+  // Square grid uses viewport-based sizing with --cell/--gap; hex uses flex constraints to fit parent.
+  // Key: wrapper and card must not exceed the parent CardContent bounds. Use viewport-based sizing.
+  const wrapperClass = 'w-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-2 md:p-6';
+  const cardClass = 'flex flex-col bg-white rounded-xl shadow-2xl p-1 md:p-3 max-w-full overflow-hidden';
   const cardStyle: React.CSSProperties = {
     minHeight: sizeStyles.minH,
-    maxHeight: sizeStyles.maxH,
-    height: '100%',
+  };
+
+  // Calculate viewport-based heights similar to square grid's approach
+  const svgContainerStyle: React.CSSProperties = {
+    width: '100%',
+    height: 'min(60vh, 550px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   };
 
   if (loading) {
     return (
       <div className={wrapperClass}>
         <div className={cardClass} style={cardStyle}>
-          <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="flex-1 min-h-0 flex items-center justify-center" style={{ minHeight: 200 }}>
             <p className="text-sm text-muted-foreground">Loading hexagon template...</p>
           </div>
         </div>
@@ -216,7 +224,7 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
     return (
       <div className={wrapperClass}>
         <div className={cardClass} style={cardStyle}>
-          <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="flex-1 min-h-0 flex items-center justify-center" style={{ minHeight: 200 }}>
             <p className="text-sm text-destructive">{error || 'No slots found'}</p>
           </div>
         </div>
@@ -227,13 +235,12 @@ export const HexagonSvgGrid: React.FC<HexagonSvgGridProps> = ({
   return (
     <div className={wrapperClass}>
       <div className={`${cardClass} relative`} style={cardStyle}>
-        {/* Bounded box: takes card height; SVG fills it and scales to fit (meet) so no overflow. */}
-        <div className="flex-1 min-h-0 w-full flex items-center justify-center relative">
+        {/* Bounded box: SVG scales to fit parent; use viewport-based height like square grid. */}
+        <div style={svgContainerStyle}>
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full h-full max-w-full max-h-full shrink-0"
             preserveAspectRatio="xMidYMid meet"
-            style={{ display: 'block' }}
+            style={{ display: 'block', width: 'auto', height: '100%', maxWidth: '100%', maxHeight: '100%' }}
           >
             <defs>
               {slots.map((s) => (

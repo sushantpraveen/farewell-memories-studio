@@ -336,8 +336,12 @@ const GridBoard = () => {
 
   // Resolve hexagon SVG path - Vite glob keys may vary (./hexagon/15.svg or /src/components/hexagon/15.svg)
   const getHexagonSvgPath = (n: number): string | null => {
-    const expected = `${n}.svg`;
-    const key = Object.keys(hexagonSvgModules).find((k) => k.endsWith(expected) || k.includes(`hexagon/${expected}`));
+    // Extract filename from each key and compare exactly to avoid 114.svg matching when looking for 14.svg
+    const expectedFilename = `${n}.svg`;
+    const key = Object.keys(hexagonSvgModules).find((k) => {
+      const filename = k.split('/').pop() || '';
+      return filename === expectedFilename;
+    });
     return key ?? null;
   };
 
@@ -779,11 +783,10 @@ const GridBoard = () => {
                       placeholder="e.g.,CSE Graduation Team 2024 🎓"
                       value={formData.name}
                       onChange={(e) => handleFieldChange('name', e.target.value)}
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
-                        touched.name && formErrors.name
-                          ? 'border-red-500 focus:border-red-500'
-                          : ''
-                      }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-purple-100 focus:border-purple-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${touched.name && formErrors.name
+                        ? 'border-red-500 focus:border-red-500'
+                        : ''
+                        }`}
                       required
                     />
                   </div>
@@ -822,11 +825,10 @@ const GridBoard = () => {
                       placeholder="Year of Graduation (e.g., 2024)? 🎉"
                       value={formData.yearOfPassing}
                       onChange={(e) => handleFieldChange('yearOfPassing', e.target.value)}
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
-                        touched.yearOfPassing && formErrors.yearOfPassing
-                          ? 'border-red-500 focus:border-red-500'
-                          : ''
-                      }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-pink-100 focus:border-pink-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${touched.yearOfPassing && formErrors.yearOfPassing
+                        ? 'border-red-500 focus:border-red-500'
+                        : ''
+                        }`}
                       required
                     />
                   </div>
@@ -866,11 +868,10 @@ const GridBoard = () => {
                       value={formData.totalMembers}
                       onChange={handleNumberInputChange}
                       placeholder="How many people are in your group?? 👥"
-                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${
-                        touched.totalMembers && formErrors.totalMembers
-                          ? 'border-red-500 focus:border-red-500'
-                          : ''
-                      }`}
+                      className={`w-full min-h-[42px] text-base bg-white/50 backdrop-blur-sm border-yellow-100 focus:border-yellow-300 focus-visible:ring-0 focus-visible:ring-offset-0 ${touched.totalMembers && formErrors.totalMembers
+                        ? 'border-red-500 focus:border-red-500'
+                        : ''
+                        }`}
                       required
                     />
                   </div>
@@ -1041,13 +1042,12 @@ const GridBoard = () => {
                       </div>
                     }
                   >
-                    <div className={`w-full ${
-                      availableTemplates[currentTemplateIndex]?.path === 'vector'
-                        ? 'aspect-[595/936] max-h-[560px] min-h-[280px] flex flex-col min-h-0'
-                        : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
-                          ? 'aspect-[595/936] max-h-[min(85vh,560px)] min-h-[240px] flex flex-col min-h-0'
-                          : 'aspect-square'
-                    }`}>
+                    <div className={`w-full ${availableTemplates[currentTemplateIndex]?.path === 'vector'
+                      ? 'aspect-[595/936] max-h-[560px] min-h-[280px] flex flex-col min-h-0'
+                      : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+                        ? 'aspect-[595/936] max-h-[min(85vh,560px)] min-h-[240px] flex flex-col min-h-0 mx-auto justify-center'
+                        : 'aspect-square'
+                      }`}>
                       {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
                         <PreviewComp />
                       ) : availableTemplates[currentTemplateIndex]?.type === 'square' ? (

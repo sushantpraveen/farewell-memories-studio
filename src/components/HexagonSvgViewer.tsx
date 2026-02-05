@@ -12,10 +12,14 @@ export const HexagonSvgViewer: React.FC<HexagonSvgViewerProps> = ({ path }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Resolve path - glob keys may be ./hexagon/15.svg or include full path
+    // Extract just the filename (e.g., '14.svg' from './hexagon/14.svg')
+    const filename = path.split('/').pop() || '';
     const key = path in hexagonSvgModules
       ? path
-      : Object.keys(hexagonSvgModules).find((k) => k.endsWith(path) || k.includes(path));
+      : Object.keys(hexagonSvgModules).find((k) => {
+        const kFilename = k.split('/').pop() || '';
+        return kFilename === filename;
+      });
     const loader = key ? hexagonSvgModules[key as keyof typeof hexagonSvgModules] : undefined;
     if (typeof loader !== 'function') {
       setError('Template not found');

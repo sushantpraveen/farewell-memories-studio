@@ -316,7 +316,7 @@ const Editor = () => {
       const perItemGst = hasAmbassador ? 7 : 9;
       const perItemTotal = hasAmbassador ? 149 : 189;
       const quantity = group.members.length;
-      
+
       const alreadyPaidAmount = perItemTotal * quantity;
       const shipping = 150;
       const shippingGst = parseFloat((shipping * gstRate).toFixed(2));
@@ -401,7 +401,7 @@ const Editor = () => {
       }, invoiceBase64, invoiceFileName);
 
       toast.success('Order placed successfully!');
-      
+
       // Navigate to success page
       navigate(`/success?groupId=${group.id}`);
     } catch (error: any) {
@@ -658,7 +658,7 @@ const Editor = () => {
                         </Button>
                       </div>
                     ) : (
-                      <div className="h-full space-y-2 sm:space-y-3 overflow-y-auto pr-1">
+                      <div className="space-y-2 sm:space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '380px', minHeight: 100 }}>
                         {group.members.map((member: any, index: number) => (
                           <div key={member.id} className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                             <div className="relative">
