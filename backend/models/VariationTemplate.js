@@ -10,6 +10,12 @@ const variationTemplateSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  gridType: {
+    type: String,
+    enum: ['square', 'hexagonal'],
+    default: 'square',
+    index: true
+  },
   centerMemberId: {
     type: String,
     required: true

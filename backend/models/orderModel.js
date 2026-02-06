@@ -63,7 +63,8 @@ const OrderSchema = new mongoose.Schema(
       type: [{
         variantId: { type: String, required: true },
         imageUrl: { type: String, required: true },
-        centerMemberName: { type: String }
+        centerMemberName: { type: String },
+        gridType: { type: String, enum: ['square', 'hexagonal'], default: 'square' }
       }],
       default: []
     }

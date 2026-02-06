@@ -277,7 +277,14 @@ export const ordersApi = {
   },
 
   getCenterVariants: (orderId: string) => {
-    return apiRequest<{ variants: any[]; renderedImages: Record<string, string> }>(
+    return apiRequest<{
+      variants: any[];
+      renderedImages: Record<string, string>;
+      hexagonalVariants?: any[];
+      hexagonalRenderedImages?: Record<string, string>;
+      totalSquare?: number;
+      totalHexagonal?: number;
+    }>(
       `/orders/${orderId}/center-variants`,
       'GET'
     );

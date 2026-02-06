@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings, Grid, Edit, Upload, Layers, Type, Palette, ZoomIn, ZoomOut, Download as DownloadIcon } from 'lucide-react';
+import { Edit3, Save, Download, Package, User, CreditCard, Users, Eye, Settings, Grid, Edit, Upload, Layers, Type, Palette, ZoomIn, ZoomOut, Download as DownloadIcon, Hexagon, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +41,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
   const [isPreloading, setIsPreloading] = useState(false);
   const [fetchedVariants, setFetchedVariants] = useState<any[] | null>(null);
   const [fetchedRenderedImages, setFetchedRenderedImages] = useState<Record<string, string> | null>(null);
+  const [fetchedHexagonalVariants, setFetchedHexagonalVariants] = useState<any[] | null>(null);
+  const [fetchedHexagonalRenderedImages, setFetchedHexagonalRenderedImages] = useState<Record<string, string> | null>(null);
   const { updateOrderSettings, orders, refreshOrders } = useAdminOrders();
   const [activeSection, setActiveSection] = useState('text');
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
@@ -62,6 +64,9 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
   // Tabs control
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'preview' | 'editor' | 'settings'>('overview');
+
+  // Grid type toggle for preview
+  const [previewGridType, setPreviewGridType] = useState<'square' | 'hexagonal'>('square');
 
   // Text editing helpers/state
   const [textContent, setTextContent] = useState('');
@@ -460,9 +465,14 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
     try {
       const res = await ordersApi.getCenterVariants(order.id);
-      if (res.variants?.length > 0 && res.renderedImages && Object.keys(res.renderedImages).length > 0) {
-        setFetchedVariants(res.variants);
-        setFetchedRenderedImages(res.renderedImages);
+      const hasSquare = res.variants?.length > 0 && res.renderedImages && Object.keys(res.renderedImages).length > 0;
+      const hasHex = res.hexagonalVariants?.length > 0 && res.hexagonalRenderedImages && Object.keys(res.hexagonalRenderedImages).length > 0;
+      
+      if (hasSquare || hasHex) {
+        setFetchedVariants(res.variants || []);
+        setFetchedRenderedImages(res.renderedImages || {});
+        setFetchedHexagonalVariants(res.hexagonalVariants || []);
+        setFetchedHexagonalRenderedImages(res.hexagonalRenderedImages || {});
         setShowVariantsModal(true);
         return;
       }
@@ -477,13 +487,15 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
 
     setFetchedVariants(null);
     setFetchedRenderedImages(null);
+    setFetchedHexagonalVariants(null);
+    setFetchedHexagonalRenderedImages(null);
     setShowVariantsModal(true);
   };
 
   const handleVariantsSavedToBackend = () => {
     refreshOrders();
     if (order) {
-      ordersApi.getOrder(order.id).then((o) => setOrder(o)).catch(() => {});
+      ordersApi.getOrder(order.id).then((o) => setOrder(o)).catch(() => { });
     }
   };
 
@@ -836,7 +848,29 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Grid Preview ({order.gridTemplate})</span>
+                <div className="flex items-center gap-4">
+                  <span>Grid Preview ({previewGridType})</span>
+                  <div className="flex items-center rounded-lg border p-1">
+                    <Button
+                      variant={previewGridType === 'square' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-1.5 px-3"
+                      onClick={() => setPreviewGridType('square')}
+                    >
+                      <Square className="h-4 w-4" />
+                      <span className="text-xs">Square</span>
+                    </Button>
+                    <Button
+                      variant={previewGridType === 'hexagonal' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-1.5 px-3"
+                      onClick={() => setPreviewGridType('hexagonal')}
+                    >
+                      <Hexagon className="h-4 w-4" />
+                      <span className="text-xs">Hexagon</span>
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
                   {/* Show render status indicator */}
                   {order.centerVariantsStatus === 'processing' && (
@@ -915,7 +949,7 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderGridPreview order={order} />
+              <OrderGridPreview order={order} gridType={previewGridType} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1709,8 +1743,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
                           <div
                             key={element.id}
                             className={`absolute border-2 ${selectedElements.includes(element.id)
-                                ? 'border-blue-500 bg-blue-100 bg-opacity-20'
-                                : 'border-transparent'
+                              ? 'border-blue-500 bg-blue-100 bg-opacity-20'
+                              : 'border-transparent'
                               }`}
                             style={{
                               left: element.x,
@@ -2093,6 +2127,8 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
           if (!open) {
             setFetchedVariants(null);
             setFetchedRenderedImages(null);
+            setFetchedHexagonalVariants(null);
+            setFetchedHexagonalRenderedImages(null);
           }
           setShowVariantsModal(open);
         }}
@@ -2100,7 +2136,10 @@ export const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ orderId }) =
         preloadedVariants={preloadedVariants}
         fetchedVariants={fetchedVariants ?? undefined}
         fetchedRenderedImages={fetchedRenderedImages ?? undefined}
+        fetchedHexagonalVariants={fetchedHexagonalVariants ?? undefined}
+        fetchedHexagonalRenderedImages={fetchedHexagonalRenderedImages ?? undefined}
         onSavedToBackend={handleVariantsSavedToBackend}
+        gridType={previewGridType}
       />
     </div>
   );

@@ -34,26 +34,34 @@ function getTemplateLayout(template, memberCount) {
     };
   }
   if (template === 'hexagonal' || template === 'circle') {
-    const gridSize = Math.ceil(Math.sqrt(memberCount));
-    const centerIndex = Math.floor(gridSize / 2) * gridSize + Math.floor(gridSize / 2);
+    // Hexagonal grids: center is always slot 0 (the large center polygon)
+    // This is consistent with frontend HexagonSvgGrid which puts center first
     return {
-      centerIndex: Math.min(centerIndex, memberCount - 1),
+      centerIndex: 0, // Center is always first slot in hexagonal grids
       totalCells: memberCount,
-      gridDimensions: { cols: gridSize, rows: gridSize },
-      description: `${template} ${gridSize}x${gridSize}`,
+      gridDimensions: { cols: 1, rows: 1 }, // Not applicable for hex
+      description: `${template} ${memberCount}-cell grid with center`,
     };
   }
   return null;
 }
 
 
-function generateGridVariants(order) {
+/**
+ * Generate variants for a specific grid type
+ * @param {Object} order - Order with members
+ * @param {string} gridType - Override grid type ('square' or 'hexagonal')
+ */
+function generateGridVariants(order, gridType = null) {
   const variants = [];
   if (!order || !order.members || !Array.isArray(order.members)) {
     throw new Error('Invalid order data: members array is missing or invalid');
   }
   if (order.members.length === 0) throw new Error('Order has no members');
-  if (!order.gridTemplate) throw new Error('Order grid template is missing');
+  
+  // Use provided gridType or fall back to order's gridTemplate
+  const effectiveTemplate = gridType || order.gridTemplate;
+  if (!effectiveTemplate) throw new Error('Grid template is missing');
 
   const membersWithPhotos = order.members.filter((m) => {
     if (!m) return false;
@@ -65,9 +73,9 @@ function generateGridVariants(order) {
     throw new Error(`Not enough members with photos (found ${membersWithPhotos.length}, need at least 2)`);
   }
 
-  const templateLayout = getTemplateLayout(order.gridTemplate, order.members.length);
+  const templateLayout = getTemplateLayout(effectiveTemplate, order.members.length);
   if (!templateLayout) {
-    throw new Error(`Unsupported grid template: ${order.gridTemplate} with ${order.members.length} members`);
+    throw new Error(`Unsupported grid template: ${effectiveTemplate} with ${order.members.length} members`);
   }
 
   for (let centerMemberIndex = 0; centerMemberIndex < membersWithPhotos.length; centerMemberIndex++) {
@@ -100,11 +108,14 @@ function generateGridVariants(order) {
       variantMembers[currentMemberIndex] = currentCenterMember || centerMember;
     }
 
+    // Use gridType-prefixed variant ID to avoid conflicts
+    const variantIdPrefix = gridType ? `${gridType}-` : '';
     variants.push({
-      id: `variant-${memberId}`,
+      id: `${variantIdPrefix}variant-${memberId}`,
       centerMember: { ...centerMember, id: memberId },
       members: variantMembers,
       centerIndex: safeCenterIndex,
+      gridType: effectiveTemplate, // Include gridType in variant data
     });
   }
 

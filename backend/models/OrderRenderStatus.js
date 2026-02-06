@@ -4,6 +4,8 @@ const VariantRenderStatusSchema = new mongoose.Schema(
     {
         variantId: { type: String, required: true },
         centerMemberId: { type: String },
+        centerMemberName: { type: String },
+        gridType: { type: String, enum: ['square', 'hexagonal'], default: 'square' },
         imageUrl: { type: String },
         status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
         error: { type: String }

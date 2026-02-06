@@ -46,7 +46,7 @@ export interface AdminMember {
     settings: OrderSettings;
     groupId?: string; // For ambassador referral tracking
     groupName?: string; // Populated from Group.name
-    centerVariantImages?: { variantId: string; imageUrl: string; centerMemberName?: string }[];
+    centerVariantImages?: { variantId: string; imageUrl: string; centerMemberName?: string; gridType?: 'square' | 'hexagonal' }[];
     centerVariantsDone?: number;
     centerVariantsTotal?: number;
     centerVariantsStatus?: 'queued' | 'processing' | 'completed' | 'failed' | null;

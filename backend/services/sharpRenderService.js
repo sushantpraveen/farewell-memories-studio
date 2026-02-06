@@ -13,6 +13,7 @@ import Order from '../models/orderModel.js';
 import VariationTemplate from '../models/VariationTemplate.js';
 import { generateGridVariants } from '../utils/gridVariantGenerator.js';
 import { getLayoutForMemberCount, calculateCellPositions } from '../utils/templateLayouts.js';
+import { isHexagonalOrder, renderHexVariant, getHexCanvasConfig, getHexCellDimensions, fetchImagesWithRateLimit as fetchHexImages } from './hexRenderService.js';
 import fetch from 'node-fetch';
 
 // Configuration
@@ -51,7 +52,7 @@ const applyFaceCropTransformation = (url, targetWidth, targetHeight) => {
 
   // Check if it's a Cloudinary URL
   const cloudinaryMatch = url.match(/^(https?:\/\/res\.cloudinary\.com\/[^\/]+\/)(?:image\/upload\/)?(.*)$/);
-  
+
   if (cloudinaryMatch) {
     const [, baseUrl, imagePath] = cloudinaryMatch;
     // Apply face-aware crop transformation
@@ -158,10 +159,10 @@ const processImage = async (imageBuffer, targetWidth, targetHeight) => {
 const fetchImagesWithRateLimit = async (members, cellWidth, cellHeight, maxConcurrent = MAX_CONCURRENT_FETCHES) => {
   const results = new Map();
   const queue = [...members];
-  
+
   const processNext = async () => {
     if (queue.length === 0) return;
-    
+
     const member = queue.shift();
     const memberId = member.id || member.memberRollNumber || `member-${members.indexOf(member)}`;
 
@@ -232,7 +233,7 @@ const renderVariantWithSharp = async (order, variant, imageBuffersMap, canvasCon
 
     // Process and add to composite
     const processedBuffer = await processImage(imageBuffer, cell.width, cell.height);
-    
+
     compositeInputs.push({
       input: processedBuffer,
       left: cell.x,
@@ -243,7 +244,7 @@ const renderVariantWithSharp = async (order, variant, imageBuffersMap, canvasCon
   // Composite all images and compress
   const outputBuffer = await composite
     .composite(compositeInputs)
-    .jpeg({ 
+    .jpeg({
       quality: OUTPUT_CONFIG.quality,
       mozjpeg: true // Use mozjpeg for better compression
     })
@@ -284,8 +285,8 @@ const uploadToCloudinary = async (imageBuffer, folder = 'center-variants') => {
     }
 
     const json = await response.json();
-    return { 
-      url: json.secure_url, 
+    return {
+      url: json.secure_url,
       sizeBytes: json.bytes,
       width: json.width,
       height: json.height,
@@ -352,6 +353,7 @@ export const queueOrderRender = async (orderId) => {
 
 /**
  * Process the render job using Sharp
+ * Generates BOTH square and hexagonal variants for each order
  * Saves results to VariationTemplates collection
  */
 const processRenderJob = async (orderId, order, statusId) => {
@@ -360,9 +362,30 @@ const processRenderJob = async (orderId, order, statusId) => {
   try {
     await OrderRenderStatus.findByIdAndUpdate(statusId, { status: 'processing' });
 
-    const variantsData = generateGridVariants(order);
+    // Generate variants for BOTH square and hexagonal grids
+    let squareVariants = [];
+    let hexVariants = [];
 
-    if (!variantsData || variantsData.length === 0) {
+    try {
+      squareVariants = generateGridVariants(order, 'square');
+      console.log(`[SharpRender] Generated ${squareVariants.length} square variants`);
+    } catch (e) {
+      console.warn(`[SharpRender] Could not generate square variants: ${e.message}`);
+    }
+
+    try {
+      hexVariants = generateGridVariants(order, 'hexagonal');
+      console.log(`[SharpRender] Generated ${hexVariants.length} hexagonal variants`);
+    } catch (e) {
+      console.warn(`[SharpRender] Could not generate hexagonal variants: ${e.message}`);
+    }
+
+    const allVariants = [
+      ...squareVariants.map(v => ({ ...v, gridType: 'square' })),
+      ...hexVariants.map(v => ({ ...v, gridType: 'hexagonal' }))
+    ];
+
+    if (allVariants.length === 0) {
       console.log(`[SharpRender] No variants to generate for order ${orderId}`);
       await OrderRenderStatus.findByIdAndUpdate(statusId, {
         status: 'completed',
@@ -372,28 +395,29 @@ const processRenderJob = async (orderId, order, statusId) => {
       return;
     }
 
-    console.log(`[SharpRender] Generated ${variantsData.length} variants to render`);
+    console.log(`[SharpRender] Total variants to render: ${allVariants.length} (${squareVariants.length} square + ${hexVariants.length} hex)`);
 
     await OrderRenderStatus.findByIdAndUpdate(statusId, {
-      totalVariants: variantsData.length,
-      variants: variantsData.map(v => ({
+      totalVariants: allVariants.length,
+      variants: allVariants.map(v => ({
         variantId: v.id,
         centerMemberId: v.centerMember.id,
+        gridType: v.gridType,
         status: 'pending'
       }))
     });
 
-    // Get canvas config
-    const canvasConfig = getCanvasConfig(order.members.length);
-    
-    // Calculate typical cell size for face-crop (use first cell as reference)
+    // Delete existing variation templates for this order (for re-renders)
+    await VariationTemplate.deleteMany({ orderId });
+
+    // Pre-fetch all member images (use dimensions suitable for both grid types)
+    const squareCanvasConfig = getCanvasConfig(order.members.length);
     const layout = getLayoutForMemberCount(order.members.length);
-    const cellPositions = calculateCellPositions(layout, canvasConfig.width, canvasConfig.height, 2);
+    const cellPositions = calculateCellPositions(layout, squareCanvasConfig.width, squareCanvasConfig.height, 2);
     const sampleCell = cellPositions.find(c => c.kind !== 'center') || cellPositions[0];
     const cellWidth = Math.round(sampleCell.width);
     const cellHeight = Math.round(sampleCell.height);
 
-    // Pre-fetch all member images with face-crop (once)
     console.log(`[SharpRender] Fetching ${order.members.length} member images with face-crop (${cellWidth}x${cellHeight})...`);
     const imageBuffersMap = await fetchImagesWithRateLimit(order.members, cellWidth, cellHeight);
     console.log(`[SharpRender] Fetched ${imageBuffersMap.size} images`);
@@ -401,33 +425,39 @@ const processRenderJob = async (orderId, order, statusId) => {
     const results = [];
     const failedVariants = [];
 
-    // Delete existing variation templates for this order (for re-renders)
-    await VariationTemplate.deleteMany({ orderId });
-
-    for (let i = 0; i < variantsData.length; i++) {
-      const variant = variantsData[i];
+    // Process each variant
+    for (let i = 0; i < allVariants.length; i++) {
+      const variant = allVariants[i];
       const variantId = variant.id;
+      const gridType = variant.gridType;
       const centerMemberId = variant.centerMember.id || variant.centerMember.memberRollNumber;
       const centerMemberName = variant.centerMember?.name;
 
-      console.log(`[SharpRender] Rendering variant ${i + 1}/${variantsData.length}: ${variantId} (center: ${centerMemberName})`);
+      console.log(`[SharpRender] Rendering ${gridType} variant ${i + 1}/${allVariants.length}: ${variantId} (center: ${centerMemberName})`);
 
       try {
-        // Render with Sharp
-        const imageBuffer = await renderVariantWithSharp(order, variant, imageBuffersMap, canvasConfig);
-        
-        // Upload to Cloudinary
-        const uploadResult = await uploadToCloudinary(imageBuffer, `center-variants/${orderId}`);
+        // Render with appropriate service based on grid type
+        let imageBuffer;
+        if (gridType === 'hexagonal') {
+          const hexCanvasConfig = getHexCanvasConfig(order.members.length);
+          imageBuffer = await renderHexVariant(order, variant, imageBuffersMap, hexCanvasConfig);
+        } else {
+          imageBuffer = await renderVariantWithSharp(order, variant, imageBuffersMap, squareCanvasConfig);
+        }
 
-        // Save to VariationTemplates collection
+        // Upload to Cloudinary with grid type in folder path
+        const uploadResult = await uploadToCloudinary(imageBuffer, `center-variants/${orderId}/${gridType}`);
+
+        // Save to VariationTemplates collection with gridType
         await VariationTemplate.create({
           orderId,
           variantId,
+          gridType,
           centerMemberId,
           centerMemberName,
           imageUrl: uploadResult.url,
-          width: uploadResult.width || canvasConfig.width,
-          height: uploadResult.height || canvasConfig.height,
+          width: uploadResult.width || (gridType === 'hexagonal' ? 1200 : squareCanvasConfig.width),
+          height: uploadResult.height || (gridType === 'hexagonal' ? 1900 : squareCanvasConfig.height),
           sizeBytes: uploadResult.sizeBytes || imageBuffer.length,
           format: uploadResult.format || 'jpeg',
           status: 'completed'
@@ -446,17 +476,18 @@ const processRenderJob = async (orderId, order, statusId) => {
           }
         );
 
-        results.push({ variantId, imageUrl: uploadResult.url, centerMemberName });
-        console.log(`[SharpRender] Completed variant ${variantId} (${Math.round(imageBuffer.length / 1024)}KB)`);
+        results.push({ variantId, imageUrl: uploadResult.url, centerMemberName, gridType });
+        console.log(`[SharpRender] Completed ${gridType} variant ${variantId} (${Math.round(imageBuffer.length / 1024)}KB)`);
 
       } catch (variantError) {
-        console.error(`[SharpRender] Failed variant ${variantId}:`, variantError.message);
-        failedVariants.push({ variantId, error: variantError.message });
+        console.error(`[SharpRender] Failed ${gridType} variant ${variantId}:`, variantError.message);
+        failedVariants.push({ variantId, gridType, error: variantError.message });
 
         // Save failed status to VariationTemplates
         await VariationTemplate.create({
           orderId,
           variantId,
+          gridType,
           centerMemberId,
           centerMemberName,
           imageUrl: '',
@@ -471,7 +502,7 @@ const processRenderJob = async (orderId, order, statusId) => {
       }
     }
 
-    const allFailed = failedVariants.length === variantsData.length;
+    const allFailed = failedVariants.length === allVariants.length;
     const finalStatus = allFailed ? 'failed' : 'completed';
 
     await OrderRenderStatus.findByIdAndUpdate(statusId, {
@@ -480,12 +511,13 @@ const processRenderJob = async (orderId, order, statusId) => {
       error: failedVariants.length > 0 ? `${failedVariants.length} variants failed` : null
     });
 
-    // Also update Order.centerVariantImages for backward compatibility
+    // Update Order.centerVariantImages for backward compatibility (include gridType)
     if (results.length > 0) {
       const centerVariantImages = results.map(r => ({
         variantId: r.variantId,
         imageUrl: r.imageUrl,
-        centerMemberName: r.centerMemberName
+        centerMemberName: r.centerMemberName,
+        gridType: r.gridType
       }));
 
       await Order.findOneAndUpdate(
@@ -494,7 +526,7 @@ const processRenderJob = async (orderId, order, statusId) => {
       );
     }
 
-    console.log(`[SharpRender] Job ${finalStatus} for order ${orderId}: ${results.length}/${variantsData.length} variants`);
+    console.log(`[SharpRender] Job ${finalStatus} for order ${orderId}: ${results.length}/${allVariants.length} variants (${squareVariants.length} square, ${hexVariants.length} hex)`);
 
   } catch (error) {
     console.error(`[SharpRender] Job failed for order ${orderId}:`, error);

@@ -319,8 +319,12 @@ export const getCenterVariants = async (req, res) => {
     }).lean();
 
     if (templates.length > 0) {
-      // Build response from VariationTemplates
-      const variants = templates.map((t) => {
+      // Separate square and hexagonal templates
+      const squareTemplates = templates.filter(t => !t.gridType || t.gridType === 'square');
+      const hexTemplates = templates.filter(t => t.gridType === 'hexagonal');
+
+      // Build variants helper
+      const buildVariantFromTemplate = (t) => {
         const member = (order.members || []).find((m) => 
           m.id === t.centerMemberId || m.memberRollNumber === t.centerMemberId
         );
@@ -332,30 +336,65 @@ export const getCenterVariants = async (req, res) => {
           centerMember,
           members: order.members || [],
           centerIndex: 0,
+          gridType: t.gridType || 'square',
         };
-      });
+      };
 
-      const renderedImages = {};
-      for (const t of templates) {
-        if (t.variantId && t.imageUrl) renderedImages[t.variantId] = t.imageUrl;
+      // Build square variants and images
+      const squareVariants = squareTemplates.map(buildVariantFromTemplate);
+      const squareRenderedImages = {};
+      for (const t of squareTemplates) {
+        if (t.variantId && t.imageUrl) squareRenderedImages[t.variantId] = t.imageUrl;
       }
 
-      return res.json({ variants, renderedImages });
+      // Build hexagonal variants and images
+      const hexVariants = hexTemplates.map(buildVariantFromTemplate);
+      const hexRenderedImages = {};
+      for (const t of hexTemplates) {
+        if (t.variantId && t.imageUrl) hexRenderedImages[t.variantId] = t.imageUrl;
+      }
+
+      // Return both grid types
+      return res.json({
+        variants: squareVariants,
+        renderedImages: squareRenderedImages,
+        hexagonalVariants: hexVariants,
+        hexagonalRenderedImages: hexRenderedImages,
+        totalSquare: squareVariants.length,
+        totalHexagonal: hexVariants.length,
+      });
     }
 
     // Fallback to order.centerVariantImages for backward compatibility
     const stored = order.centerVariantImages || [];
     if (stored.length === 0) {
-      return res.json({ variants: [], renderedImages: {} });
+      return res.json({ variants: [], renderedImages: {}, hexagonalVariants: [], hexagonalRenderedImages: {} });
     }
 
-    const variants = buildVariantsFromStored(stored, order.members);
+    // Separate by gridType for backward compat data
+    const squareStored = stored.filter(s => !s.gridType || s.gridType === 'square');
+    const hexStored = stored.filter(s => s.gridType === 'hexagonal');
+
+    const variants = buildVariantsFromStored(squareStored, order.members);
     const renderedImages = {};
-    for (const item of stored) {
+    for (const item of squareStored) {
       if (item.variantId && item.imageUrl) renderedImages[item.variantId] = item.imageUrl;
     }
 
-    return res.json({ variants, renderedImages });
+    const hexagonalVariants = buildVariantsFromStored(hexStored, order.members);
+    const hexagonalRenderedImages = {};
+    for (const item of hexStored) {
+      if (item.variantId && item.imageUrl) hexagonalRenderedImages[item.variantId] = item.imageUrl;
+    }
+
+    return res.json({
+      variants,
+      renderedImages,
+      hexagonalVariants,
+      hexagonalRenderedImages,
+      totalSquare: variants.length,
+      totalHexagonal: hexagonalVariants.length,
+    });
   } catch (err) {
     console.error('getCenterVariants error:', err);
     return res.status(500).json({ message: err.message || 'Failed to fetch center variants' });
