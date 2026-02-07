@@ -289,17 +289,5 @@ export function getTemplateLayout(template: string, memberCount: number): Templa
     };
   }
 
-  if (template === 'circle') {
-    const gridSize = Math.ceil(Math.sqrt(memberCount));
-    const centerIndex = Math.floor(gridSize / 2) * gridSize + Math.floor(gridSize / 2);
-
-    return {
-      centerIndex: Math.min(centerIndex, memberCount - 1),
-      totalCells: memberCount,
-      gridDimensions: { cols: gridSize, rows: gridSize },
-      description: `Circular ${gridSize}x${gridSize} grid with calculated center`
-    };
-  }
-
   return null;
 }

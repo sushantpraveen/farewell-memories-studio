@@ -353,7 +353,12 @@ export const useJoinGroup = (groupId: string | undefined) => {
             toast.success('Payment successful! Welcome to the group.');
             setIsSubmitting(false);
             setIsProcessingPayment(false);
-            navigate(`/success?groupId=${groupId}`);
+            // Leaders go to Dashboard, Members go to Success page
+            if (user?.isLeader) {
+              navigate(`/dashboard/${groupId}`);
+            } else {
+              navigate(`/success?groupId=${groupId}`);
+            }
           } catch (err) {
             console.error('Verify payment error:', err);
             toast.error(err instanceof Error ? err.message : 'Failed to finalize payment.');
@@ -408,19 +413,22 @@ export const useJoinGroup = (groupId: string | undefined) => {
         if (!isMounted) return;
 
         if (groupData) {
-          const { id, name, yearOfPassing, totalMembers, gridTemplate, ambassadorId } = groupData;
+          const gridTemplate: GridTemplate = groupData.gridTemplate === 'hexagonal' ? 'hexagonal' : 'square';
+          const layoutMode = groupData.layoutMode ?? 'square';
           setGroup({
-            id,
-            name,
-            yearOfPassing,
-            totalMembers,
+            ...groupData,
+            id: groupData.id ?? groupData._id,
             gridTemplate,
-            ambassadorId: ambassadorId || null,
+            layoutMode,
             members: Array.isArray((groupData as any).members) ? (groupData as any).members : [],
-            shareLink: '',
-            createdAt: new Date(),
-            votes: { hexagonal: 0, square: 0, circle: 0 }
-          });
+            shareLink: (groupData as any).shareLink ?? '',
+            createdAt: groupData.createdAt ? new Date(groupData.createdAt) : new Date(),
+            votes: {
+              square: typeof (groupData as any).votes?.square === 'number' ? (groupData as any).votes.square : 0,
+              hexagonal: typeof (groupData as any).votes?.hexagonal === 'number' ? (groupData as any).votes.hexagonal : 0,
+              any: typeof (groupData as any).votes?.any === 'number' ? (groupData as any).votes.any : 0
+            }
+          } as Group);
           setPreviewTemplate(gridTemplate);
         } else {
           setGroup(undefined);
@@ -444,6 +452,13 @@ export const useJoinGroup = (groupId: string | undefined) => {
       clearTimeout(loadingTimeout);
     };
   }, [groupId, getGroup]);
+
+  // When layout is locked (not voting), force member's vote to match the group template
+  useEffect(() => {
+    if (!group || group.layoutMode === 'voting') return;
+    const lockedVote: GridTemplate = group.gridTemplate === 'hexagonal' ? 'hexagonal' : 'square';
+    setMemberData((prev) => (prev.vote === lockedVote ? prev : { ...prev, vote: lockedVote }));
+  }, [group?.id, group?.layoutMode, group?.gridTemplate]);
 
   useEffect(() => () => {
     if (lastObjectUrlRef.current) {

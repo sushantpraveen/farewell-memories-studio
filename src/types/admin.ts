@@ -3,7 +3,7 @@ export interface AdminMember {
     name: string;
     memberRollNumber: string;
     photo: string; // data URL or remote URL
-    vote?: 'square' | 'hexagonal' | 'circle';
+    vote?: 'square' | 'hexagonal';
     joinedAt: string;
     size?: 's' | 'm' | 'l' | 'xl' | 'xxl';
     phone?: string;
@@ -40,7 +40,7 @@ export interface AdminMember {
     createdAt: string;
     updatedAt?: string;
     description?: string;
-    gridTemplate: 'square' | 'hexagonal' | 'circle';
+    gridTemplate: 'square' | 'hexagonal';
     members: AdminMember[];
     shipping: Shipping;
     settings: OrderSettings;

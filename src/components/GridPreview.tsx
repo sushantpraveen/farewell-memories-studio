@@ -2,7 +2,6 @@ import React, { useState, useEffect, Suspense, lazy } from "react";
 import { GridTemplate, Member } from "@/context/CollageContext";
 import { HexagonalGrid } from "./grids/HexagonalGrid";
 import { SquareGrid } from "./grids/SquareGrid";
-import { CircleGrid } from "./grids/CircleGrid";
 import { GridProvider } from "./square/context/GridContext";
 import { HexagonSvgGrid } from "./HexagonSvgGrid";
 
@@ -301,8 +300,6 @@ export const GridPreview: React.FC<GridPreviewProps> = ({
   switch (template) {
     case 'hexagonal':
       return <HexagonalGrid {...commonProps} />;
-    case 'circle':
-      return <CircleGrid {...commonProps} />;
     case 'square':
     default:
       return <SquareGrid {...commonProps} />;

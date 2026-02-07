@@ -123,7 +123,7 @@ const Editor = () => {
     ? (showCurrentMembers ? group.members.length : group.totalMembers)
     : 0;
   const winningTemplateForTemplates = group
-    ? (Object.entries(group.votes).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0] as 'hexagonal' | 'square' | 'circle')
+    ? ((group.votes?.square ?? 0) >= (group.votes?.hexagonal ?? 0) ? 'square' : 'hexagonal')
     : 'square';
   const availableTemplates = useMemo(
     () => getAvailableTemplates(displayMemberCountForTemplates),
@@ -268,8 +268,10 @@ const Editor = () => {
     );
   }
 
-  const getWinningTemplate = (votes: { hexagonal: number; square: number; circle: number }) => {
-    return Object.entries(votes).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0] as 'hexagonal' | 'square' | 'circle';
+  const getWinningTemplate = (votes: { square?: number; hexagonal?: number }) => {
+    const square = votes?.square ?? 0;
+    const hexagonal = votes?.hexagonal ?? 0;
+    return square >= hexagonal ? 'square' : 'hexagonal';
   };
 
   const handleShare = () => {
@@ -690,29 +692,24 @@ const Editor = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3 sm:space-y-4">
-                      {(['square', 'hexagonal', 'circle'] as const).map((template) => (
-                        <div key={template} className="flex items-center justify-between">
-                          <span className="capitalize text-gray-700 text-sm sm:text-base">{template}</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full transition-all duration-300 ${template === winningTemplate
-                                  ? 'bg-gradient-to-r from-purple-600 to-pink-600'
-                                  : 'bg-gray-400'
-                                  }`}
-                                style={{
-                                  width: group.members.length > 0
-                                    ? `${(group.votes[template] / group.members.length) * 100}% `
-                                    : '0%'
-                                }}
-                              />
+                      {(['square', 'hexagonal'] as const).map((template) => {
+                        const count = group.votes?.[template] ?? 0;
+                        const pct = group.members.length > 0 ? (count / group.members.length) * 100 : 0;
+                        return (
+                          <div key={template} className="flex items-center justify-between">
+                            <span className="capitalize text-gray-700 text-sm sm:text-base">{template === 'hexagonal' ? 'Hexagon' : 'Square'}</span>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${template === winningTemplate ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-gray-400'}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-xs sm:text-sm font-medium text-gray-600">{count}</span>
                             </div>
-                            <span className="text-xs sm:text-sm font-medium text-gray-600">
-                              {group.votes[template]}
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

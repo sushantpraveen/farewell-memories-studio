@@ -83,11 +83,9 @@ const Checkout = () => {
     return () => { isMounted = false; };
   }, [groupId, getGroup]);
 
-  // Calculate winning template
-  const winningTemplate = group ?
-    (Object.keys(group.votes) as Array<keyof typeof group.votes>).reduce((a, b) =>
-      group.votes[a] > group.votes[b] ? a : b
-    ) : 'square';
+  const winningTemplate = group
+    ? ((group.votes?.square ?? 0) >= (group.votes?.hexagonal ?? 0) ? 'square' : 'hexagonal')
+    : 'square';
 
   const handleUpdateGrid = async () => {
     if (!group) return;

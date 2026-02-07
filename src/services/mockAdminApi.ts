@@ -3,7 +3,7 @@ import { Order, AdminMember, OrderFilters } from '@/types/admin';
 // Mock data generator
 const generateMockOrder = (id: string): Order => {
   const statuses = ['new', 'in_progress', 'ready', 'shipped'] as const;
-  const templates = ['square', 'hexagonal', 'circle'] as const;
+  const templates = ['square', 'hexagonal'] as const;
   
   const memberCount = Math.floor(Math.random() * 40) + 10; // 10-50 members
   const members: AdminMember[] = Array.from({ length: memberCount }, (_, i) => ({

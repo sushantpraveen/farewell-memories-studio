@@ -22,7 +22,7 @@ const memberSchema = new mongoose.Schema({
   },
   vote: {
     type: String,
-    enum: ['hexagonal', 'square', 'circle'],
+    enum: ['hexagonal', 'square', 'circle', 'any'],
     default: 'square'
   },
   size: {
@@ -93,6 +93,11 @@ const groupSchema = new mongoose.Schema(
       enum: ['hexagonal', 'square', 'circle'],
       default: 'square'
     },
+    layoutMode: {
+      type: String,
+      enum: ['square', 'hexagonal', 'voting'],
+      default: 'voting'
+    },
     shareLink: {
       type: String,
       default: function () {
@@ -110,6 +115,10 @@ const groupSchema = new mongoose.Schema(
         default: 0
       },
       circle: {
+        type: Number,
+        default: 0
+      },
+      any: {
         type: Number,
         default: 0
       }

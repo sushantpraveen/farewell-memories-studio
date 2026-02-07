@@ -624,20 +624,14 @@ export const getGroupWithParticipants = async (req, res) => {
     }
 
     const participants = [];
-    // Creator row
-    participants.push({
-      role: 'CREATOR',
-      name: creatorUser?.name ?? group.name ?? '—',
-      email: creatorUser?.email ?? '—',
-      phone: group.phone ?? '—',
-      rollNumber: '—',
-      joinedAt: group.createdAt
-    });
-    // Members
+    // Prepare normalized participants list from group members ONLY
     const members = group.members || [];
+    const creatorEmail = creatorUser?.email?.toLowerCase();
+
     for (const m of members) {
+      const isCreator = creatorEmail && m.email && m.email.toLowerCase() === creatorEmail;
       participants.push({
-        role: 'MEMBER',
+        role: isCreator ? 'CREATOR' : 'MEMBER',
         name: m.name ?? '—',
         email: m.email ?? '—',
         phone: m.phone ?? '—',
@@ -645,6 +639,7 @@ export const getGroupWithParticipants = async (req, res) => {
         joinedAt: m.joinedAt ?? group.createdAt
       });
     }
+
 
     const ambassador = group.ambassadorId
       ? await Ambassador.findById(group.ambassadorId).select('name referralCode').lean()

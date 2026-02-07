@@ -4,28 +4,28 @@ const PerformanceOptimizer = () => {
   useEffect(() => {
     // Preload critical resources
     const preloadCriticalResources = () => {
-      // Preload critical fonts
-      const fontLink = document.createElement('link');
-      fontLink.rel = 'preload';
-      fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
-      fontLink.as = 'style';
-      document.head.appendChild(fontLink);
+      // Preload critical fonts - disabled to prevent unused warnings
+      // const fontLink = document.createElement('link');
+      // fontLink.rel = 'preload';
+      // fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+      // fontLink.as = 'style';
+      // document.head.appendChild(fontLink);
 
-      // Preload critical images
-      const criticalImages = [
-        '/images/step1.svg',
-        '/images/step2.svg', 
-        '/images/step3.svg',
-        '/og-image.png'
-      ];
+      // Preload critical images - disabled to prevent unused warnings
+      // const criticalImages = [
+      //   '/images/step1.svg',
+      //   '/images/step2.svg', 
+      //   '/images/step3.svg',
+      //   '/og-image.png'
+      // ];
 
-      criticalImages.forEach(src => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.href = src;
-        link.as = 'image';
-        document.head.appendChild(link);
-      });
+      // criticalImages.forEach(src => {
+      //   const link = document.createElement('link');
+      //   link.rel = 'preload';
+      //   link.href = src;
+      //   link.as = 'image';
+      //   document.head.appendChild(link);
+      // });
     };
 
     // Add resource hints for external domains
@@ -73,10 +73,10 @@ const PerformanceOptimizer = () => {
       window.addEventListener('load', () => {
         const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
         const paint = performance.getEntriesByType('paint');
-        
+
         console.log('Page Load Time:', navigation.loadEventEnd - navigation.loadEventStart);
         console.log('DOM Content Loaded:', navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart);
-        
+
         if (paint.length > 0) {
           console.log('First Paint:', paint[0].startTime);
         }

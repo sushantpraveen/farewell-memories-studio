@@ -9,7 +9,7 @@ import { Separator } from './ui/separator';
 import { GridProvider as SquareGridProvider } from './square/context/GridContext';
 import { GridPreview } from './GridPreview';
 import { Link, useNavigate } from "react-router-dom";
-import { useCollage, GridTemplate } from '../context/CollageContext';
+import { useCollage, GridTemplate, LayoutMode } from '../context/CollageContext';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from "framer-motion";
 import UserWalkthrough, { Step } from './UserWalkthrough';
@@ -225,6 +225,7 @@ const GridBoard = () => {
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ type: GridTemplate, path: string }>>([]);
   const [currentTemplateIndex, setCurrentTemplateIndex] = useState(0);
 
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('square');
   const [formData, setFormData] = useState({
     name: "",
     yearOfPassing: "",
@@ -328,6 +329,24 @@ const GridBoard = () => {
       run={showTour}
     />
   ), [tourStorageKey, showTour]);
+
+  // Templates to show in preview: filter by layout mode (square = only square, hexagonal = only hex, voting = both)
+  const displayedTemplates = useMemo(() => {
+    if (layoutMode === 'square') return availableTemplates.filter((t) => t.type === 'square');
+    if (layoutMode === 'hexagonal') return availableTemplates.filter((t) => t.type === 'hexagonal');
+    return availableTemplates;
+  }, [availableTemplates, layoutMode]);
+
+  // Sync current index and gridTemplate when displayedTemplates or layoutMode changes
+  useEffect(() => {
+    if (displayedTemplates.length === 0) return;
+    const safeIndex = Math.min(currentTemplateIndex, displayedTemplates.length - 1);
+    const template = displayedTemplates[safeIndex];
+    if (safeIndex !== currentTemplateIndex) setCurrentTemplateIndex(safeIndex);
+    if (template && formData.gridTemplate !== template.type) {
+      setFormData((prev) => ({ ...prev, gridTemplate: template.type }));
+    }
+  }, [displayedTemplates, layoutMode]);
 
   // Map of all TSX components in this folder
   const componentModules = import.meta.glob(['./square/*.tsx', './hexagon/*.tsx']);
@@ -477,11 +496,13 @@ const GridBoard = () => {
     setIsSubmitting(true);
 
     try {
+      const gridTemplate: GridTemplate = layoutMode === 'voting' ? formData.gridTemplate : layoutMode;
       const payload: any = {
         name: formData.name.trim(),
         yearOfPassing: formData.yearOfPassing.trim(),
         totalMembers: parseInt(formData.totalMembers),
-        gridTemplate: formData.gridTemplate
+        layoutMode,
+        gridTemplate
       };
       const groupId = await createGroup(payload);
 
@@ -496,7 +517,7 @@ const GridBoard = () => {
       toast.success("Group created successfully!");
       // Set flag to show share modal once when user lands on dashboard
       sessionStorage.setItem('showShareModal', 'true');
-      navigate(`/dashboard/${groupId}`);
+      navigate(`/join/${groupId}`);
     } catch (error) {
       console.error("Error creating group:", error);
       toast.error("Failed to create group. Please try again.");
@@ -559,9 +580,9 @@ const GridBoard = () => {
   };
 
   const switchTemplate = (index: number) => {
-    setCurrentTemplateIndex(index);
-    const template = availableTemplates[index];
+    const template = displayedTemplates[index];
     if (!template) return;
+    setCurrentTemplateIndex(index);
 
     if (template.path.endsWith('.svg') && hexagonSvgModules[template.path as keyof typeof hexagonSvgModules]) {
       const pathToUse = template.path;
@@ -582,17 +603,15 @@ const GridBoard = () => {
 
   const handleNextTemplate = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (availableTemplates.length <= 1) return;
-
-    const nextIndex = (currentTemplateIndex + 1) % availableTemplates.length;
+    if (displayedTemplates.length <= 1) return;
+    const nextIndex = (currentTemplateIndex + 1) % displayedTemplates.length;
     switchTemplate(nextIndex);
   };
 
   const handlePrevTemplate = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (availableTemplates.length <= 1) return;
-
-    const prevIndex = (currentTemplateIndex - 1 + availableTemplates.length) % availableTemplates.length;
+    if (displayedTemplates.length <= 1) return;
+    const prevIndex = (currentTemplateIndex - 1 + displayedTemplates.length) % displayedTemplates.length;
     switchTemplate(prevIndex);
   };
 
@@ -638,18 +657,20 @@ const GridBoard = () => {
 
     if (templates.length > 0) {
       setAvailableTemplates(templates);
+      const displayed = layoutMode === 'square' ? templates.filter((t) => t.type === 'square')
+        : layoutMode === 'hexagonal' ? templates.filter((t) => t.type === 'hexagonal') : templates;
+      const firstTemplate = displayed[0] ?? templates[0];
       setCurrentTemplateIndex(0);
 
-      // Set initial PreviewComp - for SVG we use HexagonSvgViewer, for TSX we use lazy loader
-      const firstTemplate = templates[0];
-      if (firstTemplate.path.endsWith('.svg')) {
+      if (firstTemplate.path.endsWith('.svg') && hexagonSvgModules[firstTemplate.path as keyof typeof hexagonSvgModules]) {
+        const pathToUse = firstTemplate.path;
         const HexagonSvgLazy = lazy(() =>
           import('./HexagonSvgViewer').then((m) => ({
-            default: () => React.createElement(m.HexagonSvgViewer, { path: firstTemplate.path }),
+            default: () => React.createElement(m.HexagonSvgViewer, { path: pathToUse }),
           }))
         );
         setPreviewComp(() => HexagonSvgLazy);
-      } else {
+      } else if (componentModules[firstTemplate.path]) {
         const loader = componentModules[firstTemplate.path] as () => Promise<{ default: React.ComponentType<any> }>;
         const LazyComp = lazy(loader);
         setPreviewComp(() => LazyComp);
@@ -706,8 +727,9 @@ const GridBoard = () => {
 
 
 
-  // Check if form is valid for submit button
-  const isValidForm = validateForm(formData).isValid;
+  // Hexagon unavailable when layout mode is hexagonal but no hex template for this size
+  const hexagonUnavailable = layoutMode === 'hexagonal' && displayedTemplates.length === 0 && formData.totalMembers.trim() !== '';
+  const isValidForm = validateForm(formData).isValid && !hexagonUnavailable;
 
   // Background doodle component
   const BackgroundDoodle = () => (
@@ -897,6 +919,37 @@ const GridBoard = () => {
                 )}
               </div>
 
+              <div className="space-y-3">
+                <Label className="flex items-center text-base font-medium text-gray-700">
+                  <Layout className="mr-2 h-5 w-5 text-purple-500" />
+                  Select Layout Mode
+                </Label>
+                <div className="flex flex-wrap gap-3">
+                  {(['square', 'hexagonal', 'voting'] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      type="button"
+                      variant={layoutMode === mode ? 'default' : 'outline'}
+                      size="sm"
+                      className={`capitalize ${layoutMode === mode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-white/50 border-purple-100 hover:bg-purple-50'}`}
+                      onClick={() => setLayoutMode(mode)}
+                    >
+                      {mode === 'voting' ? 'Voting System' : mode === 'hexagonal' ? 'Hexagon' : 'Square'}
+                    </Button>
+                  ))}
+                </div>
+                {layoutMode === 'hexagonal' && displayedTemplates.length === 0 && formData.totalMembers.trim() && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm text-red-600 flex items-center"
+                  >
+                    <AlertCircle className="mr-1 h-3 w-3" />
+                    Hexagon layout is not available for this group size.
+                  </motion.p>
+                )}
+              </div>
+
               {/* <div className="text-xs text-slate-500 sm:self-center">
               Enter a number to load a file named <code className="px-1 py-0.5 rounded bg-slate-100">{`{n}`}.tsx</code> from <code className="px-1 py-0.5 rounded bg-slate-100">src/components</code>.
             </div> */}
@@ -987,8 +1040,8 @@ const GridBoard = () => {
           {PreviewComp ? (
             <Card className="w-full h-full backdrop-blur-lg bg-white/80 border-none shadow-xl overflow-hidden relative group">
               <CardContent className="p-2 sm:p-3 md:p-4 h-full flex flex-col">
-                {/* Template Navigation Overlay - pointer-events-auto so clicks work despite parent's pointer-events-none */}
-                {availableTemplates.length > 1 && (
+                {/* Template Navigation Overlay - only when multiple templates (e.g. voting mode) */}
+                {displayedTemplates.length > 1 && (
                   <div className="absolute inset-0 z-20 pointer-events-none">
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
                       <Button
@@ -1010,14 +1063,13 @@ const GridBoard = () => {
                         <ChevronRight className="h-6 w-6 text-gray-700" />
                       </Button>
                     </div>
-                    {/* Template Type Indicator */}
                     <div className="absolute top-4 right-4 pointer-events-none z-20">
                       <span className="px-3 py-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
-                        {availableTemplates[currentTemplateIndex].path === 'vector'
+                        {displayedTemplates[currentTemplateIndex]?.path === 'vector'
                           ? 'Collage'
-                          : availableTemplates[currentTemplateIndex].path?.endsWith('.svg')
+                          : displayedTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
                             ? 'Hexagon'
-                            : availableTemplates[currentTemplateIndex].type}
+                            : displayedTemplates[currentTemplateIndex]?.type}
                       </span>
                     </div>
                   </div>
@@ -1027,7 +1079,7 @@ const GridBoard = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5 }}
-                  className={`w-full h-full ${availableTemplates[currentTemplateIndex]?.path === 'vector' ? 'pointer-events-auto' : 'pointer-events-none select-none'}`}
+                  className={`w-full h-full ${displayedTemplates[currentTemplateIndex]?.path === 'vector' ? 'pointer-events-auto' : 'pointer-events-none select-none'}`}
                 >
                   <Suspense
                     fallback={
@@ -1042,19 +1094,19 @@ const GridBoard = () => {
                       </div>
                     }
                   >
-                    <div className={`w-full ${availableTemplates[currentTemplateIndex]?.path === 'vector'
+                    <div className={`w-full ${displayedTemplates[currentTemplateIndex]?.path === 'vector'
                       ? 'aspect-[595/936] max-h-[560px] min-h-[280px] flex flex-col min-h-0'
-                      : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
+                      : displayedTemplates[currentTemplateIndex]?.path?.endsWith('.svg')
                         ? 'aspect-[595/936] max-h-[min(85vh,560px)] min-h-[240px] flex flex-col min-h-0 mx-auto justify-center'
                         : 'aspect-square'
                       }`}>
-                      {availableTemplates[currentTemplateIndex]?.path === 'vector' ? (
+                      {displayedTemplates[currentTemplateIndex]?.path === 'vector' ? (
                         <PreviewComp />
-                      ) : availableTemplates[currentTemplateIndex]?.type === 'square' ? (
+                      ) : displayedTemplates[currentTemplateIndex]?.type === 'square' ? (
                         <SquareGridProvider>
                           <PreviewComp />
                         </SquareGridProvider>
-                      ) : availableTemplates[currentTemplateIndex]?.path?.endsWith('.svg') ? (
+                      ) : displayedTemplates[currentTemplateIndex]?.path?.endsWith('.svg') ? (
                         <GridPreview
                           template="hexagonal"
                           memberCount={Math.max(1, parseInt(String(formData.totalMembers), 10) || 16)}

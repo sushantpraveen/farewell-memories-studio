@@ -257,8 +257,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
     if (!groupId || !member) {
       return res.status(400).json({ success: false, message: 'Missing group or member data' });
     }
-    // phone missing intentionally
-    const { name, email, memberRollNumber, photo, vote, size, zoomLevel } = member;
+    const { name, email, memberRollNumber, photo, vote, size, zoomLevel, phone } = member;
 
     // if (!name || !email || !memberRollNumber || !photo || !vote || !phone) {
     if (!name || !email || !memberRollNumber || !photo || !vote) {
@@ -302,6 +301,11 @@ export const verifyPaymentAndJoin = async (req, res) => {
       return res.status(409).json({ success: false, message: 'Group is already full' });
     }
 
+    const duplicateEmail = group.members.find((m) => m.email && email && m.email.toLowerCase() === email.toLowerCase());
+    if (duplicateEmail) {
+      return res.status(409).json({ success: false, message: 'Member with this email already exists in the group' });
+    }
+
     const duplicateRoll = group.members.find((m) => m.memberRollNumber === memberRollNumber);
     if (duplicateRoll) {
       return res.status(400).json({ success: false, message: 'Member with this roll number already exists' });
@@ -326,7 +330,7 @@ export const verifyPaymentAndJoin = async (req, res) => {
       vote,
       size: size || 'm',
       zoomLevel: typeof zoomLevel === 'number' ? zoomLevel : 0.4,
-      // phone: normalizedPhone,
+      phone: phone || undefined,
       paidDeposit: true,
       depositAmountPaise: paymentAmountPaise,
       depositOrderId: razorpay_order_id,

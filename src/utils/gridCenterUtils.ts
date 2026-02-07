@@ -21,13 +21,8 @@ export function getGridDimensions(memberCount: number, template: string): GridDi
     const cols = Math.ceil(Math.sqrt(totalCells));
     const rows = Math.ceil(totalCells / cols);
     return { cols, rows, totalCells };
-  } else if (template === 'circle') {
-    // Circular arrangements might use different logic
-    const cols = Math.ceil(Math.sqrt(totalCells));
-    const rows = Math.ceil(totalCells / cols);
-    return { cols, rows, totalCells };
   }
-  
+
   // Default fallback
   const cols = Math.ceil(Math.sqrt(totalCells));
   const rows = Math.ceil(totalCells / cols);

@@ -94,9 +94,36 @@ export const CenterVariantsGallery: React.FC<CenterVariantsGalleryProps> = ({
     const variant = variants.find(v => v.id === variantId);
     if (!variant) return;
 
+    const baseFilename = `grid-variant-${variant.centerMember.name.replace(/\s+/g, '-').toLowerCase()}`;
+
+    let downloadUrl = imageData;
+
+    // Normalize via Cloudinary helper (adds f_auto,q_auto safely)
+    const safeUrl = cloudinarySafeUrl(imageData) || imageData;
+
+    // For Cloudinary URLs, add fl_attachment to force download with filename
+    if (safeUrl.includes('cloudinary.com')) {
+      const marker = safeUrl.includes('/image/upload/')
+        ? '/image/upload/'
+        : safeUrl.includes('/upload/')
+          ? '/upload/'
+          : null;
+
+      if (marker) {
+        downloadUrl = safeUrl.replace(
+          marker,
+          `${marker}fl_attachment:${baseFilename}/`
+        );
+      } else {
+        downloadUrl = safeUrl;
+      }
+    } else {
+      downloadUrl = safeUrl;
+    }
+
     const link = document.createElement('a');
-    link.href = imageData;
-    link.download = `grid-variant-${variant.centerMember.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+    link.href = downloadUrl;
+    link.download = `${baseFilename}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

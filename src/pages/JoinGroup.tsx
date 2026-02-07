@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import PhoneOtpWidgetIndia from "@/components/otp/PhoneOtpWidgetIndia";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
+import { useAuth } from "@/context/AuthContext";
 import { getAvailableTemplates, getInitialTemplateIndex } from "@/lib/templateUtils";
 
 // Subtle animated background to match GridBoard/Dashboard look
@@ -28,6 +29,8 @@ const GridPreview = lazy(() =>
 
 const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
+  const { user } = useAuth();
+  const isLeader = user?.isLeader ?? false;
   const {
     memberData,
     errors,
@@ -130,12 +133,15 @@ const JoinGroup = () => {
       <div className="container mx-auto max-w-6xl animate-slideUp opacity-0" style={{ animationDelay: '150ms', animationFillMode: 'forwards' }} key="content-container">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0" key="header">
-          <Link to="/" key="back-link">
-            <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 w-fit text-gray-700">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
+          {/* Hide Back to Home for leaders - they should complete joining first */}
+          {!isLeader && (
+            <Link to="/" key="back-link">
+              <Button variant="ghost" size="sm" className="mr-0 sm:mr-4 w-fit text-gray-700">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          )}
           <div key="group-info">
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 text-transparent bg-clip-text">{group.name}</h1>
             <p className="text-sm sm:text-base text-gray-600">Class of {group.yearOfPassing}</p>
@@ -162,7 +168,9 @@ const JoinGroup = () => {
             <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
               <Vote className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-yellow-600 mb-2" />
               <p className="text-xl sm:text-2xl font-bold capitalize">{group.gridTemplate}</p>
-              <p className="text-xs sm:text-sm text-gray-600">Current Winner</p>
+              <p className="text-xs sm:text-sm text-gray-600">
+                {group.layoutMode === 'voting' ? 'Current Winner' : 'Layout (locked)'}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -269,6 +277,29 @@ const JoinGroup = () => {
                       </Select>
                     </div>
 
+                    {/* Always show layout selection as per request */}
+                    <div className="space-y-2">
+                      <Label htmlFor="layout-vote" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                        <span className="text-sm sm:text-base font-medium">Choose Layout</span>
+                      </Label>
+                      <Select
+                        value={memberData.vote}
+                        onValueChange={(val) => handleInputChange('vote', val as 'square' | 'hexagonal' | 'any')}
+                        required
+                      >
+                        <SelectTrigger id="layout-vote">
+                          <SelectValue placeholder="Square, Hexagon, or Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="square">Square</SelectItem>
+                          <SelectItem value="hexagonal">Hexagon</SelectItem>
+                          <SelectItem value="any">Any (I'm flexible)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">Your vote helps decide the final grid layout.</p>
+                    </div>
+                    {/* )} - End of removed condition */}
+
                     <div className="space-y-2">
                       <Label htmlFor="photo" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                         <span className="flex items-center text-sm sm:text-base font-medium">
@@ -370,73 +401,73 @@ const JoinGroup = () => {
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 lg:p-8">
                   <div className="flex-1 min-h-[320px] sm:min-h-[400px] flex items-center justify-center w-full">
-                  <Suspense fallback={
-                    <div className="p-4 sm:p-8 text-center">
-                      <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
-                    </div>
-                  }>
-                    <div className="relative w-full h-full min-h-[280px] flex items-center justify-center">
-                      {availableTemplates.length > 1 && (
-                        <>
-                          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
-                              onClick={handlePrevTemplate}
-                            >
-                              <ChevronLeft className="h-6 w-6 text-gray-700" />
-                            </Button>
-                          </div>
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
-                              onClick={handleNextTemplate}
-                            >
-                              <ChevronRight className="h-6 w-6 text-gray-700" />
-                            </Button>
-                          </div>
-                          <div className="absolute top-4 right-4 z-10">
-                            <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
-                              {displayTemplate === 'hexagonal' ? 'Hexagon' : displayTemplate}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                      {isCloudinaryPhoto ? (
-                        <GridPreview
-                          template={displayTemplate}
-                          memberCount={group.totalMembers}
-                          members={[]}
-                          centerEmptyDefault
-                          activeMember={{
-                            id: 'preview',
-                            name: memberData.name || 'You',
-                            memberRollNumber: memberData.memberRollNumber,
-                            photo: memberData.photo,
-                            vote: memberData.vote,
-                            joinedAt: new Date(),
-                            zoomLevel: memberData.zoomLevel
-                          }}
-                          size="xlarge"
-                        />
-                      ) : (
-                        <div className="space-y-2">
+                    <Suspense fallback={
+                      <div className="p-4 sm:p-8 text-center">
+                        <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-purple-600 border-purple-200 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-sm sm:text-base text-gray-600">Loading preview...</p>
+                      </div>
+                    }>
+                      <div className="relative w-full h-full min-h-[280px] flex items-center justify-center">
+                        {availableTemplates.length > 1 && (
+                          <>
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                                onClick={handlePrevTemplate}
+                              >
+                                <ChevronLeft className="h-6 w-6 text-gray-700" />
+                              </Button>
+                            </div>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="bg-white/80 hover:bg-white shadow-lg rounded-full h-10 w-10"
+                                onClick={handleNextTemplate}
+                              >
+                                <ChevronRight className="h-6 w-6 text-gray-700" />
+                              </Button>
+                            </div>
+                            <div className="absolute top-4 right-4 z-10">
+                              <span className="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider text-gray-600 border border-gray-100">
+                                {displayTemplate === 'hexagonal' ? 'Hexagon' : displayTemplate}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        {isCloudinaryPhoto ? (
                           <GridPreview
                             template={displayTemplate}
                             memberCount={group.totalMembers}
                             members={[]}
-                          centerEmptyDefault
-                          size="xlarge"
-                        />
-                          <p className="text-center text-sm text-gray-500">Upload your photo to see yourself in the center</p>
-                        </div>
-                      )}
-                    </div>
-                  </Suspense>
+                            centerEmptyDefault
+                            activeMember={{
+                              id: 'preview',
+                              name: memberData.name || 'You',
+                              memberRollNumber: memberData.memberRollNumber,
+                              photo: memberData.photo,
+                              vote: memberData.vote,
+                              joinedAt: new Date(),
+                              zoomLevel: memberData.zoomLevel
+                            }}
+                            size="xlarge"
+                          />
+                        ) : (
+                          <div className="space-y-2">
+                            <GridPreview
+                              template={displayTemplate}
+                              memberCount={group.totalMembers}
+                              members={[]}
+                              centerEmptyDefault
+                              size="xlarge"
+                            />
+                            <p className="text-center text-sm text-gray-500">Upload your photo to see yourself in the center</p>
+                          </div>
+                        )}
+                      </div>
+                    </Suspense>
                   </div>
                 </CardContent>
               </Card>

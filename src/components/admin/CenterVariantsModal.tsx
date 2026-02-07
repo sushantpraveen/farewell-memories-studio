@@ -79,7 +79,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
         setIsGenerating(false);
         setProgress(100);
         setError(null);
-        
+
         const totalVariants = (fetchedVariants?.length || 0) + (fetchedHexagonalVariants?.length || 0);
         toast.success(`Loaded ${totalVariants} center variants from server (${fetchedVariants?.length || 0} square, ${fetchedHexagonalVariants?.length || 0} hexagonal)`);
         return;
@@ -371,11 +371,44 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
     }
   }, [isGenerating, currentRenderIndex, variants.length]);
 
-  const handleDownloadSelected = async (variantIds: string[]) => {
+  const handleDownloadSelected = (variantIds: string[]) => {
     if (variantIds.length === 0) {
       toast.error('No variants selected');
       return;
     }
+
+    const downloadImage = (variantId: string) => {
+      const imageData = renderedImages[variantId];
+      const variant = variants.find(v => v.id === variantId);
+      if (!imageData || !variant) return;
+
+      const baseFilename = `grid-variant-${variant.centerMember.name.replace(/\s+/g, '-').toLowerCase()}`;
+
+      let downloadUrl = imageData;
+
+      // For Cloudinary URLs, add fl_attachment to force download with filename
+      if (imageData.includes('cloudinary.com')) {
+        const marker = imageData.includes('/image/upload/')
+          ? '/image/upload/'
+          : imageData.includes('/upload/')
+            ? '/upload/'
+            : null;
+
+        if (marker) {
+          downloadUrl = imageData.replace(
+            marker,
+            `${marker}fl_attachment:${baseFilename}/`
+          );
+        }
+      }
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${baseFilename}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
     if (variantIds.length === 1) {
       // Single download
@@ -384,39 +417,24 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
       const variant = variants.find(v => v.id === variantId);
 
       if (imageData && variant) {
-        const link = document.createElement('a');
-        link.href = imageData;
-        link.download = `grid-variant-${variant.centerMember.name.replace(/\s+/g, '-').toLowerCase()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        downloadImage(variantId);
         toast.success('Variant downloaded successfully');
       }
     } else {
       // Multiple downloads with delay
       toast.info(`Downloading ${variantIds.length} variants...`);
 
-      for (let i = 0; i < variantIds.length; i++) {
-        const variantId = variantIds[i];
+      variantIds.forEach((variantId, index) => {
         const imageData = renderedImages[variantId];
         const variant = variants.find(v => v.id === variantId);
 
         if (imageData && variant) {
-          const link = document.createElement('a');
-          link.href = imageData;
-          link.download = `grid-variant-${variant.centerMember.name.replace(/\s+/g, '-').toLowerCase()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          // Add delay between downloads to avoid browser blocking
-          if (i < variantIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          // Stagger downloads slightly to reduce browser blocking,
+          // but keep the first one effectively within the user gesture.
+          const delay = index === 0 ? 0 : index * 400;
+          setTimeout(() => downloadImage(variantId), delay);
         }
-      }
-
-      toast.success(`${variantIds.length} variants downloaded successfully`);
+      });
     }
   };
 
@@ -489,7 +507,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
                 Hexagonal Grid ({fetchedHexagonalVariants?.length || 0})
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="square">
               {hasSquareVariants && fetchedVariants && fetchedRenderedImages && (
                 <CenterVariantsGallery
@@ -501,7 +519,7 @@ export const CenterVariantsModal: React.FC<CenterVariantsModalProps> = ({
                 />
               )}
             </TabsContent>
-            
+
             <TabsContent value="hexagonal">
               {hasHexVariants && fetchedHexagonalVariants && fetchedHexagonalRenderedImages && (
                 <CenterVariantsGallery
