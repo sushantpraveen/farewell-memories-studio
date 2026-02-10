@@ -57,10 +57,13 @@ const Dashboard = () => {
     if (!groupId || group?.layoutMode !== 'voting') return;
     setIsFinalizingLayout(true);
     try {
-      await updateGroup(groupId, { gridTemplate: chosen });
+      await updateGroup(groupId, {
+        gridTemplate: chosen,
+        layoutMode: chosen
+      });
       const refreshed = await getGroup(groupId, true);
       if (refreshed) setGroup(refreshed);
-      toast.success(`Layout set to ${chosen === 'hexagonal' ? 'Hexagon' : 'Square'}`);
+      toast.success(`final layout = ${chosen === 'hexagonal' ? 'Hexagon' : 'Square'}`);
     } catch (e) {
       console.error(e);
       toast.error('Failed to finalize layout');
@@ -313,6 +316,32 @@ const Dashboard = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [groupId, getGroup]);
+
+  // Role-based access: only authenticated leaders can access dashboard; block tab used for member join
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      navigate('/auth', { replace: true });
+      return;
+    }
+    if (isAuthLoading || isLoading || loadingGroup || !group || !user) return;
+
+    try {
+      if (sessionStorage.getItem('joinAsMember')) {
+        navigate(`/success?groupId=${group.id || groupId}`, { replace: true });
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    const currentUserId = String(user.id);
+    const groupLeaderId = String(group.leaderId || group.createdByUserId || '');
+
+    if (currentUserId !== groupLeaderId) {
+      console.warn(`[Dashboard] Access Denied. User ${currentUserId} is not leader ${groupLeaderId}. Redirecting to Success.`);
+      navigate(`/success?groupId=${group.id || groupId}`, { replace: true });
+    }
+  }, [isAuthLoading, isLoading, loadingGroup, group, user, navigate, groupId]);
 
   // Define Walkthrough Element once with a stable reference (Memoized)
   // It only depends on strictly necessary IDs and the start-toggle state.
@@ -634,7 +663,7 @@ const Dashboard = () => {
                       navigate(`/dashboard/${value}`, { replace: true });
                     }}
                   >
-                    <SelectTrigger id="guide-switch-group" className="h-8 w-32 sm:w-48 text-xs border-purple-200">
+                    <SelectTrigger id="guide-switch-group" className="h-8 w-32 sm:w-48 text-xs border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-300">
                       <SelectValue placeholder="Select group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -802,21 +831,19 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 gap-3">
                           <Button
                             size="sm"
-                            variant={winningTemplate === 'square' || !winningTemplate ? 'default' : 'outline'}
-                            className={winningTemplate === 'square' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                            variant="outline"
                             onClick={() => handleFinalizeLayout('square')}
                             disabled={isFinalizingLayout}
                           >
-                            Set Square {winningTemplate === 'square' && '(Winner)'}
+                            Set Square
                           </Button>
                           <Button
                             size="sm"
-                            variant={winningTemplate === 'hexagonal' ? 'default' : 'outline'}
-                            className={winningTemplate === 'hexagonal' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                            variant="outline"
                             onClick={() => handleFinalizeLayout('hexagonal')}
                             disabled={isFinalizingLayout}
                           >
-                            Set Hexagon {winningTemplate === 'hexagonal' && '(Winner)'}
+                            Set Hexagon
                           </Button>
                         </div>
                       </div>
@@ -824,18 +851,22 @@ const Dashboard = () => {
                   </CardContent>
                 </>
               ) : (
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Award className="h-5 w-5 text-yellow-600" />
-                    <h2 className="font-semibold text-gray-900">Layout</h2>
-                  </div>
-                  <div className="space-y-2">
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 capitalize">
-                      {group?.gridTemplate === 'hexagonal' ? 'Hexagon' : 'Square'}
-                    </Badge>
-                    <p className="text-sm text-gray-600">Locked by leader</p>
-                  </div>
-                </CardContent>
+                <>
+                  <CardHeader className="p-6 pb-4">
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="h-5 w-5 text-purple-600" />
+                      <CardTitle>Vote Distribution</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0">
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 capitalize">
+                        final layout = {group?.layoutMode === 'hexagonal' ? 'Hexagon' : 'Square'}
+                      </Badge>
+                      <p className="text-sm text-gray-600">Finalized by leader</p>
+                    </div>
+                  </CardContent>
+                </>
               )}
             </Card>
           </div>
@@ -847,7 +878,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
           {/* Left Column - Member List */}
           <div className="lg:col-span-2 space-y-4 flex flex-col min-h-0">
-            <Card className="bg-white/90 backdrop-blur-xl border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col">
+            <Card className="bg-white/90 backdrop-blur-xl border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col h-[400px]">
               <CardHeader className="p-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -859,8 +890,8 @@ const Dashboard = () => {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-100 max-h-[440px] overflow-y-auto scroll-smooth custom-scrollbar">
+              <CardContent className="p-0 flex-1 overflow-hidden">
+                <div className="divide-y divide-gray-100 h-full overflow-y-auto scroll-smooth custom-scrollbar">
                   {filteredMembers.map((member: Member, index: number) => (
                     <div
                       key={member.memberRollNumber || member.id || index}
@@ -1010,7 +1041,7 @@ const Dashboard = () => {
             </Card>
             */}
 
-            <Card className="bg-white/90 backdrop-blur-xl border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex-1">
+            <Card className="bg-white/90 backdrop-blur-xl border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden h-[400px] flex flex-col">
               <CardHeader className="p-6 pb-4">
                 <div className="flex items-center gap-3">
                   <Award className="h-5 w-5 text-yellow-600" />

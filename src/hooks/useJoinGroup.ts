@@ -314,9 +314,15 @@ export const useJoinGroup = (groupId: string | undefined) => {
               ]
             );
 
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = { 'Content-Type': 'application/json' };
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const verifyResponse = await fetch('/api/payments/join/verify', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers,
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -339,24 +345,47 @@ export const useJoinGroup = (groupId: string | undefined) => {
             }
 
             await getGroup(groupId, true);
+
+            const isCreatorRedirect = verifyData?.isCreator === true;
+
+            // Update role only for the actual joiner (match by email) so we never demote the leader
+            // when a member joins in the leader's browser.
+            let isLeaderLocal = false;
+            
             if (user) {
-              const updates: Partial<typeof user> = { groupId };
-              if (user.isLeader) {
-                updates.isLeader = true;
-              }
-              try {
-                await updateUser(updates);
-              } catch (err) {
-                console.warn('[JoinGroup] Skipping user update after payment:', err);
+              const joinerEmail = (memberData.email || '').trim().toLowerCase();
+              const currentUserEmail = (user.email || '').trim().toLowerCase();
+              const isCurrentUserTheJoiner = !!joinerEmail && joinerEmail === currentUserEmail;
+
+              if (isCreatorRedirect) {
+                try {
+                  await updateUser({ groupId, isLeader: true });
+                  isLeaderLocal = true;
+                } catch (err) {
+                  console.warn('[JoinGroup] Skipping user update after payment:', err);
+                }
+              } else if (isCurrentUserTheJoiner) {
+                try {
+                  await updateUser({ groupId, isLeader: false });
+                } catch (err) {
+                  console.warn('[JoinGroup] Skipping user update after payment:', err);
+                }
               }
             }
+
             toast.success('Payment successful! Welcome to the group.');
             setIsSubmitting(false);
             setIsProcessingPayment(false);
-            // Leaders go to Dashboard, Members go to Success page
-            if (user?.isLeader) {
+
+            // Redirect logic: simple check for creator status
+            if (isCreatorRedirect || isLeaderLocal) {
               navigate(`/dashboard/${groupId}`);
             } else {
+              try {
+                sessionStorage.setItem('joinAsMember', '1');
+              } catch {
+                // ignore
+              }
               navigate(`/success?groupId=${groupId}`);
             }
           } catch (err) {

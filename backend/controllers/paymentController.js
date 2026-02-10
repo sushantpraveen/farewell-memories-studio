@@ -5,6 +5,7 @@ import fs from 'fs';
 import { sendMail } from '../utils/email.js';
 import Order from '../models/orderModel.js';
 import Group from '../models/groupModel.js';
+import User from '../models/userModel.js';
 import Payment from '../models/paymentModel.js';
 import AmbassadorReward from '../models/ambassadorRewardModel.js';
 import Ambassador from '../models/ambassadorModel.js';
@@ -348,10 +349,25 @@ export const verifyPaymentAndJoin = async (req, res) => {
     // otpRecord.verified = false;
     // await otpRecord.save();
 
+    // Role-based: only the person who joined (by email) is the group creator → leader.
+    // Use joiner identity (member email), not session, so shared browser does not get leader access.
+    let isCreator = false;
+    if (group.createdByUserId && email) {
+      const creator = await User.findById(group.createdByUserId).select('email').lean();
+      const creatorEmail = creator?.email;
+      if (creatorEmail) {
+        const joinerEmail = String(email).trim().toLowerCase();
+        const creatorEmailNorm = String(creatorEmail).trim().toLowerCase();
+        isCreator = joinerEmail === creatorEmailNorm;
+        console.log(`[DEBUG] isCreator check: joiner=${joinerEmail}, creator=${creatorEmailNorm}, result=${isCreator}`);
+      }
+    }
+
     const responsePayload = {
       success: true,
       groupId: group._id,
       member: newMember,
+      isCreator,
       message: 'Payment verified and member added'
     };
 

@@ -6,7 +6,7 @@ const AdminMemberSchema = new mongoose.Schema(
     name: { type: String, required: true },
     memberRollNumber: { type: String, required: true },
     photo: { type: String, required: true },
-    vote: { type: String, enum: ['square', 'hexagonal', 'circle'], required: false },
+    vote: { type: String, enum: ['square', 'hexagonal', 'circle', 'any'], required: false },
     joinedAt: { type: Date, required: true },
     size: { type: String, enum: ['s', 'm', 'l', 'xl', 'xxl'], required: false },
     phone: { type: String, required: false }

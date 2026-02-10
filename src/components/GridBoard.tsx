@@ -925,19 +925,28 @@ const GridBoard = () => {
                   Select Layout Mode
                 </Label>
                 <div className="flex flex-wrap gap-3">
-                  {(['square', 'hexagonal', 'voting'] as const).map((mode) => (
-                    <Button
-                      key={mode}
-                      type="button"
-                      variant={layoutMode === mode ? 'default' : 'outline'}
-                      size="sm"
-                      className={`capitalize ${layoutMode === mode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-white/50 border-purple-100 hover:bg-purple-50'}`}
-                      onClick={() => setLayoutMode(mode)}
-                    >
-                      {mode === 'voting' ? 'Voting System' : mode === 'hexagonal' ? 'Hexagon' : 'Square'}
-                    </Button>
-                  ))}
+                  {(['square', 'hexagonal', 'voting'] as const).map((mode) => {
+                    const squadSize = parseInt(formData.totalMembers) || 0;
+                    const isVotingDisabled = mode === 'voting' && squadSize < 13;
+                    return (
+                      <Button
+                        key={mode}
+                        type="button"
+                        variant={layoutMode === mode ? 'default' : 'outline'}
+                        size="sm"
+                        className={`capitalize ${layoutMode === mode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-white/50 border-purple-100 hover:bg-purple-50'} ${isVotingDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => !isVotingDisabled && setLayoutMode(mode)}
+                        disabled={isVotingDisabled}
+                        title={isVotingDisabled ? 'Voting system requires 13+ members' : undefined}
+                      >
+                        {mode === 'voting' ? 'Voting System' : mode === 'hexagonal' ? 'Hexagon' : 'Square'}
+                      </Button>
+                    );
+                  })}
                 </div>
+                {parseInt(formData.totalMembers) > 0 && parseInt(formData.totalMembers) < 13 && (
+                  <p className="text-xs text-gray-500">Voting system requires 13+ members</p>
+                )}
                 {layoutMode === 'hexagonal' && displayedTemplates.length === 0 && formData.totalMembers.trim() && (
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
@@ -1100,13 +1109,7 @@ const GridBoard = () => {
                         ? 'aspect-[595/936] max-h-[min(85vh,560px)] min-h-[240px] flex flex-col min-h-0 mx-auto justify-center'
                         : 'aspect-square'
                       }`}>
-                      {displayedTemplates[currentTemplateIndex]?.path === 'vector' ? (
-                        <PreviewComp />
-                      ) : displayedTemplates[currentTemplateIndex]?.type === 'square' ? (
-                        <SquareGridProvider>
-                          <PreviewComp />
-                        </SquareGridProvider>
-                      ) : displayedTemplates[currentTemplateIndex]?.path?.endsWith('.svg') ? (
+                      {displayedTemplates[currentTemplateIndex]?.path?.endsWith('.svg') ? (
                         <GridPreview
                           template="hexagonal"
                           memberCount={Math.max(1, parseInt(String(formData.totalMembers), 10) || 16)}
@@ -1115,7 +1118,9 @@ const GridBoard = () => {
                           size="large"
                         />
                       ) : (
-                        <PreviewComp />
+                        <SquareGridProvider>
+                          <PreviewComp />
+                        </SquareGridProvider>
                       )}
                     </div>
                   </Suspense>

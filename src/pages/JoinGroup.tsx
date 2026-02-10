@@ -191,7 +191,9 @@ const JoinGroup = () => {
                 <CardHeader className="pb-4 sm:pb-6">
                   <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text">Join the Group</CardTitle>
                   <CardDescription className="text-sm sm:text-base">
-                    Upload your photo and vote for your favorite grid template. {remainingSpots} spots remaining!
+                    {group.layoutMode === 'voting'
+                      ? `Upload your photo and vote for your favorite grid template. ${remainingSpots} spots remaining!`
+                      : `Upload your photo to join the group. ${remainingSpots} spots remaining!`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -214,7 +216,7 @@ const JoinGroup = () => {
                         placeholder="Enter your full name"
                         value={memberData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
-                        className={errors.name ? "border-red-300 focus:border-red-500" : ""}
+                        className={`border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400 ${errors.name ? "border-red-300 focus:border-red-500" : ""}`}
                         aria-invalid={!!errors.name}
                         aria-describedby={errors.name ? "name-error" : undefined}
                       />
@@ -222,16 +224,24 @@ const JoinGroup = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="memberEmail" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                        <span className="text-sm sm:text-base font-medium">Email</span>
+                        <span className="text-sm sm:text-base font-medium">Your Email</span>
                         {errors.email && <span className="text-xs text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{errors.email}</span>}
-                        {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
                       </Label>
+                      {user?.id === group?.leaderId && memberData.email && user?.email && memberData.email.toLowerCase() !== user.email.toLowerCase() && (
+                        <p className="text-[10px] text-amber-600 font-medium mt-1 animate-fadeIn bg-amber-100/30 px-2 py-1.5 rounded-md border border-amber-200 flex items-start">
+                          <AlertCircle className="w-3 h-3 mr-2 mt-0.5 shrink-0" />
+                          <span>
+                            <strong>Note for Leader:</strong> Please use your <strong>registered account email</strong> to ensure you are correctly redirected to your Dashboard after joining.
+                          </span>
+                        </p>
+                      )}
+                      {formTouched && memberData.email && !errors.email && <span className="text-xs text-green-500 flex items-center mt-1"><CheckCircle className="w-3 h-3 mr-1" />Valid</span>}
                       <Input
                         id="memberEmail"
                         placeholder="Enter your email"
                         value={memberData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={errors.email ? "border-red-300 focus:border-red-500" : ""}
+                        className={`border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400 ${errors.email ? "border-red-300 focus:border-red-500" : ""}`}
                         aria-invalid={!!errors.email}
                         aria-describedby={errors.email ? "email-error" : undefined}
                       />
@@ -248,7 +258,7 @@ const JoinGroup = () => {
                         placeholder="Enter your roll number"
                         value={memberData.memberRollNumber}
                         onChange={(e) => handleInputChange('memberRollNumber', e.target.value)}
-                        className={errors.memberRollNumber ? "border-red-300 focus:border-red-500" : ""}
+                        className={`border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400 ${errors.memberRollNumber ? "border-red-300 focus:border-red-500" : ""}`}
                         aria-invalid={!!errors.memberRollNumber}
                         aria-describedby={errors.memberRollNumber ? "roll-error" : undefined}
                       />
@@ -264,7 +274,7 @@ const JoinGroup = () => {
                         value={memberData.size}
                         onValueChange={(val) => handleInputChange('size', val as 's' | 'm' | 'l' | 'xl' | 'xxl')}
                       >
-                        <SelectTrigger id="size" className={errors.size ? "border-red-300" : ""}>
+                        <SelectTrigger id="size" className={`border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400 ${errors.size ? "border-red-300" : ""}`}>
                           <SelectValue placeholder="Select your size" />
                         </SelectTrigger>
                         <SelectContent>
@@ -277,28 +287,38 @@ const JoinGroup = () => {
                       </Select>
                     </div>
 
-                    {/* Always show layout selection as per request */}
+                    {/* Layout: only show vote selection when leader chose Voting; otherwise show locked layout */}
                     <div className="space-y-2">
-                      <Label htmlFor="layout-vote" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                        <span className="text-sm sm:text-base font-medium">Choose Layout</span>
-                      </Label>
-                      <Select
-                        value={memberData.vote}
-                        onValueChange={(val) => handleInputChange('vote', val as 'square' | 'hexagonal' | 'any')}
-                        required
-                      >
-                        <SelectTrigger id="layout-vote">
-                          <SelectValue placeholder="Square, Hexagon, or Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="square">Square</SelectItem>
-                          <SelectItem value="hexagonal">Hexagon</SelectItem>
-                          <SelectItem value="any">Any (I'm flexible)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-500">Your vote helps decide the final grid layout.</p>
+                      {group.layoutMode === 'voting' ? (
+                        <>
+                          <Label htmlFor="layout-vote" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                            <span className="text-sm sm:text-base font-medium">Choose Layout</span>
+                          </Label>
+                          <Select
+                            value={memberData.vote}
+                            onValueChange={(val) => handleInputChange('vote', val as 'square' | 'hexagonal' | 'any')}
+                            required
+                          >
+                            <SelectTrigger id="layout-vote" className="border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400">
+                              <SelectValue placeholder="Square, Hexagon, or Any" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="square">Square</SelectItem>
+                              <SelectItem value="hexagonal">Hexagon</SelectItem>
+                              <SelectItem value="any">Any (I'm flexible)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500">Your vote helps decide the final grid layout.</p>
+                        </>
+                      ) : (
+                        <div className="space-y-1">
+                          <span className="text-sm sm:text-base font-medium">Layout</span>
+                          <p className="text-sm text-gray-600">
+                            {group.gridTemplate === 'hexagonal' ? 'Hexagon' : 'Square'} (locked by leader)
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {/* )} - End of removed condition */}
 
                     <div className="space-y-2">
                       <Label htmlFor="photo" className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
@@ -314,7 +334,7 @@ const JoinGroup = () => {
                         type="file"
                         accept="image/*"
                         onChange={handlePhotoUpload}
-                        className={errors.photo ? "border-red-300 focus:border-red-500" : ""}
+                        className={`border-purple-200 focus:ring-0 focus:ring-offset-0 focus:border-purple-400 file:bg-purple-50 file:text-purple-700 file:border-0 ${errors.photo ? "border-red-300 focus:border-red-500" : ""}`}
                         aria-invalid={!!errors.photo}
                       />
 
@@ -475,7 +495,7 @@ const JoinGroup = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

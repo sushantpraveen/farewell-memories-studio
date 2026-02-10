@@ -20,7 +20,8 @@ export const createGroup = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, yearOfPassing, totalMembers, gridTemplate } = req.body;
+    const { name, yearOfPassing, totalMembers, gridTemplate, layoutMode } = req.body;
+    console.log('[DEBUG] createGroup req.body:', JSON.stringify(req.body, null, 2));
 
     // Resolve referral code from cookie or body
     const referralCode = getReferralCode(req);
@@ -49,6 +50,7 @@ export const createGroup = async (req, res) => {
       yearOfPassing,
       totalMembers,
       gridTemplate: gridTemplate || 'square',
+      layoutMode: layoutMode || 'voting',
       members: [],
       ambassadorId: ambassadorId || null, // Explicitly set to null if no ambassador
       referralCode: resolvedReferralCode || null, // Explicitly set to null if no referral
@@ -76,6 +78,7 @@ export const createGroup = async (req, res) => {
         yearOfPassing: group.yearOfPassing,
         totalMembers: group.totalMembers,
         gridTemplate: group.gridTemplate,
+        layoutMode: group.layoutMode,
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
         leaderId: group.createdByUserId, // Return leaderId for frontend filtering
@@ -262,6 +265,7 @@ export const getGroupById = async (req, res) => {
         yearOfPassing: group.yearOfPassing,
         totalMembers: group.totalMembers,
         gridTemplate: group.gridTemplate,
+        layoutMode: group.layoutMode,
         shareLink: `/join/${group._id}`,
         createdAt: group.createdAt,
         leaderId: group.createdByUserId, // Return leaderId for frontend filtering
@@ -552,11 +556,14 @@ export const updateGroup = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this group' });
     }
 
+    console.log('[DEBUG] updateGroup req.body:', JSON.stringify(req.body, null, 2));
+
     // Update group fields
     if (req.body.name) group.name = req.body.name;
     if (req.body.yearOfPassing) group.yearOfPassing = req.body.yearOfPassing;
     if (req.body.totalMembers) group.totalMembers = req.body.totalMembers;
     if (req.body.gridTemplate) group.gridTemplate = req.body.gridTemplate;
+    if (req.body.layoutMode) group.layoutMode = req.body.layoutMode;
 
     const updatedGroup = await group.save();
 
@@ -566,6 +573,7 @@ export const updateGroup = async (req, res) => {
       yearOfPassing: updatedGroup.yearOfPassing,
       totalMembers: updatedGroup.totalMembers,
       gridTemplate: updatedGroup.gridTemplate,
+      layoutMode: updatedGroup.layoutMode,
       message: 'Group updated successfully'
     });
   } catch (error) {

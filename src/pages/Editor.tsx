@@ -268,7 +268,12 @@ const Editor = () => {
     );
   }
 
-  const getWinningTemplate = (votes: { square?: number; hexagonal?: number }) => {
+  const getWinningTemplate = (votes: { square?: number; hexagonal?: number }, layoutMode?: string) => {
+    // If the leader has finalized a layout, use it directly
+    if (layoutMode === 'square' || layoutMode === 'hexagonal') {
+      return layoutMode;
+    }
+    // Otherwise fall back to vote count
     const square = votes?.square ?? 0;
     const hexagonal = votes?.hexagonal ?? 0;
     return square >= hexagonal ? 'square' : 'hexagonal';
@@ -325,7 +330,7 @@ const Editor = () => {
       const finalTotal = shipping + shippingGst;
 
       // Get winning template
-      const winningTemplate = getWinningTemplate(group.votes);
+      const winningTemplate = getWinningTemplate(group.votes, group.layoutMode);
 
       // Prepare members data
       const members: AdminMember[] = group.members.map(m => ({
@@ -448,7 +453,7 @@ const Editor = () => {
   };
 
   const completionPercentage = Math.round((group.members.length / group.totalMembers) * 100);
-  const winningTemplate = getWinningTemplate(group.votes);
+  const winningTemplate = getWinningTemplate(group.votes, group.layoutMode);
   const isGridComplete = group.members.length === group.totalMembers;
 
   // Determine which member count to use based on toggle

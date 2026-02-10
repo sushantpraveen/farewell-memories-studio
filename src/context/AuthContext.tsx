@@ -361,6 +361,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     LocalStorageService.clearAll();
+    try {
+      sessionStorage.removeItem('joinAsMember');
+    } catch {
+      // ignore
+    }
     setUser(null);
   };
 
